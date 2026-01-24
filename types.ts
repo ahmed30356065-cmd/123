@@ -1,0 +1,251 @@
+
+export type Role = 'admin' | 'merchant' | 'driver' | 'supervisor' | 'customer';
+
+export type SupervisorPermission =
+  | 'view_orders'
+  | 'manage_orders'
+  | 'delete_orders'
+  | 'view_users'
+  | 'manage_users'
+  | 'view_wallet'
+  | 'view_reports'
+  | 'view_logs'
+  | 'manage_promo'
+  | 'send_messages'
+  | 'manage_stores'
+  | 'manage_slider'
+  | 'manage_support'
+  | 'delete_support_messages'
+  | 'manage_decorations' // Added permission for managing frames and badges
+  | 'manage_supervisors'; // Added check for managing other supervisors
+
+export interface ProductSize {
+  name: string;
+  price: number;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  image?: string;
+  category?: string;
+  available: boolean;
+  sizes?: ProductSize[];
+}
+
+export interface CartItem extends Product {
+  quantity: number;
+  merchantId?: string;
+  selectedSize?: ProductSize;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  role: Role;
+  password?: string;
+  // Added 'blocked' status
+  status: 'active' | 'pending' | 'inactive' | 'blocked';
+  phone?: string;
+  email?: string;
+  addresses?: string[];
+  address?: string;
+  createdAt: Date;
+  commissionRate?: number;
+  commissionType?: 'percentage' | 'fixed';
+  dailyLogStatus?: 'active' | 'closed';
+  incentivesActive?: boolean;
+  permissions?: SupervisorPermission[];
+  appointedBy?: string;
+  dailyLogMode?: '12_hour' | 'always_open';
+  dailyLogStartedAt?: Date;
+  fcmToken?: string;
+  maxConcurrentOrders?: number;
+  pointsBalance?: number;
+  storeName?: string;
+  storeCategory?: string;
+  storeImage?: string;
+  products?: Product[];
+  workingHours?: {
+    start: string;
+    end: string;
+  };
+  hasFreeDelivery?: boolean;
+  responseTime?: string;
+  // Merchant Permissions
+  canShowDeliveryTime?: boolean;
+  canManageMenu?: boolean;
+  // Decoration (Updated to allow strings for extended collection)
+  specialFrame?: string;
+  specialBadge?: string;
+  // Expiry dates for decorations
+  specialFrameExpiry?: string | null;
+  specialBadgeExpiry?: string | null;
+}
+
+export interface Customer {
+  phone: string;
+  address: string;
+  name?: string;
+}
+
+export enum OrderStatus {
+  WaitingMerchant = 'بانتظار التاجر',
+  Preparing = 'جاري التحضير',
+  Pending = 'قيد الانتظار',
+  InTransit = 'قيد التوصيل',
+  Delivered = 'تم التوصيل',
+  Cancelled = 'ملغي',
+}
+
+export interface Order {
+  id: string;
+  customer: Customer;
+  createdAt: Date;
+  status: OrderStatus;
+  notes?: string;
+  driverId?: string;
+  merchantId: string;
+  merchantName: string;
+  deliveryFee?: number;
+  deliveredAt?: Date;
+  reconciled?: boolean;
+  type?: 'delivery_request' | 'shopping_order';
+  items?: CartItem[];
+  totalPrice?: number;
+  discountAmount?: number;
+  finalPrice?: number;
+  promoCode?: string;
+  pointsUsed?: number;
+  pointsEarned?: number;
+}
+
+export interface Message {
+  id: string;
+  text: string;
+  image?: string;
+  targetRole: 'driver' | 'merchant' | 'customer';
+  targetId: 'all' | 'multiple' | string;
+  createdAt: Date;
+  readBy?: string[];
+  deletedBy?: string[];
+}
+
+export interface Payment {
+  id: string;
+  driverId: string;
+  amount: number;
+  createdAt: Date;
+  reconciledOrderIds: string[];
+}
+
+export interface SliderImage {
+  id: string;
+  url: string;
+  active?: boolean;
+  createdAt?: Date;
+  linkedMerchantId?: string;
+  linkedCategoryId?: string;
+  textOverlay?: string;
+}
+
+export interface SliderConfig {
+  isEnabled: boolean;
+}
+
+export interface CategoryItem {
+  id: string;
+  key: string;
+  label: string;
+  icon?: string;
+  isVisible: boolean;
+  sortOrder: number;
+}
+
+export interface AppTheme {
+  driver: { icons: Record<string, string>; mode?: 'dark' | 'light'; };
+  merchant: { icons: Record<string, string>; mode?: 'dark' | 'light'; };
+  admin?: { mode?: 'dark' | 'light'; };
+  customer: {
+    icons: Record<string, string>;
+    mode?: 'light' | 'dark';
+    layout?: { merchantCardStyle?: 'default' | 'modern' | 'minimal' | 'neon' | 'elegant' | 'grid' | 'compact' };
+    categories?: CategoryItem[];
+  };
+}
+
+export interface AuditLog {
+  id: string;
+  actorId: string;
+  actorName: string;
+  actionType: 'create' | 'update' | 'delete' | 'login' | 'financial';
+  target: string;
+  details: string;
+  createdAt: Date;
+}
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  isActive: boolean;
+  expiryDate?: Date;
+  usageCount: number;
+  maxUsage?: number;
+}
+
+// --- Support Chat Types ---
+export interface ChatMessage {
+  id: string;
+  text: string;
+  image?: string;
+  audio?: string; // Added for Voice Notes
+  sender: 'user' | 'admin';
+  createdAt: Date;
+  isRead: boolean;
+  reactions?: string[]; // Array of emoji URLs
+}
+
+export interface SupportChat {
+  id: string; // userId
+  userId: string;
+  userName: string;
+  userPhone: string;
+  lastMessage?: string;
+  lastUpdated: Date;
+  unreadCount: number; // For admin
+  messages: ChatMessage[];
+}
+
+export interface SupportConfig {
+  whatsappNumber: string;
+  isWhatsappEnabled: boolean;
+  isChatEnabled: boolean; // Updated: Controls the in-app chat feature
+  allowImageSending?: boolean;
+  allowVoiceNotes?: boolean;
+  // Auto Reply Settings
+  isAutoReplyEnabled?: boolean;
+  autoReplyText?: string;
+}
+
+// --- App Config (Name, Version, Font) ---
+export interface AppConfig {
+  appName: string;
+  appVersion: string;
+  customFont?: string; // Base64 encoded TTF
+}
+
+// --- Update Configuration ---
+export interface UpdateConfig {
+  id: string;
+  version: string;
+  url: string;
+  type: 'apk' | 'link';
+  description?: string;
+  isActive: boolean;
+  forceUpdate?: boolean;
+  releaseDate?: Date;
+}

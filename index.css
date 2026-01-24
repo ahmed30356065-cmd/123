@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --safe-top: env(safe-area-inset-top, 24px);
+    --safe-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
+  @font-face {
+    font-family: 'ArabicAdd';
+    src: url('/fonts/ArabicAdd.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  body {
+    background-color: #111827;
+    color: #ffffff;
+    font-family: 'ArabicAdd', system-ui, sans-serif !important;
+    -webkit-tap-highlight-color: transparent; /* Remove blue tap box */
+    -webkit-touch-callout: none; /* Disable long-press callouts */
+    user-select: none; /* Prevent text selection */
+  }
+}
+
+/* Custom Scrollbar for Webkit */

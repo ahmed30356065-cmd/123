@@ -1,0 +1,458 @@
+
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
+import 'firebase/compat/messaging';
+import 'firebase/compat/auth';
+import 'firebase/compat/storage';
+import { getFcmV1AccessToken, SERVICE_ACCOUNT } from '../utils/FirebaseServiceAccount';
+
+let db: firebase.firestore.Firestore | undefined;
+let isSettingsApplied = false;
+
+// Direct FCM Integration replacing Google Script
+// This ensures notifications work without external backend dependencies
+
+export const deepClean = (obj: any, seen = new WeakSet()): any => {
+    if (obj === undefined || obj === null) return null;
+    if (typeof obj !== 'object') return obj;
+    if (obj instanceof Date) return obj.toISOString();
+    if (typeof obj.toDate === 'function') {
+        try { return obj.toDate().toISOString(); } catch (e) { return null; }
+    }
+    if (Object.prototype.hasOwnProperty.call(obj, 'seconds') && Object.prototype.hasOwnProperty.call(obj, 'nanoseconds')) {
+        return new Date(obj.seconds * 1000).toISOString();
+    }
+    if (seen.has(obj)) return null;
+    seen.add(obj);
+    if (Array.isArray(obj)) {
+        return obj.map(item => deepClean(item, seen)).filter(item => item !== undefined);
+    }
+    const cleaned: any = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const value = obj[key];
+            if (key.startsWith('_') || typeof value === 'function') continue;
+            const cleanedValue = deepClean(value, seen);
+            if (cleanedValue !== undefined) {
+                cleaned[key] = cleanedValue;
+            }
+        }
+    }
+    return cleaned;
+};
+
+export const initFirebase = (config: any) => {
+    if (!firebase.apps.length) {
+        try {
+            const app = firebase.initializeApp(config);
+            db = app.firestore();
+
+            if (!isSettingsApplied) {
+                try {
+                    db.settings({
+                        ignoreUndefinedProperties: true,
+                        merge: true,
+                        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+                    });
+                } catch (e) {
+                    console.warn("Firestore settings error (might be already applied):", e);
+                }
+
+                db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+                    if (err.code === 'failed-precondition') {
+                        console.warn("Persistence failed: Multiple tabs open");
+                    } else if (err.code === 'unimplemented') {
+                        console.warn("Persistence not supported by browser");
+                    }
+                });
+                isSettingsApplied = true;
+            }
+            return true;
+        } catch (error) {
+            console.error("Firebase Init Error:", error);
+            return false;
+        }
+    }
+    if (!db) {
+        db = firebase.firestore();
+    }
+    return true;
+};
+
+export const testConnection = async (): Promise<{ success: boolean; error?: string }> => {
+    if (!db) return { success: false, error: "Firebase not initialized" };
+    try {
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Connection timeout")), 5000)
+        );
+        await Promise.race([
+            db.collection('users').limit(1).get(),
+            timeoutPromise
+        ]);
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const subscribeToCollection = (collectionName: string, callback: (data: any[]) => void) => {
+    if (!db) return () => { };
+
+    // Maintain a local Map for O(1) updates and to avoid re-processing all documents
+    const cache = new Map<string, any>();
+    let initialLoadComplete = false;
+
+    return db.collection(collectionName).onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+        let hasChanges = false;
+
+        // Efficiently process only the changes
+        snapshot.docChanges().forEach((change) => {
+            hasChanges = true;
+            if (change.type === 'removed') {
+                cache.delete(change.doc.id);
+            } else {
+                // added or modified
+                const rawData = change.doc.data();
+                // Only deepClean the changed document
+                const cleanedData = deepClean(rawData);
+                cache.set(change.doc.id, { id: change.doc.id, ...cleanedData });
+            }
+        });
+
+        // Always emit on the very first snapshot (even if empty, though usually it has 'added' events)
+        // OR if there were actual changes.
+        // We also check snapshot.metadata.fromCache to ensure we emit when data syncs from server
+        // (though fromCache flip usually triggers a 'modified' event with metadata change if includeMetadataChanges is true).
+
+        if (hasChanges || !initialLoadComplete) {
+            initialLoadComplete = true;
+            const data = Array.from(cache.values());
+            callback(data);
+        }
+    }, (error) => console.error(`Subscription error [${collectionName}]:`, error));
+};
+
+export const batchSaveData = async (collectionName: string, items: any[]) => {
+    if (!db || items.length === 0) return;
+    const BATCH_SIZE = 400;
+    const cleanItems = deepClean(items);
+
+    for (let i = 0; i < cleanItems.length; i += BATCH_SIZE) {
+        const chunk = cleanItems.slice(i, i + BATCH_SIZE);
+        const batch = db.batch();
+        chunk.forEach((item: any) => {
+            if (!item.id) return;
+            const docRef = db!.collection(collectionName).doc(String(item.id));
+            batch.set(docRef, {
+                ...item,
+                serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        });
+        await batch.commit();
+    }
+};
+
+export const migrateLocalData = async (collectionName: string, localData: any[]) => {
+    if (!db) throw new Error("Firebase not initialized");
+    if (!localData || localData.length === 0) return;
+    try {
+        await batchSaveData(collectionName, localData);
+    } catch (e: any) {
+        throw new Error(`Migration failed for ${collectionName}: ${e.message}`);
+    }
+};
+
+export const updateData = async (collectionName: string, id: string, data: any) => {
+    if (!db) return;
+    const cleanPayload = deepClean(data);
+    return await db.collection(collectionName).doc(id).set({
+        ...cleanPayload,
+        serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+};
+
+export const deleteData = async (collectionName: string, id: string) => {
+    if (!db || !id) return;
+    return await db.collection(collectionName).doc(String(id)).delete();
+};
+
+// --- FIRESTORE CHUNK UPLOAD LOGIC (Alternative to Storage) ---
+
+const CHUNK_SIZE = 700 * 1024; // ~700KB (Safe limit for 1MB Firestore doc)
+
+export const uploadFileToFirestore = async (
+    file: File,
+    path: string = 'files',
+    onProgress?: (progress: number) => void
+): Promise<string> => {
+    if (!db) throw new Error("Firebase DB not initialized");
+
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const base64Data = (e.target?.result as string).split(',')[1]; // Remove prefix
+                const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
+                const fileId = `FILE-${Date.now()}`;
+
+                // 1. Create Manifest
+                await db!.collection('stored_files').doc(fileId).set({
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    totalChunks: totalChunks,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    isChunked: true
+                });
+
+                // 2. Upload Chunks
+                for (let i = 0; i < totalChunks; i++) {
+                    const chunk = base64Data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+                    // Using subcollection for chunks
+                    await db!.collection('stored_files').doc(fileId).collection('chunks').doc(i.toString()).set({
+                        data: chunk,
+                        index: i
+                    });
+
+                    const progress = Math.round(((i + 1) / totalChunks) * 100);
+                    if (onProgress) onProgress(progress);
+                    console.log(`[Firestore Upload] Chunk ${i + 1}/${totalChunks} uploaded.`);
+                }
+
+                resolve(`FIRESTORE_FILE:${fileId}`);
+
+            } catch (err) {
+                console.error("Firestore chunk upload failed:", err);
+                reject(err);
+            }
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+    });
+};
+
+export const downloadFileFromFirestore = async (fileId: string): Promise<string> => {
+    if (!db) throw new Error("Firebase DB not initialized");
+
+    // 1. Get Manifest
+    const manifestSnap = await db.collection('stored_files').doc(fileId).get();
+    if (!manifestSnap.exists) throw new Error("File not found");
+
+    const meta = manifestSnap.data();
+    if (!meta) throw new Error("File metadata missing");
+
+    // 2. Get All Chunks
+    const chunksSnap = await db.collection('stored_files').doc(fileId).collection('chunks').orderBy('index').get();
+
+    // 3. Reassemble
+    let fullBase64 = '';
+    chunksSnap.forEach(doc => {
+        fullBase64 += doc.data().data;
+    });
+
+    // 4. Create Blob URL
+    const byteCharacters = atob(fullBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: meta.type || 'application/vnd.android.package-archive' });
+
+    return URL.createObjectURL(blob);
+};
+
+// Modified uploadFile to fallback to Firestore if Storage fails or is missing
+export const uploadFile = async (
+    file: File,
+    path: string = 'updates',
+    onProgress?: (progress: number) => void
+): Promise<string> => {
+    if (!firebase.apps.length) throw new Error("Firebase not initialized");
+
+    const app = firebase.app();
+
+    // Check if Storage Bucket is available
+    if (app.options.storageBucket) {
+        try {
+            console.log(`[Upload] Attempting Storage upload to ${app.options.storageBucket}...`);
+            const storage = firebase.storage();
+            const storageRef = storage.ref();
+            const fileRef = storageRef.child(`${path}/${Date.now()}_${file.name}`);
+            const metadata = { contentType: file.type || 'application/vnd.android.package-archive' };
+            const uploadTask = fileRef.put(file, metadata);
+
+            return await new Promise((resolve, reject) => {
+                uploadTask.on(
+                    'state_changed',
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        if (onProgress) onProgress(progress);
+                    },
+                    (error) => {
+                        console.warn("[Storage Upload Failed] Switching to Firestore fallback...", error);
+                        reject(error); // Trigger catch block to use fallback
+                    },
+                    () => {
+                        uploadTask.snapshot.ref.getDownloadURL().then(resolve).catch(reject);
+                    }
+                );
+            });
+        } catch (e) {
+            console.log("Storage failed, trying Firestore Chunking...");
+        }
+    } else {
+        console.log("No storage bucket defined. Using Firestore Chunking...");
+    }
+
+    // Fallback: Upload to Firestore (Database)
+    return await uploadFileToFirestore(file, path, onProgress);
+};
+
+export const sendExternalNotification = async (targetType: string, data: { title: string, body: string, url?: string, targetId?: string }) => {
+    try {
+        const rawRole = targetType.toLowerCase();
+
+        // 1. Normalize Role for Topic Matching (Must STRICTLY match NativeBridge logic)
+        // NativeBridge Logic:
+        // - customer -> user
+        // - supervisor -> KEEPS supervisor (Decoupled from admin)
+        let topicRole = rawRole;
+        if (rawRole === 'customer') topicRole = 'user';
+
+        // REMOVED: if (rawRole === 'supervisor') topicRole = 'admin'; 
+
+        // 2. Determine Accurate Topic (NUCLEAR FIX: Versioning to v2)
+        let targetTopic = "";
+        if (data.targetId && data.targetId !== 'all' && data.targetId !== 'multiple') {
+            // Private Channel: e.g., 'driver_123_v2', 'user_456_v2'
+            targetTopic = `${topicRole}_${data.targetId}_v2`;
+        } else {
+            // General Channel logic (Pluralization for non-admins)
+            if (topicRole === 'admin') {
+                targetTopic = 'admin_v2';
+            } else {
+                // driver -> drivers_v2, merchant -> merchants_v2, user -> users_v2, supervisor -> supervisors_v2
+                targetTopic = `${topicRole}s_v2`;
+            }
+        }
+
+        console.log(`[Notification] Preparing to send to topic: ${targetTopic}`);
+
+        // 3. Get OAuth Token Client-Side
+        const accessToken = await getFcmV1AccessToken();
+        if (!accessToken) {
+            console.error("[Notification] Failed to generate access token");
+            return false;
+        }
+
+        const projectId = SERVICE_ACCOUNT.project_id;
+
+        // 4. Send via FCM HTTP v1 API with High Priority Android Config
+        // This structure ensures wake-up even in Doze mode
+        const payload = {
+            message: {
+                topic: targetTopic,
+                notification: {
+                    title: data.title,
+                    body: data.body
+                },
+                data: {
+                    // Critical fields for Android processing
+                    click_action: "FLUTTER_NOTIFICATION_CLICK", // Standard for many wrappers
+                    type: "order_update",
+                    url: data.url || '/',
+                    title: data.title,
+                    body: data.body,
+                    target_id: data.targetId || '',
+                    timestamp: new Date().toISOString(),
+                    sound: "default"
+                },
+                android: {
+                    priority: "HIGH", // Forces wake-up
+                    ttl: "2419200s", // 28 Days (Keeps trying if device is off)
+                    notification: {
+                        channel_id: "high_importance_channel", // Must match Android Manifest
+                        sound: "default",
+                        default_sound: true,
+                        default_vibrate_timings: true,
+                        notification_priority: "PRIORITY_HIGH", // Correct field name for V1
+                        visibility: "PUBLIC"
+                    }
+                },
+                apns: {
+                    headers: {
+                        "apns-priority": "10", // High priority for iOS
+                    },
+                    payload: {
+                        aps: {
+                            sound: "default",
+                            badge: 1,
+                            "content-available": 1 // Background fetch
+                        }
+                    }
+                }
+            }
+        };
+
+        const response = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            console.log(`[Notification] Sent successfully to ${targetTopic}`);
+            return true;
+        } else {
+            const errText = await response.text();
+            console.error(`[Notification] FCM Error: ${errText}`);
+            return false;
+        }
+
+    } catch (error) {
+        console.error("[Notification] Failed to send:", error);
+        return false;
+    }
+};
+
+export const subscribeWebToTopic = async (topic: string) => {
+    try {
+        if (!firebase.messaging.isSupported()) return;
+        const msg = firebase.messaging();
+
+        // 1. Get Token
+        const token = await msg.getToken({ vapidKey: "YOUR_VAPID_KEY_IF_NEEDED" }); // Usually implicitly handled if manifest matches
+        if (!token) {
+            console.warn("[WebNotification] No FCM token available.");
+            return;
+        }
+
+        // 2. Get Access Token (Server Side Logic on Client)
+        const accessToken = await getFcmV1AccessToken();
+        if (!accessToken) return;
+
+        // 3. Subscribe via IID API (Legacy but functional with OAuth)
+        // Note: For strict V1, this should be done via a backend proxy to https://fcm.googleapis.com/v1/...
+        // But using IID with OAuth token works for now.
+        const response = await fetch(`https://iid.googleapis.com/iid/v1/${token}/rel/topics/${topic}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            console.log(`[WebNotification] Subscribed content-available to ${topic}`);
+        } else {
+            console.error(`[WebNotification] Failed to subscribe to ${topic}:`, await response.text());
+        }
+
+    } catch (e) {
+        console.error("[WebNotification] Subscription Error:", e);
+    }
+};

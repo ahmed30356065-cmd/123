@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    android:clipChildren="false">
+
+    <!-- The WebView (Behind Splash initially) -->
+    <WebView
+        android:id="@+id/webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- The Splash Screen Container -->
+    <LinearLayout
+        android:id="@+id/splashContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/black"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:clipChildren="false">
+
+        <!-- Text Container -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layoutDirection="ltr"
+            android:gravity="center_vertical"
+            android:clipChildren="false"
+            android:clipToPadding="false">
+            
+            <TextView
+                android:id="@+id/textGoo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GOO"
+                android:textSize="48sp"
+                android:fontFamily="@font/custom_font"
+                android:textColor="#DC2626"
+                android:letterSpacing="0.05"/>
+            
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clipChildren="false">
+                
+                <TextView
+                    android:id="@+id/textNow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" NOW"
+                    android:textSize="48sp"
+                    android:fontFamily="@font/custom_font"
+                    android:textColor="@android:color/white"
+                    android:letterSpacing="0.05"/>
+                    
+                <View
+                    android:layout_width="9dp"
+                    android:layout_height="9dp"
+                    android:background="@drawable/red_dot"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginEnd="-8dp"/>
+            </FrameLayout>
+        </LinearLayout>
+        
+        <!-- Subtle Loading Indicator -->
+        <ProgressBar
+             android:layout_width="32dp"
+             android:layout_height="32dp"
+             android:layout_marginTop="48dp"
+             android:indeterminateTint="#DC2626"/>
+
+    </LinearLayout>
+
+</FrameLayout>

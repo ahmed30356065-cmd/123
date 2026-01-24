@@ -1,0 +1,524 @@
+
+import React, { useState, useEffect } from 'react';
+import { User, Order, OrderStatus } from './types';
+import AdminPanel from './components/admin/AdminPanel';
+import MerchantPortal from './components/merchant_app/MerchantPortal';
+import DriverApp from './components/driver_app/DriverApp';
+import CustomerApp from './components/customer_app/CustomerApp';
+import SupervisorPanel from './components/supervisor/SupervisorPanel';
+import AuthScreen from './components/AuthScreen';
+import SignUpScreen from './components/SignUpScreen';
+import Notification from './components/Notification';
+import OfflineScreen from './components/OfflineScreen';
+import UpdateScreen from './components/UpdateScreen';
+import { NativeBridge, logoutAndroid, safeStringify, setAndroidRole } from './utils/NativeBridge';
+import * as firebaseService from './services/firebase';
+import { useAppData } from './hooks/useAppData';
+import { useAppActions } from './hooks/useAppActions';
+
+const App: React.FC = () => {
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [isSigningUp, setIsSigningUp] = useState(false);
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+    // Local State for deleted messages
+    const [deletedMessageIds, setDeletedMessageIds] = useState<string[]>(() => {
+        try { return JSON.parse(localStorage.getItem('deleted_msgs') || '[]'); } catch { return []; }
+    });
+
+    // 1. Core Data Hook
+    const showNotify = (m: string, t: any = 'info', silent: boolean = false) => {
+        setNotification({ message: m, type: t });
+        if (!silent) {
+            NativeBridge.showNotification("تنبيه", m);
+            NativeBridge.playSound();
+        }
+    };
+
+    const {
+        users, orders, messages, payments, sliderImages, auditLogs, passwordResetRequests,
+        sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
+        isLoading, currentUser, setCurrentUser, appTheme, setAppTheme
+    } = useAppData(showNotify);
+
+    // 2. Logic Hook
+    const {
+        logAction,
+        handleDriverPayment,
+        handleSignUp,
+        handleHideMessage,
+        handleClearAuditLogs,
+        generateNextUserId
+    } = useAppActions({ users, orders, messages, currentUser, showNotify });
+
+    // Handle Android Deep Links without Reload
+    useEffect(() => {
+        (window as any).handleDeepLink = (url: string) => {
+            try {
+                const urlObj = new URL(url, window.location.origin);
+                const params = new URLSearchParams(urlObj.search);
+                const target = params.get('target');
+                const id = params.get('id');
+                if (target) {
+                    window.dispatchEvent(new CustomEvent('app-navigation', { detail: { target, id } }));
+                }
+            } catch (e) { console.error(e); }
+        };
+    }, []);
+
+    // Monitor Online Status
+    useEffect(() => {
+        const handleStatusChange = () => setIsOnline(navigator.onLine);
+        window.addEventListener('online', handleStatusChange);
+        window.addEventListener('offline', handleStatusChange);
+        return () => {
+            window.removeEventListener('online', handleStatusChange);
+            window.removeEventListener('offline', handleStatusChange);
+        };
+    }, []);
+
+    // Native Keep-Alive Logic
+    useEffect(() => {
+        const startKeepAlive = () => {
+            const audio = document.getElementById('keep-alive-audio') as HTMLAudioElement;
+            if (audio) {
+                audio.play().catch(() => {
+                    console.log("Audio keep-alive waiting for interaction");
+                });
+            }
+        };
+        if (currentUser) {
+            startKeepAlive();
+            window.addEventListener('click', startKeepAlive, { once: true });
+        }
+    }, [currentUser]);
+
+    const generateNextId = (allOrders: Order[], isShopping: boolean) => {
+        const prefix = isShopping ? 'S-' : 'ORD-';
+        const relevantOrders = allOrders.filter(o => o.id.startsWith(prefix));
+        const maxId = relevantOrders.reduce((max, o) => {
+            const numStr = o.id.replace(prefix, '');
+            const num = parseInt(numStr || '0');
+            return Math.max(max, num);
+        }, 0);
+        return `${prefix}${maxId + 1}`;
+    };
+
+    // 4. Native Splash Handoff
+    // We remove the JS-based spinner because the Native Splash covers this phase.
+    // Once we return the App UI, we signal Android to fade out the splash.
+    // 4. Native Splash Handoff
+    useEffect(() => {
+        if (!isLoading && (currentUser || !currentUser)) {
+            setTimeout(() => {
+                NativeBridge.hideSplashScreen();
+            }, 500);
+        }
+
+        // Notification Subscription Logic
+        if (currentUser) {
+            if (NativeBridge.isAndroid()) {
+                // Android Subscription
+                setAndroidRole(currentUser.role, currentUser.id);
+            } else {
+                // Web Subscription (Admin/Supervisor on PC)
+                if (window.Notification && Notification.permission !== 'granted') {
+                    Notification.requestPermission();
+                }
+
+                // Subscribe to General Role Topic
+                const role = currentUser.role === 'customer' ? 'user' : currentUser.role;
+                let topic = `${role}s_v2`;
+                if (role === 'admin') topic = 'admin_v2';
+
+                firebaseService.subscribeWebToTopic(topic);
+
+                // Subscribe to Private Topic (if needed)
+                if (currentUser.id) {
+                    firebaseService.subscribeWebToTopic(`${role}_${currentUser.id}_v2`);
+                }
+            }
+        }
+
+    }, [isLoading, currentUser]);
+
+    // 5. Global Offline Check (High Priority)
+    if (!isOnline) {
+        return <OfflineScreen />;
+    }
+
+    if (isLoading && !currentUser) {
+        // Return null or a transparent div because Native Splash is on top
+        return (
+            <div className="fixed inset-0 bg-[#111827] z-50 flex flex-col items-center justify-center" style={{ fontFamily: appConfig?.customFont ? "'AppCustomFont', 'Cairo', sans-serif" : undefined }}>
+                <div className="relative mb-6">
+                    <h1 className="text-5xl font-black tracking-tighter">
+                        <span className="text-red-600">GOO</span>
+                        <span className="text-white ml-2 relative">
+                            NOW
+                            <span className="absolute -right-3 top-1 w-2.5 h-2.5 bg-red-600 rounded-full"></span>
+                        </span>
+                    </h1>
+                </div>
+                <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    if (!currentUser) {
+        if (isSigningUp) {
+            return <SignUpScreen onSignUp={handleSignUp} onBackToLogin={() => setIsSigningUp(false)} />;
+        }
+        return (
+            <>
+                <AuthScreen
+                    appConfig={appConfig}
+                    onPasswordLogin={(id, p) => {
+                        let u = users.find(x => (x.phone === id || x.id === id) && x.password === p);
+                        if (!u && id === '5' && p === '5') {
+                            u = { id: '5', name: 'المدير العام', role: 'admin', phone: '5', password: '5', status: 'active', createdAt: new Date(), specialBadge: 'verified', specialFrame: 'gold' };
+                            firebaseService.updateData('users', '5', u);
+                        }
+
+                        if (u) {
+                            if (u.status === 'blocked') {
+                                return { success: false, message: '⛔ تم حظر حسابك من قبل الإدارة. يرجى عدم إنشاء حساب جديد.' };
+                            }
+                            if (u.status === 'pending') {
+                                return { success: false, message: '⏳ حسابك قيد المراجعة من قبل الإدارة. يرجى الانتظار حتى يتم تفعيله.' };
+                            }
+                            const cleaned = firebaseService.deepClean(u);
+                            setCurrentUser(cleaned);
+                            localStorage.setItem('currentUser', safeStringify(cleaned));
+                            NativeBridge.loginSuccess(cleaned);
+                            const logId = `LOGIN-${Date.now()}`;
+                            firebaseService.updateData('audit_logs', logId, {
+                                id: logId, actorId: u.id, actorName: u.name, actionType: 'login', target: 'النظام', details: `تم تسجيل الدخول بواسطة ${u.name} (${u.role})`, createdAt: new Date()
+                            });
+                            return { success: true, message: '' };
+                        }
+                        return { success: false, message: 'بيانات الدخول غير صحيحة' };
+                    }}
+                    onGoToSignUp={() => setIsSigningUp(true)}
+                    onPasswordResetRequest={async (phone) => {
+                        await firebaseService.updateData('reset_requests', phone, { phone, requestedAt: new Date() });
+                        await firebaseService.sendExternalNotification('admin', { title: "طلب استعادة كلمة مرور", body: `يوجد طلب جديد لاستعادة كلمة المرور للرقم ${phone}`, url: `/?target=notifications` });
+                        await firebaseService.sendExternalNotification('supervisor', { title: "طلب استعادة كلمة مرور", body: `يوجد طلب جديد لاستعادة كلمة المرور للرقم ${phone}`, url: `/?target=notifications` });
+                        return { success: true, message: 'تم إرسال الطلب' };
+                    }}
+                />
+                {showUpdate && updateConfig && <UpdateScreen config={updateConfig} onDismiss={() => { setShowUpdate(false); if (updateConfig.version) localStorage.setItem('skipped_update_version', updateConfig.version); }} />}
+            </>
+        );
+    }
+
+    return (
+        <div className="h-full w-full hardware-accelerated">
+            {notification && <Notification {...notification} onClose={() => setNotification(null)} />}
+
+            {showUpdate && updateConfig && (
+                <UpdateScreen
+                    config={updateConfig}
+                    onDismiss={() => { setShowUpdate(false); if (updateConfig.version) localStorage.setItem('skipped_update_version', updateConfig.version); }}
+                />
+            )}
+
+            {currentUser.role === 'admin' && (
+                <AdminPanel
+                    user={currentUser} users={users} orders={orders} messages={messages} payments={payments} passwordResetRequests={passwordResetRequests}
+                    resolvePasswordResetRequest={(phone) => {
+                        firebaseService.deleteData('reset_requests', phone);
+                        logAction('update', 'طلبات الاستعادة', `تمت معالجة طلب استعادة كلمة المرور للرقم ${phone}`);
+                    }}
+                    updateUser={(id, d) => {
+                        firebaseService.updateData('users', id, d);
+                        const targetName = users.find(u => u.id === id)?.name || id;
+                        if (d.status === 'blocked') logAction('update', 'المستخدمين', `قام المدير بحظر المستخدم: ${targetName}`);
+                        else if (d.status === 'active' && users.find(u => u.id === id)?.status === 'blocked') logAction('update', 'المستخدمين', `قام المدير بفك حظر المستخدم: ${targetName}`);
+                        else logAction('update', 'المستخدمين', `تم تحديث بيانات المستخدم: ${targetName}`);
+                    }}
+                    deleteUser={(id) => {
+                        const targetName = users.find(u => u.id === id)?.name || id;
+                        firebaseService.deleteData('users', id);
+                        logAction('delete', 'المستخدمين', `تم حذف المستخدم: ${targetName}`);
+                    }}
+                    deleteOrder={(id) => {
+                        firebaseService.deleteData('orders', id);
+                        logAction('delete', 'الطلبات', `تم حذف الطلب رقم ${id}`);
+                    }}
+                    updateOrderStatus={(id, s) => {
+                        const order = orders.find(o => o.id === id);
+                        const updates: any = { status: s };
+                        if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
+                        if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
+                        firebaseService.updateData('orders', id, updates);
+
+                        if (order && order.driverId && s !== OrderStatus.Pending) firebaseService.sendExternalNotification('driver', { title: "تحديث حالة", body: `الطلب ${id} أصبح ${s}`, targetId: order.driverId, url: `/?target=order&id=${id}` });
+                        // Merchant notification removed by request
+                    }}
+                    editOrder={(id, d) => {
+                        firebaseService.updateData('orders', id, d);
+                        logAction('update', 'الطلبات', `تم تعديل تفاصيل الطلب رقم ${id}`);
+                    }}
+                    assignDriverAndSetStatus={(id, dr, fe, st) => {
+                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st });
+                        const driverName = users.find(u => u.id === dr)?.name || dr;
+                        logAction('update', 'الطلبات', `تم تعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
+                        firebaseService.sendExternalNotification('driver', { title: "طلب جديد مسند إليك", body: `تم إسناد الطلب ${id} إليك بتكلفة ${fe} ج.م`, targetId: dr, url: `/?target=order&id=${id}` });
+                    }}
+                    adminAddOrder={(d) => {
+                        const dataArray = Array.isArray(d) ? d : [d];
+                        const newOrders: any[] = [];
+                        let currentMax = orders.filter(o => o.id.startsWith('ORD-')).reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
+                        dataArray.forEach(orderData => {
+                            currentMax++;
+                            const newId = `ORD-${currentMax}`;
+                            newOrders.push({ ...orderData, id: newId, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request' });
+                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${newId} وهو متاح للتوصيل`, url: `/?target=order&id=${newId}` });
+                        });
+                        firebaseService.batchSaveData('orders', newOrders);
+                        logAction('create', 'الطلبات', `تم إضافة ${newOrders.length} طلبات جديدة`);
+                    }}
+                    adminAddUser={async (u) => {
+                        const id = generateNextUserId(users);
+                        await firebaseService.updateData('users', id, { ...u, id, status: 'active', createdAt: new Date() });
+                        logAction('create', 'المستخدمين', `تم إضافة مستخدم جديد: ${u.name} (${u.role}) ID: ${id}`);
+                    }}
+                    onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
+                    sendMessage={(d) => {
+                        let currentMsgMax = messages.reduce((max, m) => {
+                            const num = parseInt(m.id);
+                            return !isNaN(num) ? Math.max(max, num) : max;
+                        }, 0);
+                        const newMessages = d.targetIds.map((tid, index) => {
+                            currentMsgMax++;
+                            return { ...d, id: String(currentMsgMax), targetId: tid, createdAt: new Date(), readBy: [] };
+                        });
+                        firebaseService.batchSaveData('messages', newMessages);
+                        d.targetIds.forEach((tid, index) => {
+                            setTimeout(() => {
+                                const isSpecificUser = tid !== 'all' && tid !== 'multiple';
+                                firebaseService.sendExternalNotification(d.targetRole, { title: "🔔 تنبيه إداري", body: d.text.length > 50 ? d.text.substring(0, 50) + '...' : d.text, targetId: isSpecificUser ? tid : undefined, url: `/?target=messages` });
+                            }, index * 50);
+                        });
+                        logAction('create', 'الرسائل', `تم إرسال رسالة إلى ${d.targetIds.length} مستلم من فئة ${d.targetRole}`);
+                    }}
+                    deleteMessage={(id) => firebaseService.deleteData('messages', id)}
+                    handleDriverPayment={handleDriverPayment}
+                    sliderImages={sliderImages} sliderConfig={sliderConfig}
+                    onAddSliderImage={(img) => {
+                        firebaseService.updateData('slider_images', img.id, img);
+                        logAction('create', 'العروض', 'تم إضافة صورة عرض جديدة');
+                    }}
+                    onDeleteSliderImage={(id) => firebaseService.deleteData('slider_images', id)}
+                    onUpdateSliderImage={(id, d) => firebaseService.updateData('slider_images', id, d)}
+                    onToggleSlider={(isEnabled) => firebaseService.updateData('settings', 'slider_config', { id: 'slider_config', isEnabled })}
+                    onBulkUpdate={async (u) => firebaseService.batchSaveData('orders', u)}
+                    auditLogs={auditLogs}
+                    onClearLogs={() => handleClearAuditLogs(auditLogs)}
+                    promoCodes={[]}
+                    pointsConfig={pointsConfig}
+                    onUpdatePointsConfig={(config) => {
+                        firebaseService.updateData('settings', 'points_config', { id: 'points_config', ...config });
+                        logAction('update', 'الإعدادات', 'تم تحديث إعدادات نقاط الولاء');
+                    }}
+                    onAddPromo={() => { }} onDeletePromo={() => { }}
+                    currentTheme={appTheme}
+                    onUpdateTheme={(t, c) => { setAppTheme(p => ({ ...p, [t]: c })); localStorage.setItem('app_theme', safeStringify({ ...appTheme, [t]: c })); }}
+                    showNotification={showNotify}
+                    appConfig={appConfig}
+                    onUpdateAppConfig={(conf) => {
+                        firebaseService.updateData('settings', 'app_config', { id: 'app_config', ...conf });
+                        logAction('update', 'إعدادات التطبيق', 'تم تحديث اسم التطبيق وإصداره');
+                    }}
+                />
+            )}
+
+            {currentUser.role === 'supervisor' && (
+                <SupervisorPanel
+                    user={currentUser} users={users} orders={orders} payments={payments}
+                    passwordResetRequests={passwordResetRequests}
+                    resolvePasswordResetRequest={(phone) => {
+                        firebaseService.deleteData('reset_requests', phone);
+                        logAction('update', 'طلبات الاستعادة', `تمت معالجة طلب استعادة كلمة المرور للرقم ${phone}`);
+                    }}
+                    updateUser={(id, d) => {
+                        firebaseService.updateData('users', id, d);
+                        const targetName = users.find(u => u.id === id)?.name || id;
+                        if (d.status === 'blocked') logAction('update', 'المستخدمين', `قام المشرف بحظر المستخدم: ${targetName}`);
+                        else if (d.status === 'active' && users.find(u => u.id === id)?.status === 'blocked') logAction('update', 'المستخدمين', `قام المشرف بفك حظر المستخدم: ${targetName}`);
+                        else logAction('update', 'المستخدمين', `قام المشرف بتحديث بيانات المستخدم: ${targetName}`);
+                    }}
+                    deleteUser={(id) => {
+                        const targetName = users.find(u => u.id === id)?.name || id;
+                        firebaseService.deleteData('users', id);
+                        logAction('delete', 'المستخدمين', `قام المشرف بحذف المستخدم: ${targetName}`);
+                    }}
+                    deleteOrder={(id) => {
+                        firebaseService.deleteData('orders', id);
+                        logAction('delete', 'الطلبات', `قام المشرف بحذف الطلب رقم ${id}`);
+                    }}
+                    updateOrderStatus={(id, s) => {
+                        const order = orders.find(o => o.id === id);
+                        const updates: any = { status: s };
+                        if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
+                        if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
+                        firebaseService.updateData('orders', id, updates);
+
+                        if (order && order.driverId && s !== OrderStatus.Pending) firebaseService.sendExternalNotification('driver', { title: "تحديث حالة", body: `الطلب ${id} أصبح ${s}`, targetId: order.driverId, url: `/?target=order&id=${id}` });
+                        // Merchant notification removed by request
+                    }}
+                    editOrder={(id, d) => {
+                        firebaseService.updateData('orders', id, d);
+                        logAction('update', 'الطلبات', `قام المشرف بتعديل تفاصيل الطلب رقم ${id}`);
+                    }}
+                    assignDriverAndSetStatus={(id, dr, fe, st) => {
+                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st });
+                        const driverName = users.find(u => u.id === dr)?.name || dr;
+                        logAction('update', 'الطلبات', `قام المشرف بتعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
+                        firebaseService.sendExternalNotification('driver', { title: "طلب جديد مسند إليك", body: `تم إسناد الطلب ${id} إليك بتكلفة ${fe} ج.م`, targetId: dr, url: `/?target=order&id=${id}` });
+                    }}
+                    adminAddOrder={(d) => {
+                        const dataArray = Array.isArray(d) ? d : [d];
+                        const newOrders: any[] = [];
+                        let currentMax = orders.filter(o => o.id.startsWith('ORD-')).reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
+                        dataArray.forEach(orderData => {
+                            currentMax++;
+                            const newId = `ORD-${currentMax}`;
+                            newOrders.push({ ...orderData, id: newId, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request' });
+                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${newId} وهو متاح للتوصيل`, url: `/?target=order&id=${newId}` });
+                        });
+                        firebaseService.batchSaveData('orders', newOrders);
+                        logAction('create', 'الطلبات', `قام المشرف بإضافة ${newOrders.length} طلبات جديدة`);
+                    }}
+                    adminAddUser={async (u) => {
+                        const id = generateNextUserId(users);
+                        await firebaseService.updateData('users', id, { ...u, id, status: 'active', createdAt: new Date() });
+                        logAction('create', 'المستخدمين', `قام المشرف بإضافة مستخدم جديد: ${u.name} (${u.role}) ID: ${id}`);
+                    }}
+                    onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
+                    onBulkUpdate={async (u) => firebaseService.batchSaveData('orders', u)}
+                    auditLogs={auditLogs}
+                    promoCodes={[]}
+                    pointsConfig={pointsConfig}
+                    onUpdatePointsConfig={(config) => {
+                        firebaseService.updateData('settings', 'points_config', { id: 'points_config', ...config });
+                        logAction('update', 'الإعدادات', 'قام المشرف بتحديث إعدادات نقاط الولاء');
+                    }}
+                    onAddPromo={() => { }} onDeletePromo={() => { }}
+                    showNotification={showNotify}
+                    handleDriverPayment={handleDriverPayment}
+                    sliderImages={sliderImages} sliderConfig={sliderConfig}
+                    onAddSliderImage={(img) => {
+                        firebaseService.updateData('slider_images', img.id, img);
+                        logAction('create', 'العروض', 'قام المشرف بإضافة صورة عرض جديدة');
+                    }}
+                    onDeleteSliderImage={(id) => firebaseService.deleteData('slider_images', id)}
+                    onUpdateSliderImage={(id, d) => firebaseService.updateData('slider_images', id, d)}
+                    onToggleSlider={(isEnabled) => firebaseService.updateData('settings', 'slider_config', { id: 'slider_config', isEnabled })}
+                    messages={messages}
+                    sendMessage={(d) => {
+                        let currentMsgMax = messages.reduce((max, m) => {
+                            const num = parseInt(m.id);
+                            return !isNaN(num) ? Math.max(max, num) : max;
+                        }, 0);
+                        const newMessages = d.targetIds.map((tid, index) => {
+                            currentMsgMax++;
+                            return { ...d, id: String(currentMsgMax), targetId: tid, createdAt: new Date(), readBy: [] };
+                        });
+                        firebaseService.batchSaveData('messages', newMessages);
+                        d.targetIds.forEach((tid, index) => {
+                            setTimeout(() => {
+                                const isSpecificUser = tid !== 'all' && tid !== 'multiple';
+                                firebaseService.sendExternalNotification(d.targetRole, { title: "🔔 رسالة من المشرف", body: d.text.length > 50 ? d.text.substring(0, 50) + '...' : d.text, targetId: isSpecificUser ? tid : undefined, url: `/?target=messages` });
+                            }, index * 50);
+                        });
+                        logAction('create', 'الرسائل', `قام المشرف بإرسال رسالة إلى ${d.targetIds.length} مستلم`);
+                    }}
+                    deleteMessage={(id) => firebaseService.deleteData('messages', id)}
+                    appConfig={appConfig}
+                />
+            )}
+
+            {currentUser.role === 'driver' && (
+                <DriverApp driver={currentUser} users={users} orders={orders} messages={messages}
+                    onUpdateOrderStatus={(id, s) => {
+                        const updates: any = { status: s };
+                        if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
+                        if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
+                        firebaseService.updateData('orders', id, updates);
+                    }}
+                    onAcceptOrder={(oid, did, fee) => {
+                        const order = orders.find(o => o.id === oid);
+                        firebaseService.updateData('orders', oid, { driverId: did, deliveryFee: fee, status: OrderStatus.InTransit });
+                        if (order?.type === 'shopping_order' && order.customer?.phone) {
+                            const customerUser = users.find(u => u.phone === order.customer.phone && u.role === 'customer');
+                            if (customerUser) {
+                                firebaseService.sendExternalNotification('customer', { title: "تم قبول طلبك! 🚀", body: `قام المندوب ${currentUser.name} بقبول الطلب الخاص بك وجارى التنفيذ`, targetId: customerUser.id, url: `/?target=orders` });
+                            }
+                        }
+                    }}
+                    onUpdateUser={(id, d) => firebaseService.updateData('users', id, d)}
+                    onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
+                    showNotification={showNotify}
+                    seenMessageIds={[]}
+                    markMessageAsSeen={() => { }}
+                    hideMessage={(id) => handleHideMessage(id, deletedMessageIds, setDeletedMessageIds)}
+                    deletedMessageIds={deletedMessageIds}
+                    appTheme={appTheme}
+                    appConfig={appConfig}
+                />
+            )}
+
+            {currentUser.role === 'merchant' && (
+                <MerchantPortal merchant={currentUser} users={users} orders={orders} messages={messages}
+                    addOrder={async (d) => {
+                        const newId = generateNextId(orders, false);
+                        await firebaseService.updateData('orders', newId, {
+                            ...d, id: newId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
+                        });
+
+                        await firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
+                        await firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
+                        await firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${newId} متاح للتوصيل`, url: `/?target=order&id=${newId}` });
+
+                        if (d.customer.phone) {
+                            const targetUser = users.find(u => u.phone === d.customer.phone && u.role === 'customer');
+                            if (targetUser) {
+                                await firebaseService.sendExternalNotification('customer', { title: "تم استلام طلبك", body: `تم تسجيل طلبك #${newId} من ${currentUser.name}`, targetId: targetUser.id, url: '/?target=orders' });
+                            }
+                        }
+                    }}
+                    onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
+                    seenMessageIds={[]} markMessageAsSeen={(id) => { }} hideMessage={(id) => { }} deletedMessageIds={[]} appTheme={appTheme}
+                    onUpdateUser={(id, d) => firebaseService.updateData('users', id, d)}
+                    appConfig={appConfig}
+                />
+            )}
+
+            {currentUser.role === 'customer' && (
+                <CustomerApp user={currentUser} merchants={users.filter(u => u.role === 'merchant')} orders={orders} messages={messages}
+                    onPlaceOrder={async (d: any) => {
+                        const isShopping = d.type === 'shopping_order';
+                        const newId = generateNextId(orders, isShopping);
+                        await firebaseService.updateData('orders', newId, { ...d, id: newId });
+
+                        await firebaseService.sendExternalNotification('admin', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
+                        await firebaseService.sendExternalNotification('supervisor', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
+                        await firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `يوجد طلب جديد #${newId} في الانتظار`, url: `/?target=order&id=${newId}` });
+
+                        if (!isShopping && d.merchantId && d.merchantId !== 'delinow') {
+                            // Merchant notification removed as per request (Start Pending)
+                            // await firebaseService.sendExternalNotification('merchant', { title: "طلب جديد", body: `لديك طلب جديد #${newId} من ${d.customer.name}`, targetId: d.merchantId, url: `/?target=orders` });
+                        }
+                    }}
+                    onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
+                    onDeleteOrder={(id) => firebaseService.deleteData('orders', id)} markMessageAsSeen={() => { }} hideMessage={() => { }} seenMessageIds={[]} deletedMessageIds={[]} onUpdateUser={(id, d) => firebaseService.updateData('users', id, d)} appTheme={appTheme} promoCodes={[]}
+                    pointsConfig={pointsConfig} sliderImages={sliderImages} sliderConfig={sliderConfig} adminUser={users.find(u => u.role === 'admin')} appConfig={appConfig}
+                />
+            )}
+        </div>
+    );
+};
+
+export default App;
