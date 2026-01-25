@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Payment, Order, User, OrderStatus } from '../../types';
-import { ArrowRightIcon, ReceiptIcon, CheckCircleIcon, ExclamationIcon } from '../../icons';
+import { ArrowRightIcon, ReceiptIcon, CheckCircleIcon, ExclamationIcon } from '../icons';
 
 interface DriverPaymentHistoryPageProps {
     driver: User;
