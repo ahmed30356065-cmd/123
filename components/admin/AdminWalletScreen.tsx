@@ -4,6 +4,7 @@ import { Order, User, OrderStatus, Payment } from '../../types';
 import { UserIcon, WalletIcon, ReceiptIcon, ClockIcon, CheckCircleIcon, XIcon, CashIcon, ExclamationIcon } from '../icons';
 import DriverPaymentHistoryPage from './DriverPaymentHistoryPage';
 import ConfirmationModal from './ConfirmationModal';
+import useAndroidBack from '../../hooks/useAndroidBack';
 
 const FinancialRow: React.FC<{ label: string, value: number, currency?: string, colorClass?: string }> = ({ label, value, currency = 'ج.م', colorClass = 'text-white' }) => (
     <div className="flex justify-between items-baseline bg-gray-700/50 p-3 rounded-lg border border-gray-600/50">
@@ -140,7 +141,32 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
             setShowSuccessModal(true);
             setTimeout(() => setShowSuccessModal(false), 2000);
         }
+
     };
+
+    // Android Back Button Handler
+    useAndroidBack(() => {
+        // 1. Close History Page (Detailed View) - Returns to Wallet Main
+        if (showHistoryPage) {
+            setShowHistoryPage(false);
+            setHistoryDriver(null);
+            return true;
+        }
+
+        // 2. Close Payment Confirmation Modal
+        if (payingDriverInfo) {
+            closeModal(); // This clears state and handles history.back()
+            return true;
+        }
+
+        // 3. Close Success Modal
+        if (showSuccessModal) {
+            setShowSuccessModal(false);
+            return true;
+        }
+
+        return false;
+    }, [showHistoryPage, payingDriverInfo, showSuccessModal]);
 
     return (
         <>

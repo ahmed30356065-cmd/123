@@ -181,7 +181,10 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                         </div>
                                     </>
                                 ) : (
-                                    <p className="text-xs text-gray-500 italic py-1">تفاصيل الطلب غير متوفرة</p>
+                                    // Empty state: Do not show anything if no items, 
+                                    // unless we want to explicitely say "Empty". 
+                                    // User requested to REMOVE "details not available".
+                                    null
                                 )}
                             </div>
                         )}

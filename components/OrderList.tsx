@@ -244,8 +244,8 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant })
 
     return (
         <div className="bg-gray-900 flex flex-col h-full min-h-full">
-            {/* Header Title - Sticky to keep title visible */}
-            <div className="px-4 py-4 flex items-center gap-2 bg-gray-900 border-b border-gray-800 sticky top-0 z-20 shadow-md">
+            {/* Header Title - Normal flow, not sticky */}
+            <div className="px-4 py-4 flex items-center gap-2 bg-gray-900 border-b border-gray-800">
                 <div className="p-2 bg-red-600/10 rounded-xl text-red-500">
                     <ChartBarIcon className="w-6 h-6" />
                 </div>
@@ -255,8 +255,8 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant })
                 </div>
             </div>
 
-            {/* Filters Bar - REMOVED STICKY to allow scrolling away */}
-            <div className="bg-gray-900 border-b border-gray-800 pb-2 relative">
+            {/* Filters Bar - Normal flow, not sticky */}
+            <div className="bg-gray-900 border-b border-gray-800 pb-2">
 
                 {/* Search */}
                 <div className="px-4 pt-3 pb-3">

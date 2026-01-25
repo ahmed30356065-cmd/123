@@ -24,7 +24,7 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
     const logAction = (actionType: 'create' | 'update' | 'delete' | 'financial', target: string, details: string) => {
         if (!currentUser) return;
         const newLog: AuditLog = {
-            id: `LOG-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+            id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             actorId: currentUser.id,
             actorName: currentUser.name,
             actionType,
@@ -39,9 +39,9 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
         const driver = users.find(u => u.id === driverId);
         if (!driver) return;
 
-        const eligibleOrders = orders.filter(o => 
-            String(o.driverId) === String(driverId) && 
-            o.status === OrderStatus.Delivered && 
+        const eligibleOrders = orders.filter(o =>
+            String(o.driverId) === String(driverId) &&
+            o.status === OrderStatus.Delivered &&
             !o.reconciled
         );
 
@@ -60,7 +60,7 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
         const totalFees = eligibleOrders.reduce((sum, o) => sum + safeParseFloat(o.deliveryFee), 0);
         let companyShare = 0;
         const commissionRate = safeParseFloat(driver.commissionRate);
-        
+
         if (driver.commissionType === 'fixed') {
             companyShare = eligibleOrders.length * commissionRate;
         } else {
@@ -70,6 +70,30 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
         const finalCompanyShare = toCurrency(companyShare);
         const finalTotalFees = toCurrency(totalFees);
 
+        // Date Logic: If settling in the early morning (e.g. < 6 AM) for orders from the previous day,
+        // record the payment as if it happened at the end of the previous day.
+        let paymentDate = new Date();
+        const sortedOrders = [...eligibleOrders].sort((a, b) => {
+            const dateA = a.deliveredAt ? new Date(a.deliveredAt).getTime() : 0;
+            const dateB = b.deliveredAt ? new Date(b.deliveredAt).getTime() : 0;
+            return dateB - dateA;
+        });
+
+        if (sortedOrders.length > 0 && sortedOrders[0].deliveredAt) {
+            const lastOrderDate = new Date(sortedOrders[0].deliveredAt);
+            const now = new Date();
+
+            // Check if "Next Day" and "Early Morning" (e.g. before 6 AM)
+            // Example: Orders on Jan 25, Now is Jan 26 01:00 AM -> Set to Jan 25 23:59:59
+            const isNextDay = now.getDate() !== lastOrderDate.getDate() || now.getMonth() !== lastOrderDate.getMonth();
+            const isEarlyMorning = now.getHours() < 6;
+
+            if (isNextDay && isEarlyMorning) {
+                // Set to end of the last order's day
+                paymentDate = new Date(lastOrderDate.getFullYear(), lastOrderDate.getMonth(), lastOrderDate.getDate(), 23, 59, 59);
+            }
+        }
+
         const paymentId = `PAY-${Date.now()}`;
         const paymentRecord = {
             id: paymentId,
@@ -77,7 +101,7 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
             amount: finalCompanyShare,
             totalCollected: finalTotalFees,
             ordersCount: eligibleOrders.length,
-            createdAt: new Date(),
+            createdAt: paymentDate,
             reconciledOrderIds: eligibleOrders.map(o => o.id)
         };
 
@@ -87,7 +111,7 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
             await firebaseService.updateData('payments', paymentId, paymentRecord);
             logAction('financial', 'تسوية مالية', `تمت تسوية حساب المندوب ${driver.name}. المبلغ: ${finalCompanyShare} ج.م لعدد ${eligibleOrders.length} طلب.`);
             showNotify(`تم تسوية ${eligibleOrders.length} طلب بنجاح`, 'success');
-            
+
             firebaseService.sendExternalNotification('driver', {
                 title: "تمت تسوية الحساب",
                 body: `قام المسؤول بتسوية حسابك. تم تصفير المستحقات لـ ${eligibleOrders.length} طلب.`,
@@ -106,7 +130,7 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
         if (existing) return { success: false, message: 'رقم الهاتف مسجل مسبقاً.' };
 
         const newId = generateNextUserId(users);
-        
+
         const newUser: User = {
             ...userData,
             id: newId,
@@ -133,9 +157,9 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
                 details: `تسجيل حساب جديد: ${newUser.name} (${newUser.role})`,
                 createdAt: new Date()
             });
-            
+
             const roleLabel = newUser.role === 'driver' ? 'مندوب' : newUser.role === 'merchant' ? 'تاجر' : 'عميل';
-            
+
             const notifyPayload = {
                 title: "🔔 مستخدم جديد",
                 body: `تم تسجيل حساب جديد: ${newUser.name} (${roleLabel}). بانتظار التفعيل.`,
@@ -143,7 +167,7 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
             };
 
             await firebaseService.sendExternalNotification('admin', notifyPayload);
-            
+
             return { success: true, message: 'تم إنشاء الحساب بنجاح' };
         } catch (e: any) {
             return { success: false, message: 'حدث خطأ أثناء إنشاء الحساب' };
@@ -154,7 +178,7 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
         const newIds = [...deletedMessageIds, id];
         setDeletedMessageIds(newIds);
         localStorage.setItem('deleted_msgs', JSON.stringify(newIds));
-        
+
         if (currentUser) {
             const msg = messages.find(m => m.id === id);
             if (msg) {
