@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Order, User, OrderStatus, Payment } from '../../types';
-import { UserIcon, WalletIcon, ReceiptIcon, ClockIcon, CheckCircleIcon, XIcon } from '../icons';
-import DriverPaymentHistoryModal from './DriverPaymentHistoryModal';
+import { UserIcon, WalletIcon, ReceiptIcon, ClockIcon, CheckCircleIcon, XIcon, CashIcon, ExclamationIcon } from '../icons';
+import DriverPaymentHistoryPage from './DriverPaymentHistoryPage';
 import ConfirmationModal from './ConfirmationModal';
 
 const FinancialRow: React.FC<{ label: string, value: number, currency?: string, colorClass?: string }> = ({ label, value, currency = 'ج.م', colorClass = 'text-white' }) => (
@@ -78,6 +78,7 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
     const [historyDriver, setHistoryDriver] = useState<User | null>(null);
     const [payingDriverInfo, setPayingDriverInfo] = useState<{ driver: User; amount: number } | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showHistoryPage, setShowHistoryPage] = useState(false); // New state for full page history
 
     const drivers = users.filter(u => u.role === 'driver');
 
@@ -143,15 +144,30 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
 
     return (
         <>
+            {showHistoryPage && historyDriver && (
+                <div className="fixed inset-0 z-[100] bg-gray-900">
+                    <DriverPaymentHistoryPage
+                        driver={historyDriver}
+                        payments={payments}
+                        orders={orders}
+                        onBack={() => {
+                            setShowHistoryPage(false);
+                            setHistoryDriver(null);
+                        }}
+                    />
+                </div>
+            )}
+
             {/* Added pb-32 to ensure bottom cards are fully visible above the fixed nav */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-32">
+            <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-32 ${showHistoryPage ? 'hidden' : ''}`}>
                 {drivers.map((driver) => {
                     // Updated Logic: Include ALL orders that are Delivered AND Not Reconciled
                     // Removed 'isToday' check to ensure total debt is calculated correctly
                     const unreconciledOrders = orders.filter(
                         (order) =>
                             order.driverId === driver.id &&
-                            order.status === OrderStatus.Delivered &&
+                            order.status === OrderStatus.Delivered &&  // Strict: Only Delivered
+                            order.status !== OrderStatus.Cancelled &&  // Double Strict: Never Cancelled
                             !order.reconciled
                     );
 
@@ -225,7 +241,7 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                             {/* Actions */}
                             <div className="flex items-center justify-between p-4 bg-gray-900 border-t border-gray-700">
                                 <button
-                                    onClick={() => { pushModalState('history'); setHistoryDriver(driver); }}
+                                    onClick={() => { setHistoryDriver(driver); setShowHistoryPage(true); }}
                                     className="flex items-center text-xs font-bold text-gray-400 hover:text-white transition-colors"
                                 >
                                     <ReceiptIcon className="w-4 h-4 ml-1.5" />
@@ -253,15 +269,6 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                     );
                 })}
             </div>
-
-            {historyDriver && (
-                <DriverPaymentHistoryModal
-                    driver={historyDriver}
-                    orders={orders}
-                    payments={payments}
-                    onClose={closeModal}
-                />
-            )}
 
             {payingDriverInfo && (
                 <ConfirmationModal
