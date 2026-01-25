@@ -1,42 +1,28 @@
 
-import React, { useEffect, useState, useRef } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useEffect, useRef } from 'react';
 import { BellIcon, XIcon, CheckCircleIcon, TruckIconV2, UtensilsIcon, MessageSquareIcon, ShoppingCartIcon } from './icons';
 
 interface NotificationProps {
     message: string;
     type: 'success' | 'error' | 'info';
-    id?: number; // Added ID to track uniqueness
+    id?: number;
     onClose: () => void;
 }
 
 const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) => {
-    const [exiting, setExiting] = useState(false);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    // Keep a ref to onClose to ensure we always call the latest function (though usually stable)
+    const onCloseRef = useRef(onClose);
+    useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
-    // Robust Auto-Dismiss Logic
     useEffect(() => {
-        // Clear any existing timer first (though unlikely on mount)
-        if (timerRef.current) clearTimeout(timerRef.current);
+        // Simple, robust timer. 
+        // 4 seconds -> Disappear.
+        const timer = setTimeout(() => {
+            onCloseRef.current();
+        }, 4000);
 
-        timerRef.current = setTimeout(() => {
-            handleClose();
-        }, 4000); // 4 seconds visible time
-
-        // Cleanup on unmount or re-render
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
+        return () => clearTimeout(timer);
     }, []);
-
-    const handleClose = () => {
-        setExiting(true);
-        // Wait for animation to finish before calling onClose
-        // We use a separate local timeout for animation, distinct from the auto-dismiss timer
-        setTimeout(() => {
-            onClose();
-        }, 500);
-    };
 
     // --- Smart Style Detection based on Message Content ---
     const getSmartStyle = () => {
@@ -134,69 +120,77 @@ const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) =
 
     const style = getSmartStyle();
 
-    // Use Portal to render directly in body, avoiding z-indexing/overflow issues
-    return ReactDOM.createPortal(
-        <>
+    // Standard fixed styling, simplified animation
+    // Removed Portal to ensure simpler tree, z-index should handle it.
+    return (
+        <div
+            dir="rtl"
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] w-auto max-w-[92%] min-w-[320px] sm:min-w-[350px] animate-fadeInDown"
+        >
             <style>{`
-        @keyframes slideInSpring {
-          0% { transform: translate(-50%, -150%) scale(0.8); opacity: 0; }
-          60% { transform: translate(-50%, 10%) scale(1.05); opacity: 1; }
-          100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
-        }
-        @keyframes slideOut {
-          0% { transform: translate(-50%, 0) scale(1); opacity: 1; }
-          100% { transform: translate(-50%, -150%) scale(0.8); opacity: 0; }
-        }
-        .notif-enter { animation: slideInSpring 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        .notif-exit { animation: slideOut 0.5s cubic-bezier(0.4, 0.0, 0.2, 1) forwards; }
-      `}</style>
+                @keyframes fadeInDown {
+                    from { opacity: 0; transform: translate(-50%, -20px); }
+                    to { opacity: 1; transform: translate(-50%, 0); }
+                }
+                .animate-fadeInDown {
+                    animation: fadeInDown 0.3s ease-out forwards;
+                }
+            `}</style>
 
-            <div
-                dir="rtl"
-                className={`fixed top-4 left-1/2 z-[9999] w-auto max-w-[92%] min-w-[320px] sm:min-w-[350px] pointer-events-auto ${exiting ? 'notif-exit' : 'notif-enter'}`}
+            <div className={`
+                relative flex items-center justify-between gap-4 p-1.5 pr-2 rounded-full 
+                ${style.bgClass} ${style.borderClass} border ${style.shadowClass}
+                shadow-2xl cursor-pointer
+            `}
+                onClick={onClose} // Allow clicking entire toast to dismiss
             >
-                <div className={`
-                    relative flex items-center justify-between gap-4 p-1.5 pr-2 rounded-full 
-                    ${style.bgClass} ${style.borderClass} border ${style.shadowClass}
-                    transition-all duration-300
-                `}>
-                    {/* Left Section: Content */}
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                        {/* Icon Circle */}
-                        <div className="relative flex-shrink-0">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-sm shadow-inner`}>
-                                {style.icon}
-                            </div>
-                            <span className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full animate-ping opacity-75"></span>
-                            <span className={`absolute top-0 right-0 w-3 h-3 ${style.glowClass} rounded-full border-2 border-transparent shadow-sm`}></span>
-                        </div>
-
-                        {/* Text Content */}
-                        <div className={`flex flex-col ${style.textClass}`}>
-                            <span className="text-[10px] font-black uppercase tracking-wider opacity-80 leading-none mb-0.5">
-                                {style.title}
-                            </span>
-                            <span className="text-sm font-bold leading-tight line-clamp-2">
-                                {message}
-                            </span>
+                {/* Left Section: Content */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {/* Icon Circle */}
+                    <div className="relative flex-shrink-0">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-sm shadow-inner`}>
+                            {style.icon}
                         </div>
                     </div>
 
-                    {/* Right Section: Close Button */}
-                    <button
-                        onClick={handleClose}
-                        className={`
-                            w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                            bg-black/10 hover:bg-black/20 transition-colors backdrop-blur-sm
-                            ${style.textClass}
-                        `}
-                    >
-                        <XIcon className="h-4 w-4" />
-                    </button>
+                    {/* Text Content */}
+                    <div className={`flex flex-col ${style.textClass}`}>
+                        <span className="text-[10px] font-black uppercase tracking-wider opacity-80 leading-none mb-0.5">
+                            {style.title}
+                        </span>
+                        <span className="text-sm font-bold leading-tight line-clamp-2">
+                            {message}
+                        </span>
+                    </div>
                 </div>
+
+                {/* Right Section: Close Button */}
+                <button
+                    onClick={(e) => { e.stopPropagation(); onClose(); }}
+                    className={`
+                        w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                        bg-black/10 hover:bg-black/20 transition-colors backdrop-blur-sm
+                        ${style.textClass}
+                    `}
+                >
+                    <XIcon className="h-4 w-4" />
+                </button>
             </div>
-        </>,
-        document.body
+
+            {/* Progress Bar (Optional Visual Cue) */}
+            <div className="absolute bottom-1 left-4 right-4 h-0.5 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full bg-white/80 animate-progress origin-left" style={{ animationDuration: '4s' }}></div>
+            </div>
+            <style>{`
+                @keyframes progress {
+                    from { transform: scaleX(1); }
+                    to { transform: scaleX(0); }
+                }
+                .animate-progress {
+                    animation: progress linear forwards;
+                }
+            `}</style>
+        </div>
     );
 };
 
