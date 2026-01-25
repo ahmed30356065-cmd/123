@@ -83,9 +83,9 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     </div>
 
                     {order.notes && (
-                        <div className="mt-2 bg-gray-700/30 p-2 rounded-lg border border-gray-700/50">
-                            <p className="text-[11px] text-gray-300 line-clamp-2 leading-relaxed">
-                                <span className="text-gray-500 font-bold ml-1">ملاحظات:</span>
+                        <div className="mt-2 bg-red-900/10 p-2.5 rounded-lg border border-red-500/20">
+                            <p className="text-[11px] font-bold text-red-400 mb-1">ملاحظات:</p>
+                            <p className="text-xs text-gray-200 leading-relaxed font-medium">
                                 {order.notes}
                             </p>
                         </div>

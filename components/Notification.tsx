@@ -125,12 +125,12 @@ const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) =
     return (
         <div
             dir="rtl"
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] w-auto max-w-[92%] min-w-[320px] sm:min-w-[350px] animate-fadeInDown"
+            className="fixed top-6 left-0 right-0 mx-auto z-[9999] w-fit max-w-[92%] min-w-[320px] sm:min-w-[350px] animate-fadeInDown"
         >
             <style>{`
                 @keyframes fadeInDown {
-                    from { opacity: 0; transform: translate(-50%, -20px); }
-                    to { opacity: 1; transform: translate(-50%, 0); }
+                    from { opacity: 0; transform: translateY(-20px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
                 .animate-fadeInDown {
                     animation: fadeInDown 0.3s ease-out forwards;

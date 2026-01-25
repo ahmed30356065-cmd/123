@@ -156,26 +156,34 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                             </div>
                         ) : (
                             // Merchant Order: Show Items
-                            order.items && order.items.length > 0 ? (
-                                <div className="space-y-1.5">
-                                    {order.items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-center text-xs bg-gray-900/40 p-1.5 rounded border border-gray-700/30">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-orange-400 font-mono">x{item.quantity}</span>
-                                                <span className="text-white">{item.name}</span>
-                                                {item.selectedSize && <span className="text-[9px] text-gray-500">({item.selectedSize.name})</span>}
-                                            </div>
-                                            <span className="text-gray-400 font-mono font-bold">{(item.price * item.quantity).toLocaleString()} ج.م</span>
-                                        </div>
-                                    ))}
-                                    <div className="flex justify-between items-center pt-1 mt-1 border-t border-gray-700/30 font-bold text-xs">
-                                        <span className="text-gray-400">الإجمالي:</span>
-                                        <span className="text-white">{(order.items.reduce((s, i) => s + (i.price * i.quantity), 0)).toLocaleString()} ج.م</span>
+                            <div className="space-y-1.5">
+                                {order.notes && (
+                                    <div className="bg-gray-900/40 p-2 rounded-lg border border-gray-700/30 mb-2">
+                                        <p className="text-[10px] text-orange-400 font-bold mb-1">ملاحظات الطلب:</p>
+                                        <p className="text-white leading-relaxed whitespace-pre-wrap text-xs">{order.notes}</p>
                                     </div>
-                                </div>
-                            ) : (
-                                <p className="text-xs text-gray-500 italic py-1">تفاصيل الطلب غير متوفرة</p>
-                            )
+                                )}
+                                {order.items && order.items.length > 0 ? (
+                                    <>
+                                        {order.items.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-center text-xs bg-gray-900/40 p-1.5 rounded border border-gray-700/30">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-orange-400 font-mono">x{item.quantity}</span>
+                                                    <span className="text-white">{item.name}</span>
+                                                    {item.selectedSize && <span className="text-[9px] text-gray-500">({item.selectedSize.name})</span>}
+                                                </div>
+                                                <span className="text-gray-400 font-mono font-bold">{(item.price * item.quantity).toLocaleString()} ج.م</span>
+                                            </div>
+                                        ))}
+                                        <div className="flex justify-between items-center pt-1 mt-1 border-t border-gray-700/30 font-bold text-xs">
+                                            <span className="text-gray-400">الإجمالي:</span>
+                                            <span className="text-white">{(order.items.reduce((s, i) => s + (i.price * i.quantity), 0)).toLocaleString()} ج.م</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <p className="text-xs text-gray-500 italic py-1">تفاصيل الطلب غير متوفرة</p>
+                                )}
+                            </div>
                         )}
                     </div>
 
