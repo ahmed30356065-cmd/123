@@ -19,7 +19,7 @@ import { useAppActions } from './hooks/useAppActions';
 const App: React.FC = () => {
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isSigningUp, setIsSigningUp] = useState(false);
-    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info'; id?: number } | null>(null);
 
     // Local State for deleted messages
     const [deletedMessageIds, setDeletedMessageIds] = useState<string[]>(() => {
@@ -28,7 +28,7 @@ const App: React.FC = () => {
 
     // 1. Core Data Hook
     const showNotify = (m: string, t: any = 'info', silent: boolean = false) => {
-        setNotification({ message: m, type: t });
+        setNotification({ message: m, type: t, id: Date.now() });
         if (!silent) {
             NativeBridge.showNotification("تنبيه", m);
             NativeBridge.playSound();
@@ -112,7 +112,7 @@ const App: React.FC = () => {
         if (!isLoading && (currentUser || !currentUser)) {
             setTimeout(() => {
                 NativeBridge.hideSplashScreen();
-            }, 500);
+            }, 4000);
         }
 
         // Notification Subscription Logic
@@ -214,7 +214,7 @@ const App: React.FC = () => {
 
     return (
         <div className="h-full w-full hardware-accelerated">
-            {notification && <AppNotification {...notification} onClose={() => setNotification(null)} />}
+            {notification && <AppNotification key={notification.id} {...notification} onClose={() => setNotification(null)} />}
 
             {showUpdate && updateConfig && (
                 <UpdateScreen

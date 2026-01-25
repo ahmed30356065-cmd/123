@@ -1,0 +1,187 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<script type="module" crossorigin src="./assets/index-LoGi42FF.js"></script>
+<link rel="stylesheet" crossorigin href="./assets/index-D0MMFlKv.css">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1A1A1A">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="GOO NOW Delivery App">
+    
+    <title>GOO NOW</title>
+    
+    <link rel="manifest" href="./assets/manifest-CgtmlIgO.json">
+    <!-- Local CSS will be injected by Vite -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- Removed ImportMap and CDNs to force local bundling -->
+
+    <style>
+        :root {
+            /* Base environment values */
+            --sat: env(safe-area-inset-top, 0px);
+            --sab: env(safe-area-inset-bottom, 20px);
+            
+            /* Default safe area (Desktop/Standard) */
+            --safe-area-top: var(--sat);
+            --safe-area-bottom: var(--sab);
+            
+            /* Remove default tap highlight color on mobile */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Mobile overrides to prevent status bar overlap on devices reporting 0px safe area */
+        @media (max-width: 768px) {
+            :root {
+                /* Reduced to 30px to avoid excessive whitespace while keeping it safe */
+                --safe-area-top: max(var(--sat), 30px);
+            }
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* Prevent global scroll */
+            background-color: #111827;
+            font-family: 'Cairo', sans-serif;
+            margin: 0;
+            padding: 0;
+            /* Critical for Native Feel: Disables 'rubber banding' / shaking */
+            overscroll-behavior-y: none;
+            overscroll-behavior-x: none;
+            /* Remove tap delay and highlight */
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            /* Font Rendering Optimization */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+
+            /* 🚫 Disable Selection Globally */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+        }
+        
+        #root {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            /* Hardware Acceleration Context for Root */
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+        
+        /* ✅ Allow selection ONLY for inputs, textareas and specific class */
+        input, textarea, [contenteditable="true"], .selectable, .copyable-phone {
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            user-select: text !important;
+            cursor: text;
+        }
+
+        /* Utility for padding top matching status bar */
+        .pt-safe {
+            padding-top: var(--safe-area-top) !important;
+        }
+        
+        .pb-safe {
+            padding-bottom: var(--safe-area-bottom) !important;
+        }
+
+        .top-safe-offset {
+            top: var(--safe-area-top) !important;
+        }
+
+        /* Utility for fixed headers content offset */
+        .body-pt-safe {
+            padding-top: calc(4rem + var(--safe-area-top)) !important;
+        }
+        
+        /* Hide scrollbar globally but keep functionality */
+        * {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        
+        *::-webkit-scrollbar {
+            display: none; /* Chrome, Safari and Opera */
+        }
+
+        /* Hide Number Input Spinners */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* Smooth inputs */
+        input, textarea, button, select, a {
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        /* --- GPU Accelerated Animations --- */
+        .hardware-accelerated {
+            transform: translateZ(0);
+            will-change: transform, opacity;
+        }
+
+        @keyframes pageSlideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes modalScaleIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        @keyframes slideUpPanel {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .animate-page-enter {
+            animation: pageSlideIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            will-change: transform, opacity;
+        }
+
+        .animate-modal-enter {
+            animation: modalScaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            will-change: transform, opacity;
+        }
+
+        .animate-sheet-up {
+            animation: slideUpPanel 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            will-change: transform;
+        }
+        
+        /* Pre-loader styles to show immediately before React loads */
+        #pre-loader {
+            position: fixed;
+            inset: 0;
+            background-color: #000000;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out;
+        }
+    </style>
+    
+    <!-- Load Firebase Compat Libraries -->
+    <!-- Removed CDN Scripts, logic should be bundled -->
+    
+    <div id="root"></div>
+</body>
+</body>
+</html>
