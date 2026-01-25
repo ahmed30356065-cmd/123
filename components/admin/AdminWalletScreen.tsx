@@ -180,6 +180,8 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                             setShowHistoryPage(false);
                             setHistoryDriver(null);
                         }}
+                        onDeletePayment={onDeletePayment}
+                        currentUser={currentUser}
                     />
                 </div>
             )}

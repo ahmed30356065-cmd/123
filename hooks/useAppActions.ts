@@ -204,12 +204,18 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
         }
     };
 
+    const deletePayment = (paymentId: string) => {
+        firebaseService.deleteData('payments', paymentId);
+        logAction('financial', 'المدفوعات', `تم حذف عملية الدفع رقم ${paymentId}`);
+    };
+
     return {
         logAction,
         handleDriverPayment,
         handleSignUp,
         handleHideMessage,
         handleClearAuditLogs,
-        generateNextUserId
+        generateNextUserId,
+        deletePayment
     };
 };

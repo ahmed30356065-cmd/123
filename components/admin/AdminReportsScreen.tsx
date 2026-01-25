@@ -5,9 +5,9 @@ import { ChartBarIcon, DollarSignIcon, TruckIconV2, CheckCircleIcon, ClockIcon, 
 import useAndroidBack from '../../hooks/useAndroidBack';
 
 interface AdminReportsScreenProps {
-  orders: Order[];
-  users: User[];
-  payments: Payment[];
+    orders: Order[];
+    users: User[];
+    payments: Payment[];
 }
 
 // --- Components ---
@@ -63,10 +63,10 @@ const ReportCriteriaModal: React.FC<{
 
     const handleGenerate = () => {
         if (!selectedUserId) return;
-        onGenerate(selectedUserId, { 
-            type: dateType, 
-            start: dateType === 'custom' ? startDate : undefined, 
-            end: dateType === 'custom' ? endDate : undefined 
+        onGenerate(selectedUserId, {
+            type: dateType,
+            start: dateType === 'custom' ? startDate : undefined,
+            end: dateType === 'custom' ? endDate : undefined
         });
         onClose();
     };
@@ -81,15 +81,15 @@ const ReportCriteriaModal: React.FC<{
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800"><XIcon className="w-5 h-5" /></button>
                 </div>
-                
+
                 <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
                     {/* User Selection */}
                     <div className="space-y-3">
                         <label className="text-xs font-bold text-gray-400 block">اختر {type === 'driver' ? 'المندوب' : 'التاجر'}</label>
                         <div className="relative">
-                            <input 
-                                type="text" 
-                                placeholder="بحث بالاسم أو الرقم..." 
+                            <input
+                                type="text"
+                                placeholder="بحث بالاسم أو الرقم..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 className="w-full bg-[#0f172a] border border-gray-600 rounded-xl py-3 px-4 pl-10 text-white text-sm focus:border-blue-500 outline-none"
@@ -99,8 +99,8 @@ const ReportCriteriaModal: React.FC<{
                         <div className="max-h-40 overflow-y-auto bg-[#0f172a] border border-gray-600 rounded-xl custom-scrollbar">
                             {filteredUsers.length > 0 ? (
                                 filteredUsers.map(u => (
-                                    <button 
-                                        key={u.id} 
+                                    <button
+                                        key={u.id}
                                         onClick={() => setSelectedUserId(u.id)}
                                         className={`w-full flex items-center justify-between p-3 text-right hover:bg-gray-800 border-b border-gray-700/50 last:border-0 transition-colors ${selectedUserId === u.id ? 'bg-blue-900/20 text-blue-400' : 'text-gray-300'}`}
                                     >
@@ -129,7 +129,7 @@ const ReportCriteriaModal: React.FC<{
                             <button onClick={() => setDateType('all')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${dateType === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>منذ بدء العمل</button>
                             <button onClick={() => setDateType('custom')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${dateType === 'custom' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>فترة محددة</button>
                         </div>
-                        
+
                         {dateType === 'custom' && (
                             <div className="grid grid-cols-2 gap-3 animate-fadeIn">
                                 <div>
@@ -146,7 +146,7 @@ const ReportCriteriaModal: React.FC<{
                 </div>
 
                 <div className="p-5 border-t border-gray-700 bg-[#151e2d]">
-                    <button 
+                    <button
                         onClick={handleGenerate}
                         disabled={!selectedUserId || (dateType === 'custom' && (!startDate || !endDate))}
                         className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -165,7 +165,7 @@ const ReportResultsModal: React.FC<{
     onClose: () => void;
     reportData: { user: User; orders: Order[]; summary: any; dateLabel: string } | null;
 }> = ({ isOpen, onClose, reportData }) => {
-    
+
     useAndroidBack(() => {
         if (isOpen) { onClose(); return true; }
         return false;
@@ -199,7 +199,7 @@ const ReportResultsModal: React.FC<{
     return (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 animate-fadeIn" onClick={onClose}>
             <div className="bg-[#1e293b] w-full max-w-2xl h-full sm:h-auto sm:max-h-[90vh] sm:rounded-2xl border-x-0 sm:border border-gray-700 shadow-2xl overflow-hidden animate-slide-up flex flex-col" onClick={e => e.stopPropagation()}>
-                
+
                 {/* Header */}
                 <div className="p-5 border-b border-gray-700 bg-[#151e2d] flex justify-between items-center">
                     <div>
@@ -261,7 +261,7 @@ const ReportResultsModal: React.FC<{
                                             <p className="text-sm font-bold text-white">{order.totalPrice?.toLocaleString('en-US')} ج.م</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex items-start gap-2">
                                         <MapPinIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
                                         <p className="text-xs text-gray-300 leading-relaxed">
@@ -296,6 +296,206 @@ const ReportResultsModal: React.FC<{
     );
 }
 
+// Helper for Business Date logic
+const getBusinessDate = (date: Date) => {
+    const d = new Date(date);
+    if (d.getHours() < 6) {
+        d.setDate(d.getDate() - 1);
+    }
+    d.setHours(0, 0, 0, 0);
+    return d;
+};
+
+const DailyReportModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    orders: Order[];
+    users: User[];
+}> = ({ isOpen, onClose, orders, users }) => {
+    const dailyStats = useMemo(() => {
+        if (!isOpen) return null;
+
+        const todayBusinessDate = getBusinessDate(new Date());
+
+        // Filter orders for "Today" (6 AM today to 6 AM tomorrow)
+        const todayOrders = orders.filter(o => {
+            const oDate = (o.createdAt as any).seconds ? new Date((o.createdAt as any).seconds * 1000) : new Date(o.createdAt);
+            return getBusinessDate(oDate).getTime() === todayBusinessDate.getTime();
+        });
+
+        const delivered = todayOrders.filter(o => o.status === OrderStatus.Delivered);
+        const cancelled = todayOrders.filter(o => o.status === OrderStatus.Cancelled);
+        const pending = todayOrders.filter(o => o.status === OrderStatus.Pending);
+
+        const totalRevenue = delivered.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+        const totalDeliveryFees = delivered.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+
+        let totalCommission = 0;
+        const driverPerformance: Record<string, { name: string, count: number, total: number }> = {};
+
+        delivered.forEach(o => {
+            const driver = users.find(u => u.id === o.driverId);
+            if (driver) {
+                // Commission Calc
+                if (driver.commissionType === 'fixed') {
+                    totalCommission += (driver.commissionRate || 0);
+                } else {
+                    totalCommission += (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
+                }
+
+                // Driver Performance
+                if (!driverPerformance[driver.id]) {
+                    driverPerformance[driver.id] = { name: driver.name, count: 0, total: 0 };
+                }
+                driverPerformance[driver.id].count += 1;
+                driverPerformance[driver.id].total += (o.deliveryFee || 0);
+            }
+        });
+
+        const topDrivers = Object.values(driverPerformance)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        return {
+            date: todayBusinessDate,
+            count: todayOrders.length,
+            deliveredCount: delivered.length,
+            cancelledCount: cancelled.length,
+            pendingCount: pending.length,
+            totalRevenue,
+            totalDeliveryFees,
+            totalCommission,
+            topDrivers
+        };
+    }, [isOpen, orders, users]);
+
+    if (!isOpen || !dailyStats) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+            <div className="bg-[#0f172a] w-full max-w-4xl max-h-[90vh] rounded-3xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="p-6 border-b border-gray-800 bg-[#1e293b] flex justify-between items-center sticky top-0 z-10">
+                    <div>
+                        <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                            التقرير اليومي الشامل
+                            <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-lg">اليومية الحالية</span>
+                        </h2>
+                        <p className="text-sm text-gray-400 mt-1">
+                            {dailyStats.date.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-2 bg-gray-800 rounded-full text-gray-400 hover:text-white hover:bg-red-500/20 hover:text-red-500 transition-all">
+                        <XIcon className="w-6 h-6" />
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+
+                    {/* Key Metrics Row */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-gray-800/50 p-4 rounded-2xl border border-gray-700">
+                            <p className="text-xs text-gray-500 font-bold mb-1">إجمالي الطلبات</p>
+                            <p className="text-3xl font-black text-white">{dailyStats.count}</p>
+                        </div>
+                        <div className="bg-green-900/10 p-4 rounded-2xl border border-green-500/20">
+                            <p className="text-xs text-green-500/70 font-bold mb-1">تم التوصيل</p>
+                            <p className="text-3xl font-black text-green-400">{dailyStats.deliveredCount}</p>
+                        </div>
+                        <div className="bg-red-900/10 p-4 rounded-2xl border border-red-500/20">
+                            <p className="text-xs text-red-500/70 font-bold mb-1">ملغي / مرفوض</p>
+                            <p className="text-3xl font-black text-red-400">{dailyStats.cancelledCount}</p>
+                        </div>
+                        <div className="bg-yellow-900/10 p-4 rounded-2xl border border-yellow-500/20">
+                            <p className="text-xs text-yellow-500/70 font-bold mb-1">قيد التنفيذ</p>
+                            <p className="text-3xl font-black text-yellow-400">{dailyStats.pendingCount}</p>
+                        </div>
+                    </div>
+
+                    {/* Financial Summary */}
+                    <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-6 border border-gray-700 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full -ml-10 -mt-10 pointer-events-none"></div>
+                        <h3 className="text-lg font-bold text-white mb-6 relative z-10 flex items-center gap-2">
+                            <DollarSignIcon className="w-5 h-5 text-green-400" />
+                            الملخص المالي
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+                            <div>
+                                <p className="text-xs text-gray-400 mb-2">إجمالي قيمة المبيعات</p>
+                                <p className="text-2xl font-black text-white">{dailyStats.totalRevenue.toLocaleString('en-US')} <span className="text-sm font-normal text-gray-500">ج.م</span></p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-400 mb-2">إجمالي رسوم التوصيل</p>
+                                <p className="text-2xl font-black text-blue-400">{dailyStats.totalDeliveryFees.toLocaleString('en-US')} <span className="text-sm font-normal text-gray-500">ج.م</span></p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-400 mb-2">عمولة التطبيق (الصافي)</p>
+                                <p className="text-2xl font-black text-green-400">{dailyStats.totalCommission.toLocaleString('en-US')} <span className="text-sm font-normal text-gray-500">ج.م</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Top Drivers */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-gray-800 p-6 rounded-3xl border border-gray-700">
+                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <TruckIconV2 className="w-5 h-5 text-blue-400" />
+                                أفضل المناديب اليوم
+                            </h3>
+                            <div className="space-y-4">
+                                {dailyStats.topDrivers.length > 0 ? (
+                                    dailyStats.topDrivers.map((d, i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 bg-gray-900/50 rounded-xl border border-gray-700/50">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${i === 0 ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300'}`}>
+                                                    {i + 1}
+                                                </div>
+                                                <span className="text-sm font-bold text-white">{d.name}</span>
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-sm font-black text-blue-400">{d.count} طلب</p>
+                                                <p className="text-[10px] text-gray-500">{d.total.toLocaleString()} ج.م توصيل</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-gray-500 text-center py-4 text-sm">لا توجد بيانات حتى الآن</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Status Distribution Bar */}
+                        <div className="bg-gray-800 p-6 rounded-3xl border border-gray-700 flex flex-col justify-center">
+                            <h3 className="text-lg font-bold text-white mb-6">توزيع حالات الطلب</h3>
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="flex justify-between text-xs font-bold text-gray-300 mb-2">
+                                        <span>نسبة التوصيل</span>
+                                        <span>{dailyStats.count > 0 ? Math.round((dailyStats.deliveredCount / dailyStats.count) * 100) : 0}%</span>
+                                    </div>
+                                    <div className="h-3 bg-gray-900 rounded-full overflow-hidden">
+                                        <div className="h-full bg-green-500" style={{ width: `${dailyStats.count > 0 ? (dailyStats.deliveredCount / dailyStats.count) * 100 : 0}%` }}></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs font-bold text-gray-300 mb-2">
+                                        <span>نسبة الإلغاء</span>
+                                        <span>{dailyStats.count > 0 ? Math.round((dailyStats.cancelledCount / dailyStats.count) * 100) : 0}%</span>
+                                    </div>
+                                    <div className="h-3 bg-gray-900 rounded-full overflow-hidden">
+                                        <div className="h-full bg-red-500" style={{ width: `${dailyStats.count > 0 ? (dailyStats.cancelledCount / dailyStats.count) * 100 : 0}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- Main Screen ---
 
 export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, users, payments }) => {
@@ -303,12 +503,13 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
     const [reportType, setReportType] = useState<'driver' | 'merchant'>('driver');
     const [resultsModalOpen, setResultsModalOpen] = useState(false);
     const [generatedReport, setGeneratedReport] = useState<any>(null);
+    const [dailyReportOpen, setDailyReportOpen] = useState(false);
 
     const stats = useMemo(() => {
         const deliveredOrders = orders.filter(o => o.status === OrderStatus.Delivered);
         const totalRevenue = deliveredOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
         const totalDeliveryFees = deliveredOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
-        
+
         let totalCommission = 0;
         deliveredOrders.forEach(o => {
             const driver = users.find(u => u.id === o.driverId);
@@ -346,12 +547,12 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
         let filteredOrders = orders.filter(o => user.role === 'driver' ? o.driverId === userId : o.merchantId === userId);
 
         let dateLabel = "منذ بدء العمل";
-        
+
         if (dateRange.type === 'custom' && dateRange.start && dateRange.end) {
             const start = new Date(dateRange.start);
             const end = new Date(dateRange.end);
             end.setHours(23, 59, 59); // End of day
-            
+
             filteredOrders = filteredOrders.filter(o => {
                 const d = new Date(o.createdAt);
                 return d >= start && d <= end;
@@ -363,7 +564,7 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
         const delivered = filteredOrders.filter(o => o.status === OrderStatus.Delivered);
         const totalRevenue = delivered.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
         const totalDelivery = delivered.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
-        
+
         let appCommission = 0;
         let driverEarnings = 0;
 
@@ -410,14 +611,21 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
 
                 {/* Quick Actions for Detailed Reports */}
                 <div className="flex gap-3">
-                    <button 
+                    <button
+                        onClick={() => setDailyReportOpen(true)}
+                        className="flex-1 bg-gradient-to-r from-blue-900 to-blue-800 hover:from-blue-800 hover:to-blue-700 border border-blue-700 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group shadow-lg shadow-blue-900/30"
+                    >
+                        <div className="p-2 bg-blue-500/20 rounded-full group-hover:bg-blue-500/30"><ClipboardListIcon className="w-5 h-5 text-blue-200" /></div>
+                        <span className="text-sm font-bold text-white">التقرير اليومي الشامل</span>
+                    </button>
+                    <button
                         onClick={() => handleOpenCriteria('driver')}
                         className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group"
                     >
                         <div className="p-2 bg-blue-500/10 rounded-full group-hover:bg-blue-500/20"><TruckIconV2 className="w-5 h-5 text-blue-400" /></div>
                         <span className="text-sm font-bold text-gray-200">تقرير مندوب</span>
                     </button>
-                    <button 
+                    <button
                         onClick={() => handleOpenCriteria('merchant')}
                         className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group"
                     >
@@ -429,27 +637,27 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
 
             {/* Financial Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StatBox 
-                    title="إجمالي المبيعات" 
-                    value={`${stats.totalRevenue.toLocaleString('en-US')} ج.م`} 
+                <StatBox
+                    title="إجمالي المبيعات"
+                    value={`${stats.totalRevenue.toLocaleString('en-US')} ج.م`}
                     subValue="قيمة المنتجات التي تم تسليمها"
-                    icon={<DollarSignIcon className="w-6 h-6" />} 
+                    icon={<DollarSignIcon className="w-6 h-6" />}
                     color="bg-green-500"
                     trend="up"
                     trendValue="+12%"
                 />
-                <StatBox 
-                    title="أرباح التوصيل" 
-                    value={`${stats.totalDeliveryFees.toLocaleString('en-US')} ج.م`} 
+                <StatBox
+                    title="أرباح التوصيل"
+                    value={`${stats.totalDeliveryFees.toLocaleString('en-US')} ج.م`}
                     subValue="إجمالي مصاريف الشحن المحصلة"
-                    icon={<TruckIconV2 className="w-6 h-6" />} 
-                    color="bg-blue-500" 
+                    icon={<TruckIconV2 className="w-6 h-6" />}
+                    color="bg-blue-500"
                 />
-                <StatBox 
-                    title="عمولة التطبيق" 
-                    value={`${stats.totalCommission.toLocaleString('en-US')} ج.م`} 
+                <StatBox
+                    title="عمولة التطبيق"
+                    value={`${stats.totalCommission.toLocaleString('en-US')} ج.م`}
                     subValue="صافي ربح المنصة من التوصيل"
-                    icon={<TrendingUpIcon className="w-6 h-6" />} 
+                    icon={<TrendingUpIcon className="w-6 h-6" />}
                     color="bg-red-500"
                     trend="up"
                     trendValue="+5%"
@@ -527,18 +735,25 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
             </div>
 
             {/* Modals */}
-            <ReportCriteriaModal 
-                isOpen={criteriaModalOpen} 
+            <ReportCriteriaModal
+                isOpen={criteriaModalOpen}
                 onClose={() => setCriteriaModalOpen(false)}
                 type={reportType}
                 users={users}
                 onGenerate={generateReportData}
             />
 
-            <ReportResultsModal 
+            <ReportResultsModal
                 isOpen={resultsModalOpen}
                 onClose={() => setResultsModalOpen(false)}
                 reportData={generatedReport}
+            />
+
+            <DailyReportModal
+                isOpen={dailyReportOpen}
+                onClose={() => setDailyReportOpen(false)}
+                orders={orders}
+                users={users}
             />
         </div>
     );

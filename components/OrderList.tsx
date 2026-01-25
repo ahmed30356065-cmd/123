@@ -194,15 +194,31 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant })
         return new Date(val);
     };
 
+    // Helper: Business Date (Shift ends at 6 AM)
+    const getBusinessDateOfDate = (date: Date) => {
+        const d = new Date(date);
+        if (d.getHours() < 6) {
+            d.setDate(d.getDate() - 1);
+        }
+        d.setHours(0, 0, 0, 0);
+        return d;
+    };
+
     // 1. Filter by Time/Date
     const dateFilteredOrders = useMemo(() => {
         if (filterMode === 'all') return orders;
 
-        const targetDate = filterMode === 'today' ? new Date() : new Date(customDate);
+        const targetDate = filterMode === 'today'
+            ? getBusinessDateOfDate(new Date())
+            : new Date(customDate);
+
+        // Ensure custom date is normalized if necessary, but usually date input gives 00:00
+        targetDate.setHours(0, 0, 0, 0);
 
         return orders.filter(o => {
             const oDate = getOrderDate(o);
-            return isSameDate(oDate, targetDate);
+            const oBusinessDate = getBusinessDateOfDate(oDate);
+            return oBusinessDate.getTime() === targetDate.getTime();
         });
     }, [orders, filterMode, customDate]);
 
@@ -220,9 +236,9 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant })
 
     // Counts for Badges
     const counts = useMemo(() => {
-        const today = new Date();
+        const todayBusinessDate = getBusinessDateOfDate(new Date());
         return {
-            today: orders.filter(o => isSameDate(getOrderDate(o), today)).length,
+            today: orders.filter(o => getBusinessDateOfDate(getOrderDate(o)).getTime() === todayBusinessDate.getTime()).length,
             all: orders.length,
             shopping: orders.filter(o => o.type === 'shopping_order').length
         };

@@ -1,15 +1,17 @@
 import React, { useMemo } from 'react';
 import { Payment, Order, User, OrderStatus } from '../../types';
-import { ArrowRightIcon, ReceiptIcon, CheckCircleIcon, ExclamationIcon } from '../icons';
+import { ArrowRightIcon, ReceiptIcon, CheckCircleIcon, ExclamationIcon, XIcon } from '../icons';
 
 interface DriverPaymentHistoryPageProps {
     driver: User;
     payments: Payment[];
     orders: Order[];
     onBack: () => void;
+    onDeletePayment?: (paymentId: string) => void;
+    currentUser?: User | null;
 }
 
-const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ driver, payments, orders, onBack }) => {
+const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ driver, payments, orders, onBack, onDeletePayment, currentUser }) => {
 
     // Helper to calculate payment details based on CURRENTLY EXISTING orders
     // This retroactively updates history if orders are deleted or cancelled
@@ -48,12 +50,32 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
     // Scroll state for header shrinking
     const [isScrolled, setIsScrolled] = React.useState(false);
 
+    // Helper for Business Date (Shift starts/ends at 6 AM)
+    const getBusinessDate = (dateString: string | Date | any) => {
+        let date: Date;
+        if (typeof dateString === 'string' || typeof dateString === 'number') {
+            date = new Date(dateString);
+        } else if (dateString?.seconds) {
+            date = new Date(dateString.seconds * 1000);
+        } else {
+            date = new Date(dateString);
+        }
+
+        if (date.getHours() < 6) {
+            date.setDate(date.getDate() - 1);
+        }
+        return date;
+    };
+
+    // Helper for Delete Confirmation
+    const [deleteId, setDeleteId] = React.useState<string | null>(null);
+
     return (
         <div className="fixed inset-0 bg-[#0f172a] z-50 animate-fadeIn pb-safe flex flex-col"> {/* Corporate Blue Background */}
 
             {/* Main Content Container with scroll listener */}
             <div
-                className="flex-1 overflow-y-auto pt-[140px] md:pt-[100px]" // Padding top matches header height
+                className="flex-1 overflow-y-auto pt-[160px] md:pt-[120px]" // Increased padding for Status Bar + Header
                 onScroll={(e) => {
                     const offset = e.currentTarget.scrollTop;
                     setIsScrolled(offset > 20);
@@ -71,11 +93,11 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                         <thead className="bg-[#1e293b] border-b border-blue-800">
                                             <tr>
                                                 <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">رقم العملية</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">التاريخ</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">التاريخ (يومية)</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">الطلبات</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">التحصيل</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">المسدد</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">الحالة</th>
+                                                {currentUser?.role === 'admin' && <th className="px-6 py-4 text-xs font-bold text-red-400 uppercase tracking-wider">إجراءات</th>}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-blue-900/50">
@@ -85,10 +107,10 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                                         #{payment.id.slice(-6)}
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-gray-300">
-                                                        {new Date(payment.createdAt).toLocaleString('ar-EG-u-nu-latn', {
-                                                            year: 'numeric', month: 'short', day: 'numeric',
-                                                            hour: '2-digit', minute: '2-digit'
-                                                        })}
+                                                        <div className="flex flex-col">
+                                                            <span>{getBusinessDate(payment.createdAt).toLocaleDateString('ar-EG-u-nu-latn', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                                                            <span className="text-[10px] text-gray-500">{new Date(payment.createdAt).toLocaleTimeString('ar-EG-u-nu-latn', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-gray-300 font-medium">
                                                         {payment.verifiedCount}
@@ -99,12 +121,16 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                                     <td className="px-6 py-4 text-sm text-white font-bold">
                                                         {payment.verifiedAmount.toLocaleString('en-US', { minimumFractionDigits: 1 })} ج.م
                                                     </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
-                                                            <CheckCircleIcon className="w-3 h-3 ml-1" />
-                                                            تمت
-                                                        </span>
-                                                    </td>
+                                                    {currentUser?.role === 'admin' && (
+                                                        <td className="px-6 py-4">
+                                                            <button
+                                                                onClick={() => setDeleteId(payment.id)}
+                                                                className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"
+                                                            >
+                                                                <XIcon className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    )}
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -112,35 +138,48 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                 </div>
 
                                 {/* Mobile Card View */}
-                                <div className="md:hidden flex flex-col divide-y divide-blue-800/50">
+                                <div className="md:hidden divide-y divide-blue-900/50">
                                     {historyData.map((payment) => (
-                                        <div key={payment.id} className="p-4 flex flex-col gap-3 hover:bg-white/5 transition-colors">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <span className="text-[10px] text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded border border-blue-500/20 font-mono mb-1 inline-block">
-                                                        #{payment.id.slice(-6)}
-                                                    </span>
-                                                    <p className="text-xs text-gray-400">
-                                                        {new Date(payment.createdAt).toLocaleString('ar-EG-u-nu-latn', {
-                                                            month: 'short', day: 'numeric',
-                                                            hour: 'numeric', minute: 'numeric'
-                                                        })}
-                                                    </p>
+                                        <div key={payment.id} className="p-5 hover:bg-blue-900/5 transition-colors relative">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-green-500/10 rounded-full border border-green-500/20">
+                                                        <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-bold text-green-400">تمت التسوية</span>
+                                                            <span className="text-[10px] text-gray-500 font-mono">#{payment.id.slice(-6)}</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-400 mt-0.5">
+                                                            {getBusinessDate(payment.createdAt).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })}
+                                                            <span className="mx-1.5">•</span>
+                                                            {new Date(payment.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400 border border-green-500/20">
-                                                    <CheckCircleIcon className="w-3 h-3 ml-1" />
-                                                    تمت التسوية
-                                                </span>
+                                                {currentUser?.role === 'admin' && (
+                                                    <button
+                                                        onClick={() => setDeleteId(payment.id)}
+                                                        className="p-2 -mt-2 -ml-2 text-gray-600 hover:text-red-500"
+                                                    >
+                                                        <XIcon className="w-5 h-5" />
+                                                    </button>
+                                                )}
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-3 bg-black/20 p-3 rounded-lg border border-blue-900/30">
+                                            <div className="grid grid-cols-2 gap-4 bg-black/20 p-4 rounded-xl border border-white/5">
                                                 <div>
-                                                    <p className="text-[10px] text-gray-500">عدد الطلبات</p>
-                                                    <p className="text-sm font-medium text-gray-300">{payment.verifiedCount} طلب</p>
+                                                    <p className="text-[10px] text-gray-500 mb-1">المبلغ المسدد</p>
+                                                    <p className="text-lg font-bold text-white">
+                                                        {payment.verifiedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-xs font-normal text-gray-400">ج.م</span>
+                                                    </p>
                                                 </div>
                                                 <div className="text-left">
-                                                    <p className="text-[10px] text-gray-500">المبلغ المسدد</p>
-                                                    <p className="text-base font-bold text-white">{payment.verifiedAmount.toLocaleString('en-US')} ج.م</p>
+                                                    <p className="text-[10px] text-gray-500 mb-1">عدد الطلبات</p>
+                                                    <p className="text-lg font-bold text-white">
+                                                        {payment.verifiedCount} <span className="text-xs font-normal text-gray-400">طلب</span>
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -165,6 +204,7 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                         <ExclamationIcon className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
                         <p className="text-xs md:text-sm text-blue-300 leading-relaxed">
                             يتم استبعاد الطلبات المحذوفة أو الملغية تلقائياً. المبالغ الظاهرة تمثل القيمة الفعلية للطلبات المتبقية في النظام فقط.
+                            التواريخ تتبع نظام "اليومية" (تنتهي 6 صباحاً).
                         </p>
                     </div>
                 </div>
@@ -172,12 +212,13 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
 
             {/* Fixed Header */}
             <div className={`
-                fixed top-0 left-0 right-0 z-20 
+                fixed top-0 left-0 right-0 z-20 pt-safe
                 bg-[#0f172a]/95 backdrop-blur-md border-b border-blue-800/50 
                 transition-all duration-300 ease-in-out
-                ${isScrolled ? 'py-2 shadow-lg' : 'py-4 md:py-6 shadow-none'}
+                ${isScrolled ? 'pb-2 shadow-lg' : 'pb-4 md:pb-6 shadow-none'}
             `}>
-                <div className="max-w-5xl mx-auto px-4 md:px-6 w-full">
+                {/* Added 'top' padding to container below */}
+                <div className="max-w-5xl mx-auto px-4 md:px-6 w-full pt-4 md:pt-6">
                     <div className="flex flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
                             <button
@@ -210,6 +251,25 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteId && (
+                <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setDeleteId(null)}>
+                    <div className="bg-[#1e293b] w-full max-w-sm rounded-2xl border border-red-500/30 shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                                <XIcon className="w-8 h-8 text-red-500" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">حذف التسوية؟</h3>
+                            <p className="text-sm text-gray-400 mb-6">هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء، وستعود الطلبات لتظهر كديون غير مسددة.</p>
+                            <div className="flex gap-3 w-full">
+                                <button className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-xl transition-all" onClick={() => setDeleteId(null)}>إلغاء</button>
+                                <button className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all" onClick={() => { if (onDeletePayment && deleteId) onDeletePayment(deleteId); setDeleteId(null); }}>حذف نهائي</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );
