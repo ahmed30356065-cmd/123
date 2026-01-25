@@ -4,10 +4,10 @@ import { User, Order, Payment, OrderStatus } from '../../types';
 import { XIcon, ReceiptIcon } from '../icons';
 
 interface DriverPaymentHistoryModalProps {
-  driver: User;
-  orders: Order[];
-  payments: Payment[];
-  onClose: () => void;
+    driver: User;
+    orders: Order[];
+    payments: Payment[];
+    onClose: () => void;
 }
 
 const StatCard: React.FC<{ label: string, value: string, subvalue?: string }> = ({ label, value, subvalue }) => (
@@ -46,7 +46,7 @@ const DriverPaymentHistoryModal: React.FC<DriverPaymentHistoryModalProps> = ({ d
             .reduce((sum, p) => sum + p.amount, 0);
 
         const dailyGroups: { [key: string]: { orders: Order[], isPaid: boolean } } = {};
-        
+
         relevantOrders.forEach(order => {
             try {
                 const dateKey = new Date(order.deliveredAt!).toISOString().split('T')[0];
@@ -89,68 +89,102 @@ const DriverPaymentHistoryModal: React.FC<DriverPaymentHistoryModalProps> = ({ d
             <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
                     <div>
-                         <h3 className="text-lg font-bold text-white">سجل الدفعات: {driver.name}</h3>
-                         <p className="text-sm text-gray-400">ملخص شهر {formattedCurrentMonth}</p>
+                        <h3 className="text-lg font-bold text-white">سجل الدفعات: {driver.name}</h3>
+                        <p className="text-sm text-gray-400">ملخص شهر {formattedCurrentMonth}</p>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <XIcon className="w-6 h-6" />
                     </button>
                 </div>
-                
+
                 <div className="p-4 space-y-4 overflow-y-auto">
                     {/* Monthly Summary */}
                     <div className="bg-gray-700/50 p-4 rounded-lg">
                         <h4 className="font-bold text-gray-300 mb-3">ملخص الشهر</h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                           <StatCard label="إجمالي التوصيل" value={monthlyData.totalDeliveries.toString()} subvalue="طلب" />
-                           <StatCard label="إجمالي المستحقات" value={monthlyData.totalFees.toLocaleString('en-US', {minimumFractionDigits: 2})} subvalue="ج.م" />
-                           <StatCard label="مستحقات التطبيق" value={monthlyData.companyShare.toLocaleString('en-US', {minimumFractionDigits: 2})} subvalue="ج.م" />
-                           <StatCard label="مستحقات المندوب" value={monthlyData.driverShare.toLocaleString('en-US', {minimumFractionDigits: 2})} subvalue="ج.م" />
+                            <StatCard label="إجمالي التوصيل" value={monthlyData.totalDeliveries.toString()} subvalue="طلب" />
+                            <StatCard label="إجمالي المستحقات" value={monthlyData.totalFees.toLocaleString('en-US', { minimumFractionDigits: 2 })} subvalue="ج.م" />
+                            <StatCard label="مستحقات التطبيق" value={monthlyData.companyShare.toLocaleString('en-US', { minimumFractionDigits: 2 })} subvalue="ج.م" />
+                            <StatCard label="مستحقات المندوب" value={monthlyData.driverShare.toLocaleString('en-US', { minimumFractionDigits: 2 })} subvalue="ج.م" />
                         </div>
                     </div>
-                    
-                    {/* Daily Breakdown */}
+
+                    {/* Settlement History (Transaction Log) */}
                     <div className="bg-gray-700/50 p-4 rounded-lg">
-                        <h4 className="font-bold text-gray-300 mb-3">السجل اليومي</h4>
+                        <h4 className="font-bold text-gray-300 mb-3">سجل التسويات المالية</h4>
                         <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                             {monthlyData.sortedDays.length > 0 ? monthlyData.sortedDays.map(([date, data]) => {
-                                const dayTotal = data.orders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
-                                let dayCompanyShare = 0;
-                                if (driver.commissionType === 'fixed') {
-                                    dayCompanyShare = data.orders.length * (driver.commissionRate || 0);
-                                } else {
-                                    dayCompanyShare = dayTotal * ((driver.commissionRate || 0) / 100);
-                                }
-
-                                const formattedDay = (() => {
-                                    try {
-                                        return new Date(date).toLocaleDateString('ar-EG-u-nu-latn', { year: 'numeric', month: 'numeric', day: 'numeric' });
-                                    } catch(e) {
-                                        return date;
-                                    }
-                                })();
-
-                                return (
-                                    <div key={date} className="bg-gray-800 p-3 rounded-md flex justify-between items-center">
-                                        <div>
-                                            <p className="font-bold text-white">{formattedDay}</p>
-                                            <p className="text-xs text-gray-400">
-                                                {data.orders.length} طلبات - مستحقات التطبيق: <span className="font-semibold text-red-400">{dayCompanyShare.toLocaleString('en-US', {minimumFractionDigits: 2})} ج.م</span>
-                                            </p>
-                                        </div>
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${data.isPaid ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                                            {data.isPaid ? 'مدفوع' : 'غير مدفوع'}
-                                        </span>
-                                    </div>
+                            {/* 1. Show Unsettled Balance if exists */}
+                            {(() => {
+                                const currentUnsettled = orders.filter(o =>
+                                    o.driverId === driver.id &&
+                                    o.status === OrderStatus.Delivered &&
+                                    !o.reconciled
                                 );
-                            }) : (
-                                <p className="text-center text-gray-500 py-4">لا توجد طلبات مسجلة هذا الشهر.</p>
+
+                                if (currentUnsettled.length > 0) {
+                                    const pendingTotalFee = currentUnsettled.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+                                    let pendingCompanyShare = 0;
+                                    if (driver.commissionType === 'fixed') {
+                                        pendingCompanyShare = currentUnsettled.length * (driver.commissionRate || 0);
+                                    } else {
+                                        pendingCompanyShare = pendingTotalFee * ((driver.commissionRate || 0) / 100);
+                                    }
+
+                                    return (
+                                        <div className="bg-gray-800/80 border border-yellow-500/30 p-3 rounded-md flex justify-between items-center mb-2">
+                                            <div>
+                                                <p className="font-bold text-yellow-400">رصيد معلق (غير مسوى)</p>
+                                                <p className="text-xs text-gray-400">
+                                                    {currentUnsettled.length} طلبات - مستحقات التطبيق: <span className="font-semibold text-white">{pendingCompanyShare.toLocaleString('en-US', { minimumFractionDigits: 2 })} ج.م</span>
+                                                </p>
+                                            </div>
+                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+                                                قيد التحصيل
+                                            </span>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+
+                            {/* 2. Show Historical Payments */}
+                            {payments.filter(p => p.driverId === driver.id).length > 0 ? (
+                                payments
+                                    .filter(p => p.driverId === driver.id)
+                                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                    .map((payment) => {
+                                        const formattedDate = new Date(payment.createdAt).toLocaleString('ar-EG-u-nu-latn', {
+                                            year: 'numeric', month: 'numeric', day: 'numeric',
+                                            hour: 'numeric', minute: 'numeric'
+                                        });
+
+                                        return (
+                                            <div key={payment.id} className="bg-gray-800 p-3 rounded-md flex justify-between items-center border border-gray-700">
+                                                <div>
+                                                    <p className="font-bold text-white flex items-center gap-2">
+                                                        <ReceiptIcon className="w-4 h-4 text-green-500" />
+                                                        {formattedDate}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        {payment.ordersCount || payment.reconciledOrderIds.length} طلبات -
+                                                        مستحقات التطبيق: <span className="font-semibold text-green-400">{payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ج.م</span>
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-500 font-mono mt-0.5">{payment.id}</p>
+                                                </div>
+                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-400 border border-green-500/20">
+                                                    تمت التسوية
+                                                </span>
+                                            </div>
+                                        );
+                                    })
+                            ) : (
+                                <p className="text-center text-gray-500 py-4">لا توجد تسويات سابقة.</p>
                             )}
                         </div>
                     </div>
                 </div>
 
-                 <div className="bg-gray-900 px-4 py-3 sm:px-6 flex justify-end rounded-b-lg flex-shrink-0">
+                <div className="bg-gray-900 px-4 py-3 sm:px-6 flex justify-end rounded-b-lg flex-shrink-0">
                     <button
                         type="button"
                         onClick={onClose}

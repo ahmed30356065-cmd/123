@@ -139,6 +139,8 @@ export interface Payment {
   amount: number;
   createdAt: Date;
   reconciledOrderIds: string[];
+  ordersCount?: number;
+  totalCollected?: number;
 }
 
 export interface SliderImage {
