@@ -1,14 +1,7 @@
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
-const DEFAULT_CONFIG = {
-    apiKey: "AIzaSyC4bv_RLpS-jxunMs7nWjux806bYk6XnVY",
-    authDomain: "goo-now-1ce44.firebaseapp.com",
-    projectId: "goo-now-1ce44",
-    storageBucket: "goo-now-1ce44.firebasestorage.app",
-    messagingSenderId: "742306376566",
-    appId: "1:742306376566:android:9298a84980b239e528a857"
-};
+// Fallback removed for security. Config must be passed from main app.
 
 // Listen for custom config from main app
 self.addEventListener('message', (event) => {
@@ -21,13 +14,6 @@ self.addEventListener('message', (event) => {
         }
     }
 });
-
-// Fallback initialization
-if (firebase.apps.length === 0) {
-    firebase.initializeApp(DEFAULT_CONFIG);
-    const messaging = firebase.messaging();
-    setupMessaging(messaging);
-}
 
 function setupMessaging(messaging) {
     messaging.onBackgroundMessage(function (payload) {
