@@ -8,7 +8,7 @@ import CustomerApp from './components/customer_app/CustomerApp';
 import SupervisorPanel from './components/supervisor/SupervisorPanel';
 import AuthScreen from './components/AuthScreen';
 import SignUpScreen from './components/SignUpScreen';
-import Notification from './components/Notification';
+import AppNotification from './components/Notification';
 import OfflineScreen from './components/OfflineScreen';
 import UpdateScreen from './components/UpdateScreen';
 import { NativeBridge, logoutAndroid, safeStringify, setAndroidRole } from './utils/NativeBridge';
@@ -214,7 +214,7 @@ const App: React.FC = () => {
 
     return (
         <div className="h-full w-full hardware-accelerated">
-            {notification && <Notification {...notification} onClose={() => setNotification(null)} />}
+            {notification && <AppNotification {...notification} onClose={() => setNotification(null)} />}
 
             {showUpdate && updateConfig && (
                 <UpdateScreen
