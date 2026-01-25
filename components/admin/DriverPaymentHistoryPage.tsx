@@ -46,80 +46,124 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
     }, [payments, driver.id, orders]);
 
     return (
-        <div className="fixed inset-0 bg-[#0f172a] z-50 overflow-y-auto animate-fadeIn"> {/* Corporate Blue Background */}
-            <div className="max-w-5xl mx-auto p-6 min-h-screen flex flex-col">
+        <div className="fixed inset-0 bg-[#0f172a] z-50 overflow-y-auto animate-fadeIn pb-safe"> {/* Corporate Blue Background */}
+            <div className="max-w-5xl mx-auto p-4 md:p-6 min-h-screen flex flex-col pt-12 md:pt-8"> {/* Added pt-12 for Status Bar */}
 
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8 border-b border-blue-800/50 pb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 border-b border-blue-800/50 pb-6 gap-4">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={onBack}
-                            className="p-2 rounded-full bg-blue-900/50 hover:bg-blue-800 text-blue-200 transition-colors"
+                            className="p-3 rounded-full bg-blue-900/50 hover:bg-blue-800 text-blue-200 transition-colors border border-blue-700/50"
                         >
                             <ArrowRightIcon className="w-6 h-6" />
                         </button>
                         <div>
-                            <h2 className="text-2xl font-bold text-white">سجل المدفوعات والتسويات</h2>
-                            <p className="text-blue-400 text-sm">السجل المالي للمندوب: {driver.name}</p>
+                            <h2 className="text-xl md:text-2xl font-bold text-white leading-tight">سجل المدفوعات</h2>
+                            <p className="text-blue-400 text-xs md:text-sm mt-1">{driver.name}</p>
                         </div>
                     </div>
-                    <div className="bg-blue-900/30 px-4 py-2 rounded-lg border border-blue-500/20">
-                        <span className="text-blue-300 text-sm">إجمالي الحركات</span>
-                        <p className="text-xl font-bold text-white">{historyData.length}</p>
+                    <div className="bg-blue-900/30 px-4 py-3 rounded-xl border border-blue-500/20 text-center self-start md:self-auto w-full md:w-auto flex justify-between md:block items-center">
+                        <span className="text-blue-300 text-xs md:text-sm block">إجمالي الحركات</span>
+                        <p className="text-lg md:text-xl font-bold text-white">{historyData.length}</p>
                     </div>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 bg-[#1e293b] rounded-xl shadow-2xl border border-blue-800/50 overflow-hidden">
+                <div className="flex-1 bg-[#1e293b] rounded-xl shadow-2xl border border-blue-800/50 overflow-hidden flex flex-col">
                     {historyData.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-right">
-                                <thead className="bg-[#1e293b] border-b border-blue-800">
-                                    <tr>
-                                        <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">رقم التسوية</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">التاريخ والوقت</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">عدد الطلبات</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">إجمالي التحصيل</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">حصة التطبيق (المبلغ المسدد)</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">الحالة</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-blue-900/50">
-                                    {historyData.map((payment) => (
-                                        <tr key={payment.id} className="hover:bg-blue-900/10 transition-colors">
-                                            <td className="px-6 py-4 text-sm text-gray-400 font-mono">
-                                                {payment.id.split('-')[1] || payment.id}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-300">
-                                                {new Date(payment.createdAt).toLocaleString('ar-EG-u-nu-latn', {
-                                                    year: 'numeric', month: 'short', day: 'numeric',
-                                                    hour: '2-digit', minute: '2-digit'
-                                                })}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-300 font-medium">
-                                                {payment.verifiedCount} طلب
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-300">
-                                                {payment.verifiedTotalCollected.toLocaleString('en-US', { minimumFractionDigits: 2 })} ج.م
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-white font-bold">
-                                                {payment.verifiedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ج.م
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
-                                                    <CheckCircleIcon className="w-3 h-3 ml-1" />
-                                                    تمت التسوية
-                                                </span>
-                                            </td>
+                        <>
+                            {/* Desktop Table View */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-right">
+                                    <thead className="bg-[#1e293b] border-b border-blue-800">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">رقم العملية</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">التاريخ</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">الطلبات</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">التحصيل</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">المسدد</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">الحالة</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-blue-900/50">
+                                        {historyData.map((payment) => (
+                                            <tr key={payment.id} className="hover:bg-blue-900/10 transition-colors">
+                                                <td className="px-6 py-4 text-sm text-gray-400 font-mono">
+                                                    #{payment.id.slice(-6)}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-300">
+                                                    {new Date(payment.createdAt).toLocaleString('ar-EG-u-nu-latn', {
+                                                        year: 'numeric', month: 'short', day: 'numeric',
+                                                        hour: '2-digit', minute: '2-digit'
+                                                    })}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-300 font-medium">
+                                                    {payment.verifiedCount}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-300">
+                                                    {payment.verifiedTotalCollected.toLocaleString('en-US', { minimumFractionDigits: 1 })}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-white font-bold">
+                                                    {payment.verifiedAmount.toLocaleString('en-US', { minimumFractionDigits: 1 })} ج.م
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                                                        <CheckCircleIcon className="w-3 h-3 ml-1" />
+                                                        تمت
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile Card View */}
+                            <div className="md:hidden flex flex-col divide-y divide-blue-800/50">
+                                {historyData.map((payment) => (
+                                    <div key={payment.id} className="p-4 flex flex-col gap-3 hover:bg-white/5 transition-colors">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <span className="text-[10px] text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded border border-blue-500/20 font-mono mb-1 inline-block">
+                                                    #{payment.id.slice(-6)}
+                                                </span>
+                                                <p className="text-xs text-gray-400">
+                                                    {new Date(payment.createdAt).toLocaleString('ar-EG-u-nu-latn', {
+                                                        month: 'short', day: 'numeric',
+                                                        hour: 'numeric', minute: 'numeric'
+                                                    })}
+                                                </p>
+                                            </div>
+                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400 border border-green-500/20">
+                                                <CheckCircleIcon className="w-3 h-3 ml-1" />
+                                                تمت التسوية
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3 bg-black/20 p-3 rounded-lg border border-blue-900/30">
+                                            <div>
+                                                <p className="text-[10px] text-gray-500">عدد الطلبات</p>
+                                                <p className="text-sm font-medium text-gray-300">{payment.verifiedCount} طلب</p>
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-[10px] text-gray-500">المبلغ المسدد</p>
+                                                <p className="text-base font-bold text-white">{payment.verifiedAmount.toLocaleString('en-US')} ج.م</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-gray-400">
-                            <ReceiptIcon className="w-16 h-16 mb-4 text-gray-600" />
-                            <p className="text-lg">لا توجد تسويات سابقة لهذا المندوب.</p>
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-gray-400 p-6 text-center">
+                            <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                                <ReceiptIcon className="w-10 h-10 text-gray-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-2">لا توجد تسويات</h3>
+                            <p className="text-sm text-gray-500 max-w-xs mx-auto">
+                                لم يتم العثور على أي تسويات لهذا المندوب، أو تم حذف جميع الطلبات المرتبطة بالتسويات السابقة.
+                            </p>
                         </div>
                     )}
                 </div>
@@ -127,8 +171,8 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                 {/* Footer Note */}
                 <div className="mt-6 flex items-start gap-3 bg-blue-900/20 p-4 rounded-lg border border-blue-500/10">
                     <ExclamationIcon className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                    <p className="text-sm text-blue-300">
-                        ملاحظة: هذا السجل يقوم تلقائياً باستبعاد أي طلبات تم إلغاؤها أو حذفها من النظام بعد وقت التسوية، مما يضمن دقة الحسابات المالية في جميع الأوقات.
+                    <p className="text-xs md:text-sm text-blue-300 leading-relaxed">
+                        يتم استبعاد الطلبات المحذوفة أو الملغية تلقائياً. المبالغ الظاهرة تمثل القيمة الفعلية للطلبات المتبقية في النظام فقط.
                     </p>
                 </div>
             </div>

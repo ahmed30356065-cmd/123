@@ -1,36 +1,49 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { BellIcon, XIcon, CheckCircleIcon, TruckIconV2, UtensilsIcon, MessageSquareIcon, ShoppingCartIcon } from './icons';
 
 interface NotificationProps {
     message: string;
     type: 'success' | 'error' | 'info';
+    id?: number; // Added ID to track uniqueness
     onClose: () => void;
 }
 
 const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) => {
     const [exiting, setExiting] = useState(false);
-    // ⬇️ Removed "pause on hover" completely to ensure it ALWAYS closes
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Robust Auto-Dismiss Logic
     useEffect(() => {
-        const timer = setTimeout(() => {
+        // Clear any existing timer first (though unlikely on mount)
+        if (timerRef.current) clearTimeout(timerRef.current);
+
+        timerRef.current = setTimeout(() => {
             handleClose();
-        }, 4000); // reduced to 4s for snappier feel
-        return () => clearTimeout(timer);
+        }, 4000); // 4 seconds visible time
+
+        // Cleanup on unmount or re-render
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
     }, []);
 
     const handleClose = () => {
         setExiting(true);
-        setTimeout(onClose, 500); // Match exit animation duration
+        // Wait for animation to finish before calling onClose
+        // We use a separate local timeout for animation, distinct from the auto-dismiss timer
+        setTimeout(() => {
+            onClose();
+        }, 500);
     };
 
     // --- Smart Style Detection based on Message Content ---
     const getSmartStyle = () => {
-        const lowerMsg = message.toLowerCase();
+        const lowerMsg = message?.toLowerCase() || '';
 
         // 1. New Order (طلب جديد) - Gold/Amber Theme
         if (lowerMsg.includes('طلب جديد') || lowerMsg.includes('new order') || lowerMsg.includes('طلب')) {
-            // USER REQUEST: Change exclamation to "Order Icon" (ShoppingCart or Truck)
             return {
                 icon: <ShoppingCartIcon className="h-5 w-5 text-amber-900" />,
                 bgClass: 'bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500',
@@ -96,10 +109,6 @@ const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) =
 
         // 6. Error - Red Theme
         if (type === 'error') {
-            // If it's an error but mentions 'order' (request failed?), keep it red but maybe change icon?
-            // But user complained about exclamation mark.
-            // Let's use a Generic "Info" circle instead of X/Exclamation if we want to be softer.
-            // Or if it's strictly "Error", keep X.
             return {
                 icon: <XIcon className="h-5 w-5 text-white" />,
                 bgClass: 'bg-gradient-to-r from-red-500 to-red-700',
@@ -125,7 +134,8 @@ const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) =
 
     const style = getSmartStyle();
 
-    return (
+    // Use Portal to render directly in body, avoiding z-indexing/overflow issues
+    return ReactDOM.createPortal(
         <>
             <style>{`
         @keyframes slideInSpring {
@@ -137,25 +147,19 @@ const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) =
           0% { transform: translate(-50%, 0) scale(1); opacity: 1; }
           100% { transform: translate(-50%, -150%) scale(0.8); opacity: 0; }
         }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
-        }
         .notif-enter { animation: slideInSpring 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
         .notif-exit { animation: slideOut 0.5s cubic-bezier(0.4, 0.0, 0.2, 1) forwards; }
       `}</style>
 
             <div
                 dir="rtl"
-                className={`fixed top-4 left-1/2 z-[100] w-auto max-w-[92%] min-w-[320px] sm:min-w-[350px] ${exiting ? 'notif-exit' : 'notif-enter'
-                    }`}
+                className={`fixed top-4 left-1/2 z-[9999] w-auto max-w-[92%] min-w-[320px] sm:min-w-[350px] pointer-events-auto ${exiting ? 'notif-exit' : 'notif-enter'}`}
             >
                 <div className={`
-            relative flex items-center justify-between gap-4 p-1.5 pr-2 rounded-full 
-            ${style.bgClass} ${style.borderClass} border ${style.shadowClass}
-            transition-all duration-300
-        `}>
+                    relative flex items-center justify-between gap-4 p-1.5 pr-2 rounded-full 
+                    ${style.bgClass} ${style.borderClass} border ${style.shadowClass}
+                    transition-all duration-300
+                `}>
                     {/* Left Section: Content */}
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                         {/* Icon Circle */}
@@ -163,7 +167,6 @@ const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) =
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-sm shadow-inner`}>
                                 {style.icon}
                             </div>
-                            {/* Status Dot */}
                             <span className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full animate-ping opacity-75"></span>
                             <span className={`absolute top-0 right-0 w-3 h-3 ${style.glowClass} rounded-full border-2 border-transparent shadow-sm`}></span>
                         </div>
@@ -183,16 +186,17 @@ const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) =
                     <button
                         onClick={handleClose}
                         className={`
-                    w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                    bg-black/10 hover:bg-black/20 transition-colors backdrop-blur-sm
-                    ${style.textClass}
-                `}
+                            w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                            bg-black/10 hover:bg-black/20 transition-colors backdrop-blur-sm
+                            ${style.textClass}
+                        `}
                     >
                         <XIcon className="h-4 w-4" />
                     </button>
                 </div>
             </div>
-        </>
+        </>,
+        document.body
     );
 };
 
