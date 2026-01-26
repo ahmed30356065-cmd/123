@@ -478,18 +478,9 @@ const App: React.FC = () => {
                             ...d, id: newId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
                         });
 
-                        Promise.all([
-                            firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' }),
-                            firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' }),
-                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${newId} متاح للتوصيل`, url: `/?target=order&id=${newId}` })
-                        ]).catch(err => console.error("Notification Error:", err));
-
-                        if (d.customer.phone) {
-                            const targetUser = users.find(u => u.phone === d.customer.phone && u.role === 'customer');
-                            if (targetUser) {
-                                firebaseService.sendExternalNotification('customer', { title: "تم استلام طلبك", body: `تم تسجيل طلبك #${newId} من ${currentUser.name}`, targetId: targetUser.id, url: '/?target=orders' }).catch(console.error);
-                            }
-                        }
+                        await firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
+                        await firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
+                        await firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${newId} متاح للتوصيل`, url: `/?target=order&id=${newId}` });
                     }}
                     onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
                     seenMessageIds={[]} markMessageAsSeen={(id) => { }} hideMessage={(id) => { }} deletedMessageIds={[]} appTheme={appTheme}
@@ -505,11 +496,9 @@ const App: React.FC = () => {
                         const newId = generateNextId(orders, isShopping);
                         await firebaseService.updateData('orders', newId, { ...d, id: newId });
 
-                        Promise.all([
-                            firebaseService.sendExternalNotification('admin', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` }),
-                            firebaseService.sendExternalNotification('supervisor', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` }),
-                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `يوجد طلب جديد #${newId} في الانتظار`, url: `/?target=order&id=${newId}` })
-                        ]).catch(err => console.error("Notification Error:", err));
+                        await firebaseService.sendExternalNotification('admin', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
+                        await firebaseService.sendExternalNotification('supervisor', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
+                        await firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `يوجد طلب جديد #${newId} في الانتظار`, url: `/?target=order&id=${newId}` });
 
                         if (!isShopping && d.merchantId && d.merchantId !== 'delinow') {
                             // Merchant notification removed as per request (Start Pending)

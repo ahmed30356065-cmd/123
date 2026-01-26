@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Order, User, Payment, OrderStatus } from '../../types';
-import { ChartBarIcon, DollarSignIcon, TruckIconV2, CheckCircleIcon, ClockIcon, UsersIcon, StoreIcon, TrendingUpIcon, TrendingDownIcon, XIcon, CalendarIcon, ClipboardListIcon, SearchIcon, UserIcon, MapPinIcon } from '../icons';
+import { ChartBarIcon, DollarSignIcon, TruckIconV2, CheckCircleIcon, ClockIcon, UsersIcon, StoreIcon, TrendingUpIcon, TrendingDownIcon, XIcon, CalendarIcon, ClipboardListIcon, SearchIcon, UserIcon, MapPinIcon, CoinsIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
 interface AdminReportsScreenProps {
