@@ -13,13 +13,15 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [displayLimit, setDisplayLimit] = useState(20);
 
     const filteredLogs = useMemo(() => {
+        setDisplayLimit(20); // Reset limit on filter change
         return logs
             .filter(log => {
-                const matchesSearch = log.actorName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                      log.target.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                      log.details.toLowerCase().includes(searchQuery.toLowerCase());
+                const matchesSearch = log.actorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    log.target.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    log.details.toLowerCase().includes(searchQuery.toLowerCase());
                 const matchesType = filterType === 'all' || log.actionType === filterType;
                 return matchesSearch && matchesType;
             })
@@ -29,6 +31,8 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
                 return timeB - timeA;
             });
     }, [logs, searchQuery, filterType]);
+
+    const visibleLogs = useMemo(() => filteredLogs.slice(0, displayLimit), [filteredLogs, displayLimit]);
 
     const getActionColor = (type: string) => {
         switch (type) {
@@ -56,11 +60,11 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
         try {
             const d = new Date(dateVal);
             if (isNaN(d.getTime())) return { dayName: 'غير معروف', dateStr: '--', timeStr: '--' };
-            
+
             const dayName = d.toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long' });
             const dateStr = d.toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' });
             const timeStr = d.toLocaleTimeString('ar-EG-u-nu-latn', { hour: '2-digit', minute: '2-digit', hour12: true });
-            
+
             return { dayName, dateStr, timeStr };
         } catch (e) {
             return { dayName: '-', dateStr: '-', timeStr: '-' };
@@ -85,12 +89,12 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
                         <p className="text-xs text-gray-400">تتبع نشاط المشرفين والعمليات الحساسة بدقة</p>
                     </div>
                 </div>
-                
+
                 <div className="relative flex-1 w-full flex items-center gap-3">
                     <div className="relative flex-1">
                         <SearchIcon className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder="بحث باسم المشرف، الحدث، أو التفاصيل..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -98,7 +102,7 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
                         />
                     </div>
                     {logs.length > 0 && (
-                        <button 
+                        <button
                             onClick={() => setIsConfirmOpen(true)}
                             className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 p-3 rounded-xl transition-all active:scale-95"
                             title="تنظيف السجل"
@@ -115,11 +119,10 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
                     <button
                         key={type}
                         onClick={() => setFilterType(type)}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors border ${
-                            filterType === type 
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg' 
+                        className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors border ${filterType === type
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
                             : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
-                        }`}
+                            }`}
                     >
                         {type === 'all' ? 'الكل' : getActionLabel(type)}
                     </button>
@@ -128,10 +131,10 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
 
             {/* Logs List */}
             <div className="space-y-3">
-                {filteredLogs.length > 0 ? (
-                    filteredLogs.map(log => {
+                {visibleLogs.length > 0 ? (
+                    visibleLogs.map(log => {
                         const { dayName, dateStr, timeStr } = formatFullDateTime(log.createdAt);
-                        
+
                         return (
                             <div key={log.id} className="bg-[#1e293b] rounded-xl p-4 border border-gray-700 hover:border-gray-500 transition-all flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shadow-sm group">
                                 <div className="flex items-start gap-4 flex-1">
@@ -155,7 +158,7 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
                                         <p className="text-gray-300 text-sm leading-relaxed">{log.details}</p>
                                     </div>
                                 </div>
-                                
+
                                 <div className="flex flex-col items-end gap-1 text-xs text-gray-500 bg-black/20 px-3 py-2 rounded-lg border border-white/5 w-full md:w-auto">
                                     <div className="flex items-center gap-1.5 text-gray-400">
                                         <CalendarIcon className="w-3 h-3" />
@@ -178,18 +181,29 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
                 )}
             </div>
 
-            {/* Confirmation Modal */}
-            {isConfirmOpen && (
-                <ConfirmationModal 
-                    title="تأكيد مسح السجل"
-                    message="هل أنت متأكد من رغبتك في حذف جميع سجلات المراقبة؟ لا يمكن التراجع عن هذا الإجراء."
-                    onClose={() => setIsConfirmOpen(false)}
-                    onConfirm={handleClearConfirm}
-                    confirmButtonText="نعم، مسح الكل"
-                    confirmVariant="danger"
-                />
+            {filteredLogs.length > displayLimit && (
+                <button
+                    onClick={() => setDisplayLimit(prev => prev + 20)}
+                    className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-xl transition-all"
+                >
+                    عرض المزيد ({filteredLogs.length - displayLimit} متبقي)
+                </button>
             )}
-        </div>
+
+            {/* Confirmation Modal */}
+            {
+                isConfirmOpen && (
+                    <ConfirmationModal
+                        title="تأكيد مسح السجل"
+                        message="هل أنت متأكد من رغبتك في حذف جميع سجلات المراقبة؟ لا يمكن التراجع عن هذا الإجراء."
+                        onClose={() => setIsConfirmOpen(false)}
+                        onConfirm={handleClearConfirm}
+                        confirmButtonText="نعم، مسح الكل"
+                        confirmVariant="danger"
+                    />
+                )
+            }
+        </div >
     );
 };
 

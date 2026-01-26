@@ -148,55 +148,55 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                 {/* Mobile Card View */}
                                 <div className="md:hidden divide-y divide-blue-900/50">
                                     {historyData.map((payment) => (
-                                        <div key={payment.id} className="p-5 hover:bg-blue-900/5 transition-colors relative">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-green-500/10 rounded-full border border-green-500/20">
-                                                        <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                                        <div key={payment.id} className="bg-[#1e293b] rounded-xl shadow-lg border-r-4 border-green-500 overflow-hidden mb-4">
+                                            {/* Header */}
+                                            <div className="p-4 border-b border-gray-700/50 flex justify-between items-start bg-gray-900/30">
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono text-lg font-black text-green-400 tracking-tighter">#{payment.id.slice(-6)}</span>
+                                                        <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/20">
+                                                            <CheckCircleIcon className="w-3 h-3" />
+                                                            تمت التسوية
+                                                        </span>
                                                     </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-sm font-bold text-green-400">تمت التسوية</span>
-                                                            <span className="text-[10px] text-gray-500 font-mono">#{payment.id.slice(-6)}</span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-400 mt-0.5">
-                                                            {getBusinessDate(payment.createdAt).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })}
-                                                            <span className="mx-1.5">•</span>
-                                                            {new Date(payment.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                                                        </p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-[10px] text-gray-400">{getBusinessDate(payment.createdAt).toLocaleDateString('ar-EG-u-nu-latn')}</span>
+                                                        <span className="text-[10px] text-gray-500 font-mono">{new Date(payment.createdAt).toLocaleTimeString('ar-EG-u-nu-latn', { hour: 'numeric', minute: 'numeric', hour12: true })}</span>
                                                     </div>
                                                 </div>
                                                 {currentUser?.role === 'admin' && (
                                                     <button
                                                         onClick={() => setDeleteId(payment.id)}
-                                                        className="p-2 -mt-2 -ml-2 text-gray-600 hover:text-red-500"
+                                                        className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"
                                                     >
-                                                        <XIcon className="w-5 h-5" />
+                                                        <XIcon className="w-4 h-4" />
                                                     </button>
                                                 )}
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-3 bg-black/20 p-3 rounded-xl border border-white/5 space-y-2">
-                                                <div className="col-span-2 flex justify-between items-center border-b border-white/5 pb-2 mb-1">
-                                                    <p className="text-xs text-gray-400">عدد الطلبات</p>
-                                                    <p className="text-sm font-bold text-white">{payment.verifiedCount} <span className="text-[10px] font-normal text-gray-500">طلب</span></p>
+                                            {/* Body */}
+                                            <div className="p-4 space-y-3">
+                                                <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-700/50">
+                                                    <span className="text-xs text-gray-400">عدد الطلبات</span>
+                                                    <span className="text-sm font-bold text-white">{payment.verifiedCount} طلب</span>
                                                 </div>
 
-                                                <div>
-                                                    <p className="text-[10px] text-green-400/80 mb-0.5">مستحقات المندوب</p>
-                                                    <p className="text-sm font-bold text-green-400">{payment.driverShare.toLocaleString('en-US', { maximumFractionDigits: 1 })}</p>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="p-2 bg-green-500/5 rounded-lg border border-green-500/10">
+                                                        <p className="text-[9px] text-green-500/70 mb-1">مستحقات المندوب</p>
+                                                        <p className="text-sm font-black text-green-400">{payment.driverShare.toLocaleString('en-US', { maximumFractionDigits: 1 })}</p>
+                                                    </div>
+                                                    <div className="p-2 bg-red-500/5 rounded-lg border border-red-500/10">
+                                                        <p className="text-[9px] text-red-500/70 mb-1">مستحقات التطبيق</p>
+                                                        <p className="text-sm font-black text-red-400">{payment.companyShare.toLocaleString('en-US', { maximumFractionDigits: 1 })}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-left">
-                                                    <p className="text-[10px] text-red-400/80 mb-0.5">مستحقات التطبيق</p>
-                                                    <p className="text-sm font-bold text-red-400">{payment.companyShare.toLocaleString('en-US', { maximumFractionDigits: 1 })}</p>
-                                                </div>
+                                            </div>
 
-                                                <div className="col-span-2 pt-2 border-t border-white/5 flex justify-between items-center mt-1">
-                                                    <p className="text-xs text-gray-300">المبلغ المسدد</p>
-                                                    <p className="text-lg font-bold text-white">
-                                                        {payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-xs font-normal text-gray-400">ج.م</span>
-                                                    </p>
-                                                </div>
+                                            {/* Footer */}
+                                            <div className="bg-gray-900/80 p-3 border-t border-gray-700/50 flex justify-between items-center">
+                                                <span className="text-xs text-gray-400">المبلغ المسدد</span>
+                                                <span className="text-lg font-black text-white">{payment.amount.toLocaleString('en-US')} <span className="text-[10px] font-normal text-gray-500">ج.م</span></span>
                                             </div>
                                         </div>
                                     ))}

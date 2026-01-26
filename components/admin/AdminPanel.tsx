@@ -491,7 +491,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 </div>
 
                 {/* Other views can be conditional to save memory, or become hidden-but-mounted if they are also heavy */}
-                {view === 'reports' && <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} />}
+                {view === 'reports' && <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} />}
                 {view === 'add_order' && <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={props.adminAddOrder} />}
                 {view === 'users' && <AdminUsersScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} onAdminAddUser={props.adminAddUser} setEditingUser={setEditingUser} onViewUser={setViewingUser} appName={fullAppName} currentUser={props.user} />}
                 {view === 'stores' && <AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} />}

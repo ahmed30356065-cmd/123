@@ -7,7 +7,9 @@ import useAndroidBack from '../../hooks/useAndroidBack';
 interface AdminReportsScreenProps {
     orders: Order[];
     users: User[];
+    users: User[];
     payments: Payment[];
+    currentUser: User;
 }
 
 // --- Components ---
@@ -498,7 +500,7 @@ const DailyReportModal: React.FC<{
 
 // --- Main Screen ---
 
-export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, users, payments }) => {
+export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, users, payments, currentUser }) => {
     const [criteriaModalOpen, setCriteriaModalOpen] = useState(false);
     const [reportType, setReportType] = useState<'driver' | 'merchant'>('driver');
     const [resultsModalOpen, setResultsModalOpen] = useState(false);
@@ -522,6 +524,30 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
             }
         });
 
+        // Monthly Calculation
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        const monthlyOrders = deliveredOrders.filter(o => {
+            const d = (o.deliveredAt as any)?.seconds ? new Date((o.deliveredAt as any).seconds * 1000) : new Date(o.deliveredAt || o.createdAt);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+
+        const monthlyRevenue = monthlyOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+        let monthlyCommission = 0;
+
+        monthlyOrders.forEach(o => {
+            const driver = users.find(u => u.id === o.driverId);
+            if (driver) {
+                if (driver.commissionType === 'fixed') {
+                    monthlyCommission += (driver.commissionRate || 0);
+                } else {
+                    monthlyCommission += (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
+                }
+            }
+        });
+
         return {
             orderCount: orders.length,
             deliveredCount: deliveredOrders.length,
@@ -531,9 +557,13 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
             totalDeliveryFees,
             totalCommission,
             merchantsCount: users.filter(u => u.role === 'merchant').length,
-            driversCount: users.filter(u => u.role === 'driver').length
+            driversCount: users.filter(u => u.role === 'driver').length,
+            monthlyRevenue,
+            monthlyCommission,
+            commission15Percent: monthlyCommission * 0.15
         };
     }, [orders, users]);
+
 
     const handleOpenCriteria = (type: 'driver' | 'merchant') => {
         setReportType(type);
@@ -611,13 +641,15 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
 
                 {/* Quick Actions for Detailed Reports */}
                 <div className="flex gap-3">
-                    <button
-                        onClick={() => setDailyReportOpen(true)}
-                        className="flex-1 bg-gradient-to-r from-blue-900 to-blue-800 hover:from-blue-800 hover:to-blue-700 border border-blue-700 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group shadow-lg shadow-blue-900/30"
-                    >
-                        <div className="p-2 bg-blue-500/20 rounded-full group-hover:bg-blue-500/30"><ClipboardListIcon className="w-5 h-5 text-blue-200" /></div>
-                        <span className="text-sm font-bold text-white">التقرير اليومي الشامل</span>
-                    </button>
+                    {currentUser.role === 'admin' && (
+                        <button
+                            onClick={() => setDailyReportOpen(true)}
+                            className="flex-1 bg-gradient-to-r from-blue-900 to-blue-800 hover:from-blue-800 hover:to-blue-700 border border-blue-700 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group shadow-lg shadow-blue-900/30"
+                        >
+                            <div className="p-2 bg-blue-500/20 rounded-full group-hover:bg-blue-500/30"><ClipboardListIcon className="w-5 h-5 text-blue-200" /></div>
+                            <span className="text-sm font-bold text-white">التقرير اليومي الشامل</span>
+                        </button>
+                    )}
                     <button
                         onClick={() => handleOpenCriteria('driver')}
                         className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group"
@@ -663,6 +695,34 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
                     trendValue="+5%"
                 />
             </div>
+
+            {/* Monthly Stats Row (Admin Only) */}
+            {currentUser.role === 'admin' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 p-5 rounded-2xl border border-purple-500/30 relative overflow-hidden">
+                        <div className="flex items-center gap-4 relative z-10">
+                            <div className="p-3 bg-purple-500/20 rounded-xl text-purple-300">
+                                <CalendarIcon className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-purple-200 font-bold mb-1">صافي أرباح الشهر الحالي</p>
+                                <h3 className="text-2xl font-black text-white">{stats.monthlyCommission.toLocaleString('en-US')} <span className="text-sm font-normal text-purple-300">ج.م</span></h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-orange-900/50 to-orange-800/30 p-5 rounded-2xl border border-orange-500/30 relative overflow-hidden">
+                        <div className="flex items-center gap-4 relative z-10">
+                            <div className="p-3 bg-orange-500/20 rounded-xl text-orange-300">
+                                <CoinsIcon className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-orange-200 font-bold mb-1">نسبة الشطارة (15%)</p>
+                                <h3 className="text-2xl font-black text-white">{stats.commission15Percent.toLocaleString('en-US')} <span className="text-sm font-normal text-orange-300">ج.م</span></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Operations Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -755,6 +815,6 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
                 orders={orders}
                 users={users}
             />
-        </div>
+        </div >
     );
 };
