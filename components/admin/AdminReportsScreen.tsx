@@ -57,7 +57,7 @@ const ReportCriteriaModal: React.FC<{
     }, [isOpen]);
 
     const filteredUsers = useMemo(() => {
-        return users.filter(u => u.role === type && (u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.phone?.includes(searchTerm)));
+        return users.filter(u => u?.role === type && (u?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u?.phone?.includes(searchTerm)));
     }, [users, type, searchTerm]);
 
     if (!isOpen) return null;
@@ -175,7 +175,7 @@ const ReportResultsModal: React.FC<{
     if (!isOpen || !reportData) return null;
 
     const { user, orders, summary, dateLabel } = reportData;
-    const isDriver = user.role === 'driver';
+    const isDriver = user?.role === 'driver';
 
     const formatDateTime = (dateInput: any) => {
         if (!dateInput) return '---';
@@ -335,7 +335,7 @@ const DailyReportModal: React.FC<{
         const driverPerformance: Record<string, { name: string, count: number, total: number }> = {};
 
         delivered.forEach(o => {
-            const driver = users.find(u => u.id === o.driverId);
+            const driver = users.find(u => u?.id === o.driverId);
             if (driver) {
                 // Commission Calc
                 if (driver.commissionType === 'fixed') {
@@ -513,7 +513,7 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
 
         let totalCommission = 0;
         deliveredOrders.forEach(o => {
-            const driver = users.find(u => u.id === o.driverId);
+            const driver = users.find(u => u?.id === o.driverId);
             if (driver) {
                 if (driver.commissionType === 'fixed') {
                     totalCommission += (driver.commissionRate || 0);
@@ -537,7 +537,7 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
         let monthlyCommission = 0;
 
         monthlyOrders.forEach(o => {
-            const driver = users.find(u => u.id === o.driverId);
+            const driver = users.find(u => u?.id === o.driverId);
             if (driver) {
                 if (driver.commissionType === 'fixed') {
                     monthlyCommission += (driver.commissionRate || 0);
@@ -555,8 +555,8 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
             totalRevenue,
             totalDeliveryFees,
             totalCommission,
-            merchantsCount: users.filter(u => u.role === 'merchant').length,
-            driversCount: users.filter(u => u.role === 'driver').length,
+            merchantsCount: users.filter(u => u?.role === 'merchant').length,
+            driversCount: users.filter(u => u?.role === 'driver').length,
             monthlyRevenue,
             monthlyCommission,
             commission15Percent: monthlyCommission * 0.15
@@ -570,7 +570,7 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
     };
 
     const generateReportData = (userId: string, dateRange: { type: 'all' | 'custom'; start?: string; end?: string }) => {
-        const user = users.find(u => u.id === userId);
+        const user = users.find(u => u?.id === userId);
         if (!user) return;
 
         let filteredOrders = orders.filter(o => user.role === 'driver' ? o.driverId === userId : o.merchantId === userId);
@@ -758,7 +758,7 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
                     </h3>
                     <div className="space-y-4">
                         {['restaurant', 'market', 'pharmacy'].map(cat => {
-                            const count = users.filter(u => u.role === 'merchant' && u.storeCategory === cat).length;
+                            const count = users.filter(u => u?.role === 'merchant' && u.storeCategory === cat).length;
                             const percentage = stats.merchantsCount > 0 ? (count / stats.merchantsCount) * 100 : 0;
                             return (
                                 <div key={cat} className="space-y-1">

@@ -168,7 +168,7 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
           onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined}
         />
       ) : null;
-      case 'reports': return userPermissions.includes('view_reports') ? <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} /> : null;
+      case 'reports': return userPermissions.includes('view_reports') ? <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} /> : null;
       case 'add_order': return <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={async (data) => { await props.adminAddOrder(data); }} />;
       case 'notifications': return (
         <NotificationsScreen

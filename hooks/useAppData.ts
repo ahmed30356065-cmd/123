@@ -161,10 +161,23 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 const conf = updateData as unknown as UpdateConfig;
                 setUpdateConfig(conf);
 
-                if (conf.isActive && conf.version !== appConfig.appVersion) {
-                    const skippedVersion = localStorage.getItem('skipped_update_version');
-                    if (conf.forceUpdate || skippedVersion !== conf.version) {
-                        setShowUpdate(true);
+                // STRICT VERSION CHECK LOGIC
+                // Only show update if Remote Version > Local Version (CURRENT_APP_VERSION)
+                // We use a simple semantic version comparator or string comparison if format is consistent
+                const localVer = '1.0.6'; // HARDCODED BUILD VERSION
+
+                if (conf.isActive && conf.version !== localVer) {
+                    // Normalize versions for comparison (remove 'v', 'version', spaces)
+                    const cleanRemote = conf.version.toLowerCase().replace(/[^0-9.]/g, '');
+                    const cleanLocal = localVer.toLowerCase().replace(/[^0-9.]/g, '');
+
+                    const isRemoteNewer = cleanRemote.localeCompare(cleanLocal, undefined, { numeric: true, sensitivity: 'base' }) > 0;
+
+                    if (isRemoteNewer) {
+                        const skippedVersion = localStorage.getItem('skipped_update_version');
+                        if (conf.forceUpdate || skippedVersion !== conf.version) {
+                            setShowUpdate(true);
+                        }
                     }
                 }
             }

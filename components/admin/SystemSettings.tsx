@@ -326,7 +326,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
         if (!file) return;
 
         if (!file.name.endsWith('.apk')) {
-            alert('الرجاء اختيار ملف بصيغة .apk');
+            showToast('الرجاء اختيار ملف بصيغة .apk', 'error');
             return;
         }
 
@@ -343,11 +343,21 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             console.error("APK Upload Error:", err);
             // Suggest CORS issue if it hangs or fails mysteriously
             const corsNote = "\n\nنصيحة: إذا توقف الرفع، تأكد من إعداد CORS على حاوية التخزين في Google Cloud Console.";
-            alert(`فشل رفع الملف. السبب: ${err.message || 'خطأ غير معروف'}${corsNote}`);
+            showToast(`فشل رفع الملف. السبب: ${err.message || 'خطأ غير معروف'}`, 'error');
         } finally {
             setIsUploadingApk(false);
             setUploadProgress(0);
             if (apkInputRef.current) apkInputRef.current.value = '';
+        }
+    };
+
+    // --- Toast Notification State ---
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; isLink?: boolean; url?: string } | null>(null);
+
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info', isLink?: boolean, url?: string) => {
+        setToast({ message, type, isLink, url });
+        if (!isLink) {
+            setTimeout(() => setToast(null), 4000);
         }
     };
 
@@ -390,7 +400,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             await Promise.all(notifyPromises);
 
             setIsSendingUpdate(false);
-            alert('تم نشر التحديث وإرسال الإشعارات للجميع بنجاح!');
+            showToast('تم نشر التحديث وإرسال الإشعارات للجميع بنجاح!', 'success');
 
             // Clear Form
             setUpdateVersion('');
@@ -400,7 +410,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
         } catch (error) {
             console.error("Failed to push update:", error);
             setIsSendingUpdate(false);
-            alert('حدث خطأ أثناء نشر التحديث.');
+            showToast('حدث خطأ أثناء نشر التحديث.', 'error');
         }
     };
 
@@ -417,10 +427,10 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             setUpdateVersion('');
             setUpdateUrl('');
             setUpdateDesc('');
-            alert('تم حذف التحديث بنجاح. لن تظهر نافذة التحديث لأي مستخدم بعد الآن.');
+            showToast('تم حذف التحديث بنجاح. لن تظهر نافذة التحديث لأي مستخدم بعد الآن.', 'success');
         } catch (error) {
             console.error("Failed to delete update:", error);
-            alert('فشل حذف التحديث.');
+            showToast('فشل حذف التحديث.', 'error');
         }
     };
 
@@ -430,6 +440,37 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
     const currentAppName = appName || 'GOO NOW';
     const [firstWord, ...restWords] = currentAppName.split(' ');
     const restOfName = restWords.join(' ');
+
+    const ToastNotification = () => {
+        if (!toast) return null;
+
+        return (
+            <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-[200] animate-slide-down">
+                <div className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[320px] max-w-md backdrop-blur-md border ${toast.type === 'success' ? 'bg-green-900/90 border-green-500/50 text-green-100' :
+                    toast.type === 'error' ? 'bg-red-900/90 border-red-500/50 text-red-100' :
+                        'bg-gray-800/90 border-gray-600/50 text-white'
+                    }`}>
+                    <div className={`p-2 rounded-full ${toast.type === 'success' ? 'bg-green-500/20 text-green-400' :
+                        toast.type === 'error' ? 'bg-red-500/20 text-red-400' :
+                            'bg-blue-500/20 text-blue-400'
+                        }`}>
+                        {toast.type === 'success' ? <CheckCircleIcon className="w-6 h-6" /> :
+                            toast.type === 'error' ? <XIcon className="w-6 h-6" /> :
+                                <BellIcon className="w-6 h-6" />}
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-bold text-sm">{toast.message}</p>
+                        {toast.url && (
+                            <a href={toast.url} target="_blank" rel="noreferrer" className="text-xs underline mt-1 block opacity-80 hover:opacity-100">عرض التفاصيل</a>
+                        )}
+                    </div>
+                    <button onClick={() => setToast(null)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+                        <XIcon className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        );
+    };
 
     if (isProcessing) {
         // ... (Existing Processing Overlay - Keep unchanged)
@@ -1038,6 +1079,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             {showSchemaModal && (
                 <SchemaModal onClose={closeModal} />
             )}
+            <ToastNotification />
         </div>
     );
 };

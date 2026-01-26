@@ -184,12 +184,7 @@ export const setAndroidRole = (role: string, userId?: string) => {
 
         // DEBUG: Tell the User what's happening
         // "System: Active Channels: merchants, merchant_123, all_users"
-        if (window.Android?.showAndroidNotification) {
-            // Short delay to allow unsubs to process
-            setTimeout(() => {
-                window.Android?.showAndroidNotification("النظام", `قنوات الإشعارات النشطة: ${channels.join(', ')}`);
-            }, 2000);
-        }
+
     }
 };
 
