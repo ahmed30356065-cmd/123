@@ -273,9 +273,9 @@ export const uploadFile = async (
     const app = firebase.app();
 
     // Check if Storage Bucket is available
-    if (app.options.storageBucket) {
+    if ((app.options as any).storageBucket) {
         try {
-            console.log(`[Upload] Attempting Storage upload to ${app.options.storageBucket}...`);
+            console.log(`[Upload] Attempting Storage upload to ${(app.options as any).storageBucket}...`);
             const storage = firebase.storage();
             const storageRef = storage.ref();
             const fileRef = storageRef.child(`${path}/${Date.now()}_${file.name}`);
@@ -345,6 +345,8 @@ export const sendExternalNotification = async (targetType: string, data: { title
             console.error("[Notification] Failed to generate access token");
             return false;
         }
+
+        console.log("[Notification] Access Token generated successfully.");
 
         const projectId = SERVICE_ACCOUNT.project_id;
 
@@ -425,7 +427,8 @@ export const subscribeWebToTopic = async (topic: string) => {
         const msg = firebase.messaging();
 
         // 1. Get Token
-        const token = await msg.getToken({ vapidKey: "YOUR_VAPID_KEY_IF_NEEDED" }); // Usually implicitly handled if manifest matches
+        // REMOVED: vapidKey: "YOUR_VAPID_KEY_IF_NEEDED" - Using default config
+        const token = await msg.getToken();
         if (!token) {
             console.warn("[WebNotification] No FCM token available.");
             return;

@@ -266,17 +266,27 @@ const App: React.FC = () => {
                         logAction('update', 'الطلبات', `تم تعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
                         firebaseService.sendExternalNotification('driver', { title: "طلب جديد مسند إليك", body: `تم إسناد الطلب ${id} إليك بتكلفة ${fe} ج.م`, targetId: dr, url: `/?target=order&id=${id}` });
                     }}
-                    adminAddOrder={(d) => {
+                    adminAddOrder={async (d) => {
                         const dataArray = Array.isArray(d) ? d : [d];
                         const newOrders: any[] = [];
                         let currentMax = orders.filter(o => o.id.startsWith('ORD-')).reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
+
+                        // Prepare orders first
                         dataArray.forEach(orderData => {
                             currentMax++;
                             const newId = `ORD-${currentMax}`;
                             newOrders.push({ ...orderData, id: newId, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request' });
-                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${newId} وهو متاح للتوصيل`, url: `/?target=order&id=${newId}` });
                         });
-                        firebaseService.batchSaveData('orders', newOrders);
+
+                        // Save to DB first to ensure data consistency
+                        await firebaseService.batchSaveData('orders', newOrders);
+
+                        // Then send notifications in parallel
+                        const notificationPromises = newOrders.map(order =>
+                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${order.id} وهو متاح للتوصيل`, url: `/?target=order&id=${order.id}` })
+                        );
+
+                        await Promise.all(notificationPromises);
                         logAction('create', 'الطلبات', `تم إضافة ${newOrders.length} طلبات جديدة`);
                     }}
                     adminAddUser={async (u) => {
