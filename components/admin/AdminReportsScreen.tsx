@@ -7,7 +7,6 @@ import useAndroidBack from '../../hooks/useAndroidBack';
 interface AdminReportsScreenProps {
     orders: Order[];
     users: User[];
-    users: User[];
     payments: Payment[];
     currentUser: User;
 }
@@ -667,34 +666,36 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
                 </div>
             </div>
 
-            {/* Financial Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StatBox
-                    title="إجمالي المبيعات"
-                    value={`${stats.totalRevenue.toLocaleString('en-US')} ج.م`}
-                    subValue="قيمة المنتجات التي تم تسليمها"
-                    icon={<DollarSignIcon className="w-6 h-6" />}
-                    color="bg-green-500"
-                    trend="up"
-                    trendValue="+12%"
-                />
-                <StatBox
-                    title="أرباح التوصيل"
-                    value={`${stats.totalDeliveryFees.toLocaleString('en-US')} ج.م`}
-                    subValue="إجمالي مصاريف الشحن المحصلة"
-                    icon={<TruckIconV2 className="w-6 h-6" />}
-                    color="bg-blue-500"
-                />
-                <StatBox
-                    title="عمولة التطبيق"
-                    value={`${stats.totalCommission.toLocaleString('en-US')} ج.م`}
-                    subValue="صافي ربح المنصة من التوصيل"
-                    icon={<TrendingUpIcon className="w-6 h-6" />}
-                    color="bg-red-500"
-                    trend="up"
-                    trendValue="+5%"
-                />
-            </div>
+            {/* Financial Cards (Admin Only) */}
+            {currentUser.role === 'admin' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <StatBox
+                        title="إجمالي المبيعات"
+                        value={`${stats.totalRevenue.toLocaleString('en-US')} ج.م`}
+                        subValue="قيمة المنتجات التي تم تسليمها"
+                        icon={<DollarSignIcon className="w-6 h-6" />}
+                        color="bg-green-500"
+                        trend="up"
+                        trendValue="+12%"
+                    />
+                    <StatBox
+                        title="أرباح التوصيل"
+                        value={`${stats.totalDeliveryFees.toLocaleString('en-US')} ج.م`}
+                        subValue="إجمالي مصاريف الشحن المحصلة"
+                        icon={<TruckIconV2 className="w-6 h-6" />}
+                        color="bg-blue-500"
+                    />
+                    <StatBox
+                        title="عمولة التطبيق"
+                        value={`${stats.totalCommission.toLocaleString('en-US')} ج.م`}
+                        subValue="صافي ربح المنصة من التوصيل"
+                        icon={<TrendingUpIcon className="w-6 h-6" />}
+                        color="bg-red-500"
+                        trend="up"
+                        trendValue="+5%"
+                    />
+                </div>
+            )}
 
             {/* Monthly Stats Row (Admin Only) */}
             {currentUser.role === 'admin' && (

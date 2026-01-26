@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { UploadIcon, CheckCircleIcon, XIcon, CloudIcon, BoltIcon, ClipboardListIcon, SettingsIcon, RocketIcon, DownloadIcon, LinkIcon, BellIcon } from '../icons';
-import { initFirebase, migrateLocalData as migrateFirebase, testConnection as testFirebase, sendExternalNotification, updateData, uploadFile } from '../../services/firebase';
+import { initFirebase, migrateLocalData as migrateFirebase, testConnection as testFirebase, sendExternalNotification, updateData, uploadFile, subscribeToCollection, deleteData } from '../../services/firebase';
 import { initSupabase, migrateLocalData as migrateSupabase, fetchSupabase, testConnection as testSupabase } from '../../services/supabase';
 import ConfirmationModal from './ConfirmationModal';
 import useAndroidBack from '../../hooks/useAndroidBack';
@@ -245,6 +245,26 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
     const [showSchemaModal, setShowSchemaModal] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // History State
+    const [historyLogs, setHistoryLogs] = useState<UpdateConfig[]>([]);
+
+    useEffect(() => {
+        let unsubscribe: () => void;
+        if (activeProvider === 'firebase') {
+            unsubscribe = subscribeToCollection('update_history', (data) => {
+                // Sort by releaseDate desc
+                const sorted = data.sort((a, b) => {
+                    const tA = a.releaseDate ? new Date(a.releaseDate).getTime() : 0;
+                    const tB = b.releaseDate ? new Date(b.releaseDate).getTime() : 0;
+                    return tB - tA;
+                });
+                setHistoryLogs(sorted);
+            });
+        }
+        return () => { if (unsubscribe) unsubscribe(); };
+    }, [activeProvider]);
+
     const apkInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -349,11 +369,15 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
         };
 
         try {
-            // 1. Save to DB
+            // 1. Save to DB (Active Config)
             await updateData('settings', 'app_update', updateConfig);
 
-            // 2. Send Notifications to All Roles
-            const roles = ['driver', 'merchant', 'customer', 'admin']; // 'customer' maps to 'user' in backend
+            // 1.1 Save to History Log
+            await updateData('update_history', updateConfig.id, updateConfig);
+
+            // 2. Send Notifications to Target Roles (Excluding Admin)
+            // User requested: "Don't send update notification to Admin, send to Supervisor only"
+            const roles = ['driver', 'merchant', 'customer', 'supervisor'];
 
             const notifyPromises = roles.map(role =>
                 sendExternalNotification(role, {
@@ -377,6 +401,26 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             console.error("Failed to push update:", error);
             setIsSendingUpdate(false);
             alert('حدث خطأ أثناء نشر التحديث.');
+        }
+    };
+
+    const handleDeleteUpdate = async () => {
+        try {
+            // Disable current update
+            await updateData('settings', 'app_update', {
+                isActive: false,
+                id: null,
+                url: null,
+                version: null
+            });
+
+            setUpdateVersion('');
+            setUpdateUrl('');
+            setUpdateDesc('');
+            alert('تم حذف التحديث بنجاح. لن تظهر نافذة التحديث لأي مستخدم بعد الآن.');
+        } catch (error) {
+            console.error("Failed to delete update:", error);
+            alert('فشل حذف التحديث.');
         }
     };
 
@@ -675,7 +719,15 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                     </div>
                 </div>
 
-                <div className="mt-6 flex justify-end">
+                <div className="mt-6 flex justify-end gap-3">
+                    <button
+                        onClick={handleDeleteUpdate}
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2 group border border-red-500/50"
+                    >
+                        <XIcon className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                        حذف التحديث الحالي
+                    </button>
+
                     <button
                         onClick={() => setShowUpdateConfirm(true)}
                         disabled={!updateVersion || !updateUrl || isSendingUpdate || isUploadingApk}
@@ -697,6 +749,46 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
 
                 {/* Visual Background Decoration */}
                 <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            </div>
+
+            {/* Update History Log */}
+            <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                <h3 className="text-xl font-bold text-gray-200 mb-4 flex items-center gap-2">
+                    <ClipboardListIcon className="w-5 h-5 text-gray-400" />
+                    سجل التحديثات
+                </h3>
+                <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
+                    {historyLogs.length > 0 ? (
+                        historyLogs.map((log) => (
+                            <div key={log.id} className="bg-gray-700/50 p-3 rounded-lg flex items-center justify-between border border-gray-600/30">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-white font-bold">{log.version}</span>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded ${log.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-600 text-gray-400'}`}>
+                                            {log.isActive ? 'نشط' : 'أرشيف'}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">{new Date(log.releaseDate || new Date()).toLocaleDateString('ar-EG')}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm('هل أنت متأكد من حذف هذا السجل؟')) {
+                                                await deleteData('update_history', log.id);
+                                                if (log.isActive) await handleDeleteUpdate(); // Also deactivate if it was the active one
+                                            }
+                                        }}
+                                        className="text-red-400 hover:text-red-300 p-2"
+                                    >
+                                        <XIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-center text-gray-500 text-sm py-4">لا يوجد سجل تحديثات.</p>
+                    )}
+                </div>
             </div>
 
             {/* App Info Settings */}

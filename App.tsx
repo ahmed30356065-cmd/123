@@ -216,7 +216,7 @@ const App: React.FC = () => {
         <div className="h-full w-full hardware-accelerated">
             {notification && <AppNotification key={notification.id} {...notification} onClose={() => setNotification(null)} />}
 
-            {showUpdate && updateConfig && (
+            {showUpdate && updateConfig && currentUser.role !== 'admin' && !(currentUser.role === 'merchant' && !NativeBridge.isAndroid()) && (
                 <UpdateScreen
                     config={updateConfig}
                     onDismiss={() => { setShowUpdate(false); /* Session dismiss only */ }}
