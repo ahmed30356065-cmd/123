@@ -213,12 +213,12 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
     // ... (Existing state initialization)
     const [viewProvider, setViewProvider] = useState<'firebase' | 'supabase'>('firebase');
     const [activeProvider, setActiveProvider] = useState<'firebase' | 'supabase' | null>(null);
-    
+
     // App Config State
     const [appName, setAppName] = useState(appConfig?.appName || 'GOO NOW');
     const [appVersion, setAppVersion] = useState(appConfig?.appVersion || 'VERSION 1.0.5');
     const [isSavingAppConfig, setIsSavingAppConfig] = useState(false);
-    
+
     const [configJson, setConfigJson] = useState('');
     const [supabaseUrl, setSupabaseUrl] = useState('');
     const [supabaseKey, setSupabaseKey] = useState('');
@@ -226,10 +226,10 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
     const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error' | 'migrating'>('idle');
     const [errorMessage, setErrorMessage] = useState('');
     const [isConfigured, setIsConfigured] = useState(false);
-    
+
     const [isProcessing, setIsProcessing] = useState(false);
     const [processStep, setProcessStep] = useState('');
-    
+
     // Update Logic State
     const [updateVersion, setUpdateVersion] = useState('');
     const [updateUrl, setUpdateUrl] = useState('');
@@ -265,7 +265,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
     const pushModalState = (modalName: string) => {
         try {
             window.history.pushState({ view: 'settings', modal: modalName }, '', window.location.pathname);
-        } catch (e) {}
+        } catch (e) { }
     };
 
     const closeModal = () => {
@@ -298,7 +298,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
         }
         setTimeout(() => setIsSavingAppConfig(false), 1000);
     };
-    
+
     // ... (Existing File Upload & Database Logic - Keep unchanged)
 
     const handleApkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -318,7 +318,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                 setUploadProgress(Math.round(progress));
             });
             setUpdateUrl(url);
-            setUpdateType('apk'); 
+            setUpdateType('apk');
         } catch (err: any) {
             console.error("APK Upload Error:", err);
             // Suggest CORS issue if it hangs or fails mysteriously
@@ -354,8 +354,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
 
             // 2. Send Notifications to All Roles
             const roles = ['driver', 'merchant', 'customer', 'admin']; // 'customer' maps to 'user' in backend
-            
-            const notifyPromises = roles.map(role => 
+
+            const notifyPromises = roles.map(role =>
                 sendExternalNotification(role, {
                     title: `🚀 تحديث جديد ${updateVersion}`,
                     body: updateDesc || "نسخة جديدة من التطبيق متوفرة الآن بميزات وتحسينات جديدة. اضغط للتحديث.",
@@ -367,7 +367,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
 
             setIsSendingUpdate(false);
             alert('تم نشر التحديث وإرسال الإشعارات للجميع بنجاح!');
-            
+
             // Clear Form
             setUpdateVersion('');
             setUpdateUrl('');
@@ -379,7 +379,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             alert('حدث خطأ أثناء نشر التحديث.');
         }
     };
-    
+
     // ... (Existing Rendering Logic for Overlay & Modals)
 
     // Split name logic for the overlay display
@@ -391,8 +391,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
         // ... (Existing Processing Overlay - Keep unchanged)
         return (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#111827] animate-fadeIn">
-                 {/* ... existing pulse logic ... */}
-                 <div className="text-5xl font-bold mb-8 flex items-center gap-2">
+                {/* ... existing pulse logic ... */}
+                <div className="text-5xl font-bold mb-8 flex items-center gap-2">
                     {viewProvider === 'firebase' ? <CloudIcon className="w-12 h-12 text-red-500" /> : <BoltIcon className="w-12 h-12 text-green-500" />}
                     <div>
                         <span className="text-red-500">{firstWord}</span>
@@ -407,9 +407,9 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             </div>
         );
     }
-    
+
     const isActive = activeProvider === viewProvider;
-    
+
     const handleTriggerUpload = () => {
         if (fileInputRef.current) {
             fileInputRef.current.click();
@@ -425,11 +425,11 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             try {
                 const text = event.target?.result as string;
                 const json = JSON.parse(text);
-                
+
                 let webConfig = {};
 
                 if (json.project_info && json.client) {
-                    const client = json.client[0]; 
+                    const client = json.client[0];
                     const projectInfo = json.project_info;
                     webConfig = {
                         apiKey: client.api_key?.[0]?.current_key,
@@ -446,9 +446,9 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                     setStatus('idle');
                     setErrorMessage('');
                 } else {
-                     setErrorMessage('الملف لا يحتوي على البيانات المطلوبة.');
-                     setStatus('error');
-                     return;
+                    setErrorMessage('الملف لا يحتوي على البيانات المطلوبة.');
+                    setStatus('error');
+                    return;
                 }
 
                 setConfigJson(safeStringify(webConfig));
@@ -461,7 +461,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
         reader.readAsText(file);
         e.target.value = '';
     };
-    
+
     const handleSave = async () => {
         // ... (Keep existing handleSave logic intact)
         try {
@@ -512,7 +512,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             console.error(e);
         }
     };
-    
+
     // Helper to strictly deduplicate data before sending to migration
     const deduplicateLocalData = (data: any[]) => {
         if (!Array.isArray(data)) return [];
@@ -547,19 +547,19 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             await migrateFn('payments', loadFromLocal('payments'));
             await migrateFn('reset_requests', loadFromLocal('passwordResetRequests'));
             setProcessStep("جاري نقل العروض والصور...");
-            await migrateFn('slider_images', loadFromLocal('sliderImages')); 
+            await migrateFn('slider_images', loadFromLocal('sliderImages'));
         } catch (migrationError: any) {
             console.error("Migration failed:", migrationError);
             if (migrationError.message && (migrationError.message.includes('column') || migrationError.message.includes('relation'))) {
-                 setErrorMessage("خطأ في هيكل قاعدة البيانات. يرجى تشغيل كود SQL الإصلاحي.");
+                setErrorMessage("خطأ في هيكل قاعدة البيانات. يرجى تشغيل كود SQL الإصلاحي.");
             }
             throw new Error(`${migrationError.message}`);
         }
     };
 
     const confirmDisconnect = () => {
-         // ... (Keep existing disconnect logic)
-        closeModal(); 
+        // ... (Keep existing disconnect logic)
+        closeModal();
         setIsProcessing(true);
         setProcessStep("جاري قطع الاتصال بقاعدة البيانات...");
         setTimeout(() => {
@@ -583,47 +583,6 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                 <p className="text-gray-400">تحكم في اسم التطبيق، التحديثات، وإعدادات قاعدة البيانات.</p>
             </div>
 
-            {/* App Info Settings */}
-            <div className="bg-gray-800 p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-gray-200 flex items-center gap-2">
-                        <SettingsIcon className="w-5 h-5 text-blue-400" />
-                        معلومات التطبيق
-                    </h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">اسم التطبيق</label>
-                        <input 
-                            type="text" 
-                            value={appName}
-                            onChange={(e) => setAppName(e.target.value)}
-                            placeholder="GOO NOW"
-                            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">رقم الإصدار الحالي</label>
-                        <input 
-                            type="text" 
-                            value={appVersion}
-                            onChange={(e) => setAppVersion(e.target.value)}
-                            placeholder="VERSION 1.0.5"
-                            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                    </div>
-                </div>
-                <div className="mt-4 flex justify-end">
-                    <button 
-                        onClick={handleSaveAppConfig}
-                        disabled={isSavingAppConfig}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-lg disabled:opacity-50"
-                    >
-                        {isSavingAppConfig ? 'جاري الحفظ...' : <>حفظ التغييرات <CheckCircleIcon className="w-4 h-4" /></>}
-                    </button>
-                </div>
-            </div>
-
             {/* Update Management Section */}
             <div className="bg-gray-800 p-6 rounded-xl shadow-lg border-t-4 border-purple-500 relative overflow-hidden">
                 <div className="flex items-center justify-between mb-6">
@@ -632,12 +591,12 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         إرسال تحديث جديد
                     </h3>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-400 mb-2">رقم الإصدار الجديد</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={updateVersion}
                             onChange={(e) => setUpdateVersion(e.target.value)}
                             placeholder="مثال: 1.1.0"
@@ -645,31 +604,31 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         />
                     </div>
                     <div>
-                         <label className="block text-sm font-medium text-gray-400 mb-2">نوع التحديث</label>
-                         <div className="flex bg-gray-700 p-1 rounded-lg">
-                            <button 
-                                onClick={() => setUpdateType('apk')} 
+                        <label className="block text-sm font-medium text-gray-400 mb-2">نوع التحديث</label>
+                        <div className="flex bg-gray-700 p-1 rounded-lg">
+                            <button
+                                onClick={() => setUpdateType('apk')}
                                 className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${updateType === 'apk' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
                             >
                                 <DownloadIcon className="w-4 h-4 inline ml-1" /> تطبيق (APK)
                             </button>
-                            <button 
-                                onClick={() => setUpdateType('link')} 
+                            <button
+                                onClick={() => setUpdateType('link')}
                                 className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${updateType === 'link' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
                             >
                                 <LinkIcon className="w-4 h-4 inline ml-1" /> رابط (Link)
                             </button>
-                         </div>
+                        </div>
                     </div>
-                    
+
                     <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-400 mb-2">رابط التحميل / ملف التطبيق</label>
-                        
+
                         <div className="flex gap-2 items-center">
-                             {/* URL Input */}
-                             <div className="relative flex-1">
-                                <input 
-                                    type="url" 
+                            {/* URL Input */}
+                            <div className="relative flex-1">
+                                <input
+                                    type="url"
                                     value={updateUrl}
                                     onChange={(e) => setUpdateUrl(e.target.value)}
                                     placeholder={isUploadingApk ? `جاري الرفع... ${uploadProgress}%` : "https://..."}
@@ -681,33 +640,33 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                                 )}
                                 {isUploadingApk && (
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                         <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                                        <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                                     </div>
                                 )}
-                             </div>
+                            </div>
 
-                             {/* Upload Button */}
-                             <button 
+                            {/* Upload Button */}
+                            <button
                                 onClick={() => apkInputRef.current?.click()}
                                 disabled={isUploadingApk}
                                 className="px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg border border-gray-600 transition-colors flex items-center justify-center"
                                 title="رفع ملف APK من الجهاز"
                             >
                                 <UploadIcon className="w-5 h-5" />
-                             </button>
-                             <input 
-                                ref={apkInputRef} 
-                                type="file" 
-                                accept=".apk" 
-                                className="hidden" 
-                                onChange={handleApkUpload} 
-                             />
+                            </button>
+                            <input
+                                ref={apkInputRef}
+                                type="file"
+                                accept=".apk"
+                                className="hidden"
+                                onChange={handleApkUpload}
+                            />
                         </div>
                     </div>
 
                     <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-400 mb-2">وصف التحديث (ما الجديد؟)</label>
-                        <textarea 
+                        <textarea
                             value={updateDesc}
                             onChange={(e) => setUpdateDesc(e.target.value)}
                             placeholder="اكتب تفاصيل التحديث هنا..."
@@ -717,7 +676,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                 </div>
 
                 <div className="mt-6 flex justify-end">
-                    <button 
+                    <button
                         onClick={() => setShowUpdateConfirm(true)}
                         disabled={!updateVersion || !updateUrl || isSendingUpdate || isUploadingApk}
                         className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 group"
@@ -735,9 +694,50 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         )}
                     </button>
                 </div>
-                
+
                 {/* Visual Background Decoration */}
                 <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            </div>
+
+            {/* App Info Settings */}
+            <div className="bg-gray-800 p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-200 flex items-center gap-2">
+                        <SettingsIcon className="w-5 h-5 text-blue-400" />
+                        معلومات التطبيق
+                    </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">اسم التطبيق</label>
+                        <input
+                            type="text"
+                            value={appName}
+                            onChange={(e) => setAppName(e.target.value)}
+                            placeholder="GOO NOW"
+                            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">رقم الإصدار الحالي</label>
+                        <input
+                            type="text"
+                            value={appVersion}
+                            onChange={(e) => setAppVersion(e.target.value)}
+                            placeholder="VERSION 1.0.5"
+                            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                </div>
+                <div className="mt-4 flex justify-end">
+                    <button
+                        onClick={handleSaveAppConfig}
+                        disabled={isSavingAppConfig}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-lg disabled:opacity-50"
+                    >
+                        {isSavingAppConfig ? 'جاري الحفظ...' : <>حفظ التغييرات <CheckCircleIcon className="w-4 h-4" /></>}
+                    </button>
+                </div>
             </div>
 
             {/* Database Provider Selector (Existing) */}
@@ -749,7 +749,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             </div>
             {/* ... Existing Database Logic ... */}
             <div className="flex bg-gray-800 p-1 rounded-lg max-w-md mx-auto mb-6 relative">
-                <button 
+                <button
                     onClick={() => { setViewProvider('firebase'); setErrorMessage(''); }}
                     className={`flex-1 py-2 px-4 rounded-md font-bold transition-colors flex items-center justify-center gap-2 relative ${viewProvider === 'firebase' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}
                 >
@@ -759,7 +759,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         <span className="absolute top-2 left-2 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-gray-800 animate-pulse"></span>
                     )}
                 </button>
-                <button 
+                <button
                     onClick={() => { setViewProvider('supabase'); setErrorMessage(''); }}
                     className={`flex-1 py-2 px-4 rounded-md font-bold transition-colors flex items-center justify-center gap-2 relative ${viewProvider === 'supabase' ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white'}`}
                 >
@@ -772,7 +772,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             </div>
 
             <div className={`bg-gray-800 p-6 rounded-xl shadow-lg border-t-4 ${isActive ? 'border-green-500' : 'border-red-500'}`}>
-                 <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-gray-200">
                         {viewProvider === 'firebase' ? 'إعداد Firebase' : 'إعداد Supabase'}
                     </h3>
@@ -783,7 +783,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                 </div>
 
                 {viewProvider === 'firebase' ? (
-                     <div className="space-y-4">
+                    <div className="space-y-4">
                         {!isConfigured && (
                             <div className="bg-blue-900/30 border border-blue-500/30 p-4 rounded-lg mb-6 text-sm text-blue-200">
                                 <p className="font-bold mb-1">طريقة التفعيل:</p>
@@ -795,7 +795,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         )}
                         <div>
                             <p className="block text-sm font-medium text-gray-400 mb-2">ملف التكوين (google-services.json)</p>
-                            <div 
+                            <div
                                 onClick={handleTriggerUpload}
                                 className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer hover:bg-gray-700 transition-colors"
                             >
@@ -806,18 +806,18 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                             </div>
                             <input ref={fileInputRef} type="file" className="hidden" accept=".json" onChange={handleFileUpload} />
                         </div>
-                         {configJson && !errorMessage && (
+                        {configJson && !errorMessage && (
                             <div className="bg-[#0f172a] border border-gray-700 rounded-xl p-4 mt-4 relative group">
                                 <div className="flex justify-between items-center mb-2 border-b border-gray-700/50 pb-2">
-                                     <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2">
                                         <CheckCircleIcon className="w-4 h-4 text-green-500" />
                                         <h4 className="text-sm font-bold text-white">ملف التكوين الحالي (Active Config)</h4>
-                                     </div>
-                                     <span className="text-[10px] font-mono bg-blue-900/30 text-blue-400 px-2 py-1 rounded border border-blue-500/20">
+                                    </div>
+                                    <span className="text-[10px] font-mono bg-blue-900/30 text-blue-400 px-2 py-1 rounded border border-blue-500/20">
                                         {(() => {
                                             try { return JSON.parse(configJson).projectId; } catch { return 'Unknown'; }
                                         })()}
-                                     </span>
+                                    </span>
                                 </div>
                                 <div className="max-h-32 overflow-y-auto custom-scrollbar">
                                     <pre className="text-[10px] text-green-400 font-mono whitespace-pre-wrap">
@@ -833,7 +833,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                 ) : (
                     <div className="space-y-4">
                         {!isConfigured && (
-                             <div className="bg-blue-900/30 border border-blue-500/30 p-4 rounded-lg mb-6 text-sm text-blue-200">
+                            <div className="bg-blue-900/30 border border-blue-500/30 p-4 rounded-lg mb-6 text-sm text-blue-200">
                                 <p className="font-bold mb-1">طريقة التفعيل:</p>
                                 <ol className="list-decimal list-inside space-y-1">
                                     <li>أنشئ مشروعاً جديداً في Supabase.</li>
@@ -841,7 +841,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                                     <li>نفذ الكود في <strong>SQL Editor</strong> داخل Supabase.</li>
                                     <li>انسخ <code>Project URL</code> و <code>Anon Key</code>.</li>
                                 </ol>
-                                <button 
+                                <button
                                     onClick={() => { pushModalState('schema'); setShowSchemaModal(true); }}
                                     className="mt-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm transition-colors flex items-center"
                                 >
@@ -852,8 +852,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         )}
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-2">Project URL</label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 value={supabaseUrl}
                                 onChange={(e) => setSupabaseUrl(e.target.value)}
                                 placeholder="https://xyz.supabase.co"
@@ -862,8 +862,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-2">API Key (anon/public)</label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 value={supabaseKey}
                                 onChange={(e) => setSupabaseKey(e.target.value)}
                                 placeholder="eyJhbGciOiJIUzI1NiIsInR..."
@@ -872,7 +872,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         </div>
                     </div>
                 )}
-                 {errorMessage && (
+                {errorMessage && (
                     <div className="mt-4 p-4 bg-red-900/50 border border-red-500/50 rounded-lg flex flex-col items-start gap-2 text-red-200 text-sm">
                         <div className="flex items-start gap-2">
                             <XIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -882,7 +882,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                             </div>
                         </div>
                         {(errorMessage.includes('RLS') || errorMessage.includes('SQL') || errorMessage.includes('policy') || errorMessage.includes('column')) && (
-                             <button 
+                            <button
                                 onClick={() => { pushModalState('schema'); setShowSchemaModal(true); }}
                                 className="mt-2 mr-7 text-blue-300 hover:text-blue-200 underline text-xs"
                             >
@@ -891,7 +891,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         )}
                     </div>
                 )}
-                
+
                 <div className="flex gap-4 pt-6 border-t border-gray-700 mt-6">
                     {!isActive ? (
                         <button
@@ -908,7 +908,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                             <span>النظام يعمل حالياً</span>
                         </div>
                     )}
-                    
+
                     {isActive && (
                         <button
                             onClick={() => { pushModalState('disconnect'); setShowDisconnectConfirm(true); }}
@@ -922,7 +922,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
 
             {/* Confirm Update Modal */}
             {showUpdateConfirm && (
-                <ConfirmationModal 
+                <ConfirmationModal
                     title="تأكيد نشر التحديث"
                     message="هل أنت متأكد من رغبتك في إرسال هذا التحديث لجميع المستخدمين؟ سيتم إرسال إشعار فوري للجميع."
                     onClose={() => setShowUpdateConfirm(false)}
@@ -933,7 +933,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             )}
 
             {showDisconnectConfirm && (
-                <ConfirmationModal 
+                <ConfirmationModal
                     title="تأكيد إيقاف المزامنة"
                     message="هل أنت متأكد من رغبتك في قطع الاتصال بقاعدة البيانات السحابية؟ سيعود التطبيق للعمل في الوضع المحلي."
                     onClose={closeModal}
