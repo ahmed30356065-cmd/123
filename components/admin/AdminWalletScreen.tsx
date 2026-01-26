@@ -73,9 +73,11 @@ interface AdminWalletScreenProps {
     payments: Payment[];
     updateUser: (userId: string, updatedData: Partial<User>) => void;
     handleDriverPayment: (driverId: string) => void;
+    onDeletePayment: (paymentId: string) => void;
+    currentUser: User;
 }
 
-const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, payments, updateUser, handleDriverPayment }) => {
+const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, payments, updateUser, handleDriverPayment, onDeletePayment, currentUser }) => {
     const [historyDriver, setHistoryDriver] = useState<User | null>(null);
     const [payingDriverInfo, setPayingDriverInfo] = useState<{ driver: User; amount: number } | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);

@@ -30,11 +30,15 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
             companyShare = totalFees * ((driver.commissionRate || 0) / 100);
         }
 
+        const driverShare = totalFees - companyShare;
+
         return {
             ...payment,
             verifiedCount: count,
-            verifiedAmount: companyShare,
+            companyShare: companyShare, // App Dues
+            driverShare: driverShare,   // Driver Dues
             verifiedTotalCollected: totalFees,
+            verifiedAmount: payment.amount, // Keep original simplified, or use companyShare if payment is exact
             isValid: count > 0 // If 0, it means all orders in this payment were deleted/cancelled
         };
     };
@@ -93,10 +97,11 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                         <thead className="bg-[#1e293b] border-b border-blue-800">
                                             <tr>
                                                 <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">رقم العملية</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">التاريخ (يومية)</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">التاريخ</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">الطلبات</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">التحصيل</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-blue-300 uppercase tracking-wider">المسدد</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-green-400 uppercase tracking-wider">مستحقات المندوب</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-red-400 uppercase tracking-wider">مستحقات التطبيق</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-white uppercase tracking-wider">المبلغ المسدد</th>
                                                 {currentUser?.role === 'admin' && <th className="px-6 py-4 text-xs font-bold text-red-400 uppercase tracking-wider">إجراءات</th>}
                                             </tr>
                                         </thead>
@@ -115,11 +120,14 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                                     <td className="px-6 py-4 text-sm text-gray-300 font-medium">
                                                         {payment.verifiedCount}
                                                     </td>
-                                                    <td className="px-6 py-4 text-sm text-gray-300">
-                                                        {payment.verifiedTotalCollected.toLocaleString('en-US', { minimumFractionDigits: 1 })}
+                                                    <td className="px-6 py-4 text-sm text-green-400">
+                                                        {payment.driverShare.toLocaleString('en-US', { minimumFractionDigits: 1 })}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-red-400">
+                                                        {payment.companyShare.toLocaleString('en-US', { minimumFractionDigits: 1 })}
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-white font-bold">
-                                                        {payment.verifiedAmount.toLocaleString('en-US', { minimumFractionDigits: 1 })} ج.م
+                                                        {payment.amount.toLocaleString('en-US', { minimumFractionDigits: 1 })} ج.م
                                                     </td>
                                                     {currentUser?.role === 'admin' && (
                                                         <td className="px-6 py-4">
@@ -168,17 +176,25 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                                 )}
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4 bg-black/20 p-4 rounded-xl border border-white/5">
+                                            <div className="grid grid-cols-2 gap-3 bg-black/20 p-3 rounded-xl border border-white/5 space-y-2">
+                                                <div className="col-span-2 flex justify-between items-center border-b border-white/5 pb-2 mb-1">
+                                                    <p className="text-xs text-gray-400">عدد الطلبات</p>
+                                                    <p className="text-sm font-bold text-white">{payment.verifiedCount} <span className="text-[10px] font-normal text-gray-500">طلب</span></p>
+                                                </div>
+
                                                 <div>
-                                                    <p className="text-[10px] text-gray-500 mb-1">المبلغ المسدد</p>
-                                                    <p className="text-lg font-bold text-white">
-                                                        {payment.verifiedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-xs font-normal text-gray-400">ج.م</span>
-                                                    </p>
+                                                    <p className="text-[10px] text-green-400/80 mb-0.5">مستحقات المندوب</p>
+                                                    <p className="text-sm font-bold text-green-400">{payment.driverShare.toLocaleString('en-US', { maximumFractionDigits: 1 })}</p>
                                                 </div>
                                                 <div className="text-left">
-                                                    <p className="text-[10px] text-gray-500 mb-1">عدد الطلبات</p>
+                                                    <p className="text-[10px] text-red-400/80 mb-0.5">مستحقات التطبيق</p>
+                                                    <p className="text-sm font-bold text-red-400">{payment.companyShare.toLocaleString('en-US', { maximumFractionDigits: 1 })}</p>
+                                                </div>
+
+                                                <div className="col-span-2 pt-2 border-t border-white/5 flex justify-between items-center mt-1">
+                                                    <p className="text-xs text-gray-300">المبلغ المسدد</p>
                                                     <p className="text-lg font-bold text-white">
-                                                        {payment.verifiedCount} <span className="text-xs font-normal text-gray-400">طلب</span>
+                                                        {payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-xs font-normal text-gray-400">ج.م</span>
                                                     </p>
                                                 </div>
                                             </div>
