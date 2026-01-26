@@ -313,31 +313,30 @@ export const sendExternalNotification = async (targetType: string, data: { title
     try {
         const rawRole = targetType.toLowerCase();
 
-        // 1. Normalize Role for Topic Matching (Must STRICTLY match NativeBridge logic)
-        // NativeBridge Logic:
-        // - customer -> user
-        // - supervisor -> KEEPS supervisor (Decoupled from admin)
+        // 1. Normalize Role
         let topicRole = rawRole;
         if (rawRole === 'customer') topicRole = 'user';
 
-        // REMOVED: if (rawRole === 'supervisor') topicRole = 'admin'; 
+        // 2. Determine Topics (Dual Mode: V1 & V2)
+        const topics: string[] = [];
 
-        // 2. Determine Accurate Topic (NUCLEAR FIX: Versioning to v2)
-        let targetTopic = "";
         if (data.targetId && data.targetId !== 'all' && data.targetId !== 'multiple') {
-            // Private Channel: e.g., 'driver_123_v2', 'user_456_v2'
-            targetTopic = `${topicRole}_${data.targetId}_v2`;
+            // Private Channel
+            topics.push(`${topicRole}_${data.targetId}_v2`); // V2 (New)
+            topics.push(`${topicRole}_${data.targetId}`);    // V1 (Legacy)
         } else {
-            // General Channel logic (Pluralization for non-admins)
+            // General Channel
             if (topicRole === 'admin') {
-                targetTopic = 'admin_v2';
+                topics.push('admin_v2'); // V2
+                topics.push('admin');    // V1
             } else {
-                // driver -> drivers_v2, merchant -> merchants_v2, user -> users_v2, supervisor -> supervisors_v2
-                targetTopic = `${topicRole}s_v2`;
+                // Pluralize: driver -> drivers
+                topics.push(`${topicRole}s_v2`); // V2
+                topics.push(`${topicRole}s`);    // V1
             }
         }
 
-        console.log(`[Notification] Preparing to send to topic: ${targetTopic}`);
+        console.log(`[Notification] Preparing to send to topics: ${topics.join(', ')}`);
 
         // 3. Get OAuth Token Client-Side
         const accessToken = await getFcmV1AccessToken();
@@ -346,72 +345,70 @@ export const sendExternalNotification = async (targetType: string, data: { title
             return false;
         }
 
-        console.log("[Notification] Access Token generated successfully.");
-
         const projectId = SERVICE_ACCOUNT.project_id;
 
-        // 4. Send via FCM HTTP v1 API with High Priority Android Config
-        // This structure ensures wake-up even in Doze mode
-        const payload = {
-            message: {
-                topic: targetTopic,
-                notification: {
-                    title: data.title,
-                    body: data.body
-                },
-                data: {
-                    // Critical fields for Android processing
-                    click_action: "FLUTTER_NOTIFICATION_CLICK", // Standard for many wrappers
-                    type: "order_update",
-                    url: data.url || '/',
-                    title: data.title,
-                    body: data.body,
-                    target_id: data.targetId || '',
-                    timestamp: new Date().toISOString(),
-                    sound: "default"
-                },
-                android: {
-                    priority: "HIGH", // Forces wake-up
-                    ttl: "2419200s", // 28 Days (Keeps trying if device is off)
+        // 4. Send to ALL topics in parallel
+        const sendPromises = topics.map(async (topic) => {
+            const payload = {
+                message: {
+                    topic: topic,
                     notification: {
-                        channel_id: "high_importance_channel", // Must match Android Manifest
-                        sound: "default",
-                        default_sound: true,
-                        default_vibrate_timings: true,
-                        notification_priority: "PRIORITY_HIGH", // Correct field name for V1
-                        visibility: "PUBLIC"
-                    }
-                },
-                apns: {
-                    headers: {
-                        "apns-priority": "10", // High priority for iOS
+                        title: data.title,
+                        body: data.body
                     },
-                    payload: {
-                        aps: {
+                    data: {
+                        click_action: "FLUTTER_NOTIFICATION_CLICK",
+                        type: "order_update",
+                        url: data.url || '/',
+                        title: data.title,
+                        body: data.body,
+                        target_id: data.targetId || '',
+                        timestamp: new Date().toISOString(),
+                        sound: "default"
+                    },
+                    android: {
+                        priority: "HIGH",
+                        ttl: "2419200s",
+                        notification: {
+                            channel_id: "high_importance_channel",
                             sound: "default",
-                            badge: 1,
-                            "content-available": 1 // Background fetch
+                            default_sound: true,
+                            default_vibrate_timings: true,
+                            notification_priority: "PRIORITY_HIGH",
+                            visibility: "PUBLIC"
                         }
+                    },
+                    apns: {
+                        headers: { "apns-priority": "10" },
+                        payload: { aps: { sound: "default", badge: 1, "content-available": 1 } }
                     }
                 }
-            }
-        };
+            };
 
-        const response = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
+            const response = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                console.warn(`[Notification] Failed for ${topic}:`, await response.text());
+                return false;
+            }
+            return true;
         });
 
-        if (response.ok) {
-            console.log(`[Notification] Sent successfully to ${targetTopic}`);
+        const results = await Promise.all(sendPromises);
+        const successCount = results.filter(r => r).length;
+
+        if (successCount > 0) {
+            console.log(`[Notification] Successfully sent to ${successCount}/${topics.length} topics.`);
             return true;
         } else {
-            const errText = await response.text();
-            console.error(`[Notification] FCM Error: ${errText}`);
+            console.error("[Notification] Failed to send to any topic.");
             return false;
         }
 

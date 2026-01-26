@@ -69,6 +69,7 @@ export const getFcmV1AccessToken = async (): Promise<string | null> => {
         // Prepare Key
         // Remove headers and newlines from PEM
         const pemContents = SERVICE_ACCOUNT.private_key
+            .replace(/\\n/g, '')
             .replace(/-----BEGIN PRIVATE KEY-----/, '')
             .replace(/-----END PRIVATE KEY-----/, '')
             .replace(/\s/g, '');
