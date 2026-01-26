@@ -209,6 +209,7 @@ const SchemaModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     );
 };
 
+
 const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect, appConfig, onUpdateAppConfig }) => {
     // ... (Existing state initialization)
     const [viewProvider, setViewProvider] = useState<'firebase' | 'supabase'>('firebase');
@@ -248,6 +249,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
 
     // History State
     const [historyLogs, setHistoryLogs] = useState<UpdateConfig[]>([]);
+    const [deleteHistoryId, setDeleteHistoryId] = useState<string | null>(null);
 
     useEffect(() => {
         let unsubscribe: () => void;
@@ -813,11 +815,11 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={async () => {
-                                            if (confirm('هل أنت متأكد من حذف هذا السجل؟')) {
-                                                await deleteData('update_history', log.id);
-                                                if (log.isActive) await handleDeleteUpdate(); // Also deactivate if it was the active one
-                                            }
+                                        onClick={() => {
+                                            // Using a quick custom confirm logic or just delete (since there's no modal state for this specific item easily available without refactor)
+                                            // To follow "Professional" request, we should probably add a state for it, but for now let's use the main ConfirmationModal if possible or add one.
+                                            // Since refactoring a whole modal state for each item is complex in one go, I will add a `deleteHistoryId` state.
+                                            setDeleteHistoryId(log.id);
                                         }}
                                         className="text-red-400 hover:text-red-300 p-2"
                                     >
@@ -1080,6 +1082,24 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                 <SchemaModal onClose={closeModal} />
             )}
             <ToastNotification />
+
+            {deleteHistoryId && (
+                <ConfirmationModal
+                    title="حذف سجل التحديث"
+                    message="هل أنت متأكد من حذف هذا السجل؟ سيتم حذفه نهائياً."
+                    onClose={() => setDeleteHistoryId(null)}
+                    onConfirm={async () => {
+                        if (deleteHistoryId) {
+                            const log = historyLogs.find(l => l.id === deleteHistoryId);
+                            await deleteData('update_history', deleteHistoryId);
+                            if (log && log.isActive) await handleDeleteUpdate();
+                            setDeleteHistoryId(null);
+                            showToast('تم حذف السجل بنجاح', 'success');
+                        }
+                    }}
+                    confirmVariant="danger"
+                />
+            )}
         </div>
     );
 };

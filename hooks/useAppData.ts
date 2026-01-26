@@ -171,7 +171,20 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                     const cleanRemote = conf.version.toLowerCase().replace(/[^0-9.]/g, '');
                     const cleanLocal = localVer.toLowerCase().replace(/[^0-9.]/g, '');
 
-                    const isRemoteNewer = cleanRemote.localeCompare(cleanLocal, undefined, { numeric: true, sensitivity: 'base' }) > 0;
+                    // Simple numeric comparison for semver "Major.Minor.Patch" (e.g. 1.0.6 vs 1.0.7)
+                    // We split by '.' and compare each segment numerically to avoid string sorting issues (e.g. "1.10" < "1.2" in string sort)
+                    const remoteParts = cleanRemote.split('.').map(Number);
+                    const localParts = cleanLocal.split('.').map(Number);
+
+                    let isRemoteNewer = false;
+                    const len = Math.max(remoteParts.length, localParts.length);
+
+                    for (let i = 0; i < len; i++) {
+                        const r = remoteParts[i] || 0;
+                        const l = localParts[i] || 0;
+                        if (r > l) { isRemoteNewer = true; break; }
+                        if (r < l) { isRemoteNewer = false; break; }
+                    }
 
                     if (isRemoteNewer) {
                         const skippedVersion = localStorage.getItem('skipped_update_version');
