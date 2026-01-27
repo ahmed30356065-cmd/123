@@ -13,6 +13,7 @@ const UpdateScreen: React.FC<UpdateScreenProps> = ({ config, onDismiss }) => {
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [statusText, setStatusText] = useState('');
+    const [imageError, setImageError] = useState(false);
 
     const handleUpdate = async () => {
         if (!config.url) return;
@@ -105,20 +106,23 @@ const UpdateScreen: React.FC<UpdateScreenProps> = ({ config, onDismiss }) => {
                 <div className="relative mb-10 flex justify-center">
                     <div className="absolute inset-0 bg-red-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
                     <div className="w-28 h-28 bg-[#1e293b] rounded-[2rem] flex items-center justify-center border-4 border-gray-700 shadow-2xl relative z-10 animate-bounce-slow overflow-hidden">
-                        <img
-                            src="/app-icon.png"
-                            alt="GOO NOW"
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                                // Fallback to text if image fails
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement?.classList.add('fallback-logo');
-                            }}
-                        />
-                        {/* Fallback Text Logo (Hidden by default unless image fails) */}
-                        <div className="hidden fallback-logo-content absolute inset-0 flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
-                            <div className="text-red-500 font-black text-2xl tracking-tight">GOO</div>
-                            <div className="text-white font-bold text-sm tracking-wide mt-0.5">NOW</div>
+                        {!imageError ? (
+                            <img
+                                src="/app-icon.png"
+                                alt="GOO NOW"
+                                className="w-full h-full object-cover"
+                                onError={() => setImageError(true)}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 w-full h-full">
+                                <div className="text-red-500 font-black text-2xl tracking-tight">GOO</div>
+                                <div className="text-white font-bold text-sm tracking-wide mt-0.5">NOW</div>
+                            </div>
+                        )}
+                        {/* Notification Badge */}
+                        <div className="absolute -top-2 -right-2 bg-red-500 w-8 h-8 rounded-full flex items-center justify-center border-4 border-[#0f172a] animate-ping"></div>
+                        <div className="absolute -top-2 -right-2 bg-red-600 w-8 h-8 rounded-full flex items-center justify-center border-4 border-[#0f172a] text-xs font-bold shadow-lg">
+                            1
                         </div>
                     </div>
                 </div>
