@@ -247,7 +247,19 @@ export interface UpdateConfig {
   url: string;
   type: 'apk' | 'link';
   description?: string;
+  notes?: string;
   isActive: boolean;
   forceUpdate?: boolean;
   releaseDate?: Date;
+  target_roles?: string[];
+}
+
+export interface UpdateLog {
+  id: string;
+  version: string;
+  releaseDate?: string | Date;
+  notes?: string;
+  isActive: boolean;
+  roles?: string[];
+  url?: string;
 }

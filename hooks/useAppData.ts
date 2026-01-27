@@ -164,9 +164,17 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 // STRICT VERSION CHECK LOGIC
                 // Only show update if Remote Version > Local Version (CURRENT_APP_VERSION)
                 // We use a simple semantic version comparator or string comparison if format is consistent
-                const localVer = '1.0.6'; // HARDCODED BUILD VERSION
+                const localVer = '2.0.0'; // HARDCODED BUILD VERSION
 
                 if (conf.isActive && conf.version !== localVer) {
+                    // Check Target Roles
+                    if (conf.target_roles && Array.isArray(conf.target_roles) && conf.target_roles.length > 0) {
+                        const userRole = currentUser?.role;
+                        if (!userRole || !conf.target_roles.includes(userRole)) {
+                            return;
+                        }
+                    }
+
                     // Normalize versions for comparison (remove 'v', 'version', spaces)
                     const cleanRemote = conf.version.toLowerCase().replace(/[^0-9.]/g, '');
                     const cleanLocal = localVer.toLowerCase().replace(/[^0-9.]/g, '');

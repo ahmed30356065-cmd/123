@@ -176,6 +176,15 @@ export const deleteData = async (collectionName: string, id: string) => {
     return await db.collection(collectionName).doc(String(id)).delete();
 };
 
+export const addData = async (collectionName: string, data: any) => {
+    if (!db) return;
+    const cleanPayload = deepClean(data);
+    return await db.collection(collectionName).add({
+        ...cleanPayload,
+        serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+};
+
 // --- FIRESTORE CHUNK UPLOAD LOGIC (Alternative to Storage) ---
 
 const CHUNK_SIZE = 700 * 1024; // ~700KB (Safe limit for 1MB Firestore doc)
