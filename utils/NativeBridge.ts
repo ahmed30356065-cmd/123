@@ -12,6 +12,7 @@ declare global {
             unsubscribeFromTopic?: (topic: string) => void;
             setActiveNotificationChannel?: (channelId: string) => void;
             onLogout?: (userId?: string, role?: string) => void;
+            downloadAndInstallApk?: (url: string, fileName: string) => void;
         };
         // JS Interface injected by WebView.addJavascriptInterface
         AndroidSplash?: {

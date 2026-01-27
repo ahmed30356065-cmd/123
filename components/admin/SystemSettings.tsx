@@ -234,6 +234,26 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
 
     // --- Handlers ---
 
+    const handleClearOldUpdate = async () => {
+        try {
+            await deleteData('settings', 'app_update');
+            showToast('تم حذف التحديث القديم من Firebase. الآن يمكنك إرسال تحديث جديد.', 'success');
+        } catch (error) {
+            showToast('حدث خطأ أثناء الحذف', 'error');
+            console.error(error);
+        }
+    };
+
+    const handleTestUpdateScreen = () => {
+        // Clear skipped version
+        localStorage.removeItem('skipped_update_version');
+        showToast('تم مسح الإصدار المتجاهل. أعد تحميل الصفحة لرؤية نافذة التحديث.', 'success');
+
+        // Force reload after 2 seconds
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+    };
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -279,8 +299,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                 notes: updateNotes,
                 target_roles: targetRoles,
                 timestamp: new Date().toISOString(),
-                active: true,
-                force_update: true // Can be a toggle
+                isActive: true,  // ✅ Fixed: was 'active'
+                forceUpdate: true  // ✅ Fixed: was 'force_update'
             };
 
             // 1. Add to history
@@ -434,7 +454,19 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                                 icon={BoltIcon}
                             />
                         </div>
-                        <div className="mt-6 flex justify-end">
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button
+                                onClick={handleClearOldUpdate}
+                                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors text-sm border border-red-500"
+                            >
+                                🗑️ حذف التحديث القديم
+                            </button>
+                            <button
+                                onClick={handleTestUpdateScreen}
+                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm border border-blue-500"
+                            >
+                                🔄 اختبار نافذة التحديث
+                            </button>
                             <button
                                 onClick={handleSaveAppConfig}
                                 className="px-6 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors text-sm border border-gray-600"

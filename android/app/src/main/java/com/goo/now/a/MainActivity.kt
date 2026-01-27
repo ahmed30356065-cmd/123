@@ -111,6 +111,7 @@ class MainActivity : AppCompatActivity() {
             println("FCM Token: ${task.result}")
         }
 
+        
         // Handle Initial Intent (Notification Click from Cold Start)
         handleIntent(intent)
     }
@@ -120,6 +121,7 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         handleIntent(intent)
     }
+
 
     private fun handleIntent(intent: android.content.Intent?) {
         if (intent?.extras != null) {
@@ -402,6 +404,39 @@ class MainActivity : AppCompatActivity() {
         fun onContextChange(context: String) {
              android.util.Log.d("Bridge", "Context: $context")
         }
+        
+        @android.webkit.JavascriptInterface
+        fun downloadAndInstallApk(url: String, fileName: String) {
+            activity.runOnUiThread {
+                try {
+                    val request = android.app.DownloadManager.Request(android.net.Uri.parse(url))
+                    request.setTitle(fileName)
+                    request.setDescription("جاري تحميل تحديث GOO NOW...")
+                    request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    request.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, fileName)
+                    request.setMimeType("application/vnd.android.package-archive")
+                    
+                    val dm = activity.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                    dm.enqueue(request)
+                    
+                    android.util.Log.d("APK_DOWNLOAD", "Download started: $fileName")
+                    
+                    android.widget.Toast.makeText(
+                        activity.applicationContext,
+                        "جاري تحميل التحديث... سيتم فتح التثبيت بعد الانتهاء",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    
+                } catch (e: Exception) {
+                    android.util.Log.e("APK_DOWNLOAD", "Download failed: ${e.message}")
+                    android.widget.Toast.makeText(
+                        activity.applicationContext,
+                        "فشل بدء التحميل",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
     }
 
     // Double Back to Exit Logic
@@ -515,6 +550,8 @@ class MainActivity : AppCompatActivity() {
     
     override fun onDestroy() {
         super.onDestroy()
+        
+        // Unregister network callback
         networkCallback?.let {
             connectivityManager.unregisterNetworkCallback(it)
         }

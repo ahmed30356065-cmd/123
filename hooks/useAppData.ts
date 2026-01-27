@@ -166,13 +166,32 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 // We use a simple semantic version comparator or string comparison if format is consistent
                 const localVer = '2.0.0'; // HARDCODED BUILD VERSION
 
+                // DEBUG: Show what we're checking
+                const debugInfo = `
+🔍 فحص التحديث:
+━━━━━━━━━━━━━
+📦 الإصدار المحلي: ${localVer}
+📦 الإصدار البعيد: ${conf.version}
+━━━━━━━━━━━━━
+✅ التحديث نشط: ${conf.isActive ? 'نعم' : 'لا'}
+✅ فرض التحديث: ${conf.forceUpdate ? 'نعم' : 'لا'}
+━━━━━━━━━━━━━
+👥 الأدوار المستهدفة: ${conf.target_roles?.join(', ') || 'الكل'}
+👤 دورك الحالي: ${currentUser?.role || 'غير معرّف'}
+                `.trim();
+
+                console.log('[UPDATE CHECK]', debugInfo);
+
                 if (conf.isActive && conf.version !== localVer) {
                     // Check Target Roles
                     if (conf.target_roles && Array.isArray(conf.target_roles) && conf.target_roles.length > 0) {
                         const userRole = currentUser?.role;
                         if (!userRole || !conf.target_roles.includes(userRole)) {
+                            console.log('[UPDATE CHECK] ❌ User role not in target roles. Skipping update.');
+                            alert(`⚠️ التحديث غير مخصص لك!\n\nدورك: ${userRole || 'غير معرّف'}\nالأدوار المستهدفة: ${conf.target_roles.join(', ')}`);
                             return;
                         }
+                        console.log('[UPDATE CHECK] ✅ User role matches target roles.');
                     }
 
                     // Normalize versions for comparison (remove 'v', 'version', spaces)
@@ -194,15 +213,32 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                         if (r < l) { isRemoteNewer = false; break; }
                     }
 
+                    console.log('[UPDATE CHECK] Is remote newer?', isRemoteNewer);
+
                     if (isRemoteNewer || (conf.forceUpdate && conf.version === localVer)) {
                         const skippedVersion = localStorage.getItem('skipped_update_version');
+                        console.log('[UPDATE CHECK] Skipped version in storage:', skippedVersion);
+
                         if (conf.forceUpdate || skippedVersion !== conf.version) {
+                            console.log('[UPDATE CHECK] ✅ SHOWING UPDATE SCREEN');
+                            alert(`✅ يجب أن تظهر نافذة التحديث الآن!\n\n${debugInfo}`);
                             setShowUpdate(true);
+                        } else {
+                            console.log('[UPDATE CHECK] ❌ User already skipped this version');
+                            alert(`⚠️ سبق وتجاهلت هذا الإصدار!\n\nالإصدار المتجاهل: ${skippedVersion}\n\n(اضغط زر "اختبار نافذة التحديث" لمسحه)`);
                         }
+                    } else {
+                        console.log('[UPDATE CHECK] ❌ Remote version is not newer');
+                        alert(`⚠️ الإصدار البعيد ليس أحدث!\n\n${debugInfo}\n\nالنتيجة: الإصدار البعيد ${isRemoteNewer ? 'أحدث' : 'ليس أحدث'}`);
                     }
                 } else if (conf.isActive && conf.forceUpdate && conf.version === localVer) {
                     // Explicit handling for same-version forced updates (e.g. testing)
+                    console.log('[UPDATE CHECK] ✅ Force update for same version - SHOWING UPDATE SCREEN');
+                    alert(`✅ فرض التحديث للإصدار نفسه!\n\n${debugInfo}`);
                     setShowUpdate(true);
+                } else {
+                    console.log('[UPDATE CHECK] ❌ Update not active or version matches');
+                    alert(`⚠️ التحديث غير نشط أو الإصدارات متطابقة!\n\n${debugInfo}`);
                 }
             }
         });
