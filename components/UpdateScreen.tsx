@@ -50,13 +50,16 @@ const UpdateScreen: React.FC<UpdateScreenProps> = ({ config, onDismiss }) => {
                 }, 300);
 
                 const fileName = `GOO_NOW_v${config.version}.apk`;
-                (window as any).Android.downloadAndInstallApk(finalUrl, fileName);
 
+                // Finalize download visual
+                clearInterval(progressInterval);
+                setDownloadProgress(100);
+                setStatusText('تم التحميل! جاري التثبيت...');
+
+                // Small delay to let UI render 100% before native intent takes over possibly pausing JS
                 setTimeout(() => {
-                    clearInterval(progressInterval);
-                    setDownloadProgress(100);
-                    setStatusText('تم التحميل! جاري التثبيت...');
-                }, 3000);
+                    (window as any).Android.downloadAndInstallApk(finalUrl, fileName);
+                }, 500);
 
             } else {
                 // Fallback to browser download

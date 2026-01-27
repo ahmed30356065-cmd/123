@@ -396,7 +396,14 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                                         className="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white rounded-xl px-4 flex items-center justify-center transition-colors"
                                         title="رفع ملف APK"
                                     >
-                                        {isUploadingApk ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <UploadIcon className="w-5 h-5" />}
+                                        {isUploadingApk ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                <span className="text-xs font-bold text-white">{uploadProgress}%</span>
+                                            </div>
+                                        ) : (
+                                            <UploadIcon className="w-5 h-5" />
+                                        )}
                                     </button>
                                     <input ref={apkInputRef} type="file" accept=".apk" className="hidden" onChange={handleApkUpload} />
                                 </div>
