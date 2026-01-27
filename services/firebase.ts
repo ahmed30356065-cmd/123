@@ -370,9 +370,8 @@ export const sendExternalNotification = async (targetType: string, data: { title
                 },
                 data: {
                     // Critical fields for Android processing
-                    click_action: "FLUTTER_NOTIFICATION_CLICK", // Standard for many wrappers
                     type: "order_update",
-                    url: data.url || '/',
+                    url: data.url || '/', // URL is still passed in data for the app to read
                     title: data.title,
                     body: data.body,
                     target_id: data.targetId || '',
