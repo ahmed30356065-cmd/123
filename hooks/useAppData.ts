@@ -194,12 +194,15 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                         if (r < l) { isRemoteNewer = false; break; }
                     }
 
-                    if (isRemoteNewer) {
+                    if (isRemoteNewer || (conf.forceUpdate && conf.version === localVer)) {
                         const skippedVersion = localStorage.getItem('skipped_update_version');
                         if (conf.forceUpdate || skippedVersion !== conf.version) {
                             setShowUpdate(true);
                         }
                     }
+                } else if (conf.isActive && conf.forceUpdate && conf.version === localVer) {
+                    // Explicit handling for same-version forced updates (e.g. testing)
+                    setShowUpdate(true);
                 }
             }
         });

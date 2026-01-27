@@ -270,7 +270,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                 await sendExternalNotification(role, {
                     title: `تحديث مهم متوفر (${newVersion})`,
                     body: `يرجى تحديث التطبيق للاستفادة من الميزات الجديدة.`,
-                    url: updateUrl
+                    url: '/?target=main' // Just open the app, don't auto-navigate browser
                 });
             }
 

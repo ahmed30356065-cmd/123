@@ -126,16 +126,10 @@ class MainActivity : AppCompatActivity() {
             val url = intent.getStringExtra("url") ?: intent.getStringExtra("link") ?: intent.getStringExtra("target")
             
             if (!url.isNullOrEmpty()) {
-                // If it's a full URL (http...), navigate to it
-                if (url.startsWith("http")) {
-                    webView.loadUrl(url)
-                } else {
-                    // It's likely a path or internal route, pass to JS router
-                    // Wait for WebView to be ready if called instantly in onCreate, 
-                    // but for onNewIntent it's fine.
-                    webView.post {
-                        webView.evaluateJavascript("window.handleDeepLink && window.handleDeepLink('$url')", null)
-                    }
+                // ALWAYS pass to JS to handle logic/routing. 
+                // Never navigate WebView away from the SPA unless JS decides to.
+                webView.post {
+                    webView.evaluateJavascript("window.handleDeepLink && window.handleDeepLink('$url')", null)
                 }
             }
         }
