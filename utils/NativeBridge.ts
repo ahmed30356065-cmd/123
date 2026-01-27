@@ -126,7 +126,10 @@ export const setAndroidRole = (role: string, userId?: string) => {
         // CRITICAL FIX: Unsubscribe from ALL other potential roles first
         // This prevents "Topic Leaks" if a user switches accounts without proper logout
         // We explicitly unsubscribe to ensure clean state
-        const allTopics = ['admin', 'drivers', 'merchants', 'users', 'driver', 'merchant', 'user', 'supervisor', 'supervisors'];
+        const allTopics = [
+            'admin', 'drivers', 'merchants', 'users', 'driver', 'merchant', 'user', 'supervisor', 'supervisors',
+            'admin_v2', 'drivers_v2', 'merchants_v2', 'users_v2', 'supervisors_v2', 'all_users_v2'
+        ];
         allTopics.forEach(t => {
             if (window.Android?.unsubscribeFromTopic) {
                 try { window.Android.unsubscribeFromTopic(t); } catch (e) { }
