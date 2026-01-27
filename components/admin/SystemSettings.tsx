@@ -267,15 +267,11 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
             // 3. Send Notification
             // We can loop roles and send to topics
             for (const role of targetRoles) {
-                await sendExternalNotification(
-                    `تحديث مهم متوفر (${newVersion})`,
-                    `يرجى تحديث التطبيق للاستفادة من الميزات الجديدة.`,
-                    // This would ideally go to a topic like `updates_${role}`
-                    // For now assuming existing function handles broadcase or we pass null token for broadcast if supported
-                    // If sendExternalNotification implementation requires token, we might need a specific 'broadcast' util.
-                    // Assuming 'sendExternalNotification' can take a topic or we skip for now if not implemented.
-                    undefined
-                );
+                await sendExternalNotification(role, {
+                    title: `تحديث مهم متوفر (${newVersion})`,
+                    body: `يرجى تحديث التطبيق للاستفادة من الميزات الجديدة.`,
+                    url: updateUrl
+                });
             }
 
             showToast('تم نشر التحديث بنجاح!', 'success');

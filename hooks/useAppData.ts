@@ -207,7 +207,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         return () => {
             unsubUsers(); unsubOrders(); unsubMsgs(); unsubPayments(); unsubReset(); unsubSlider(); unsubSettings(); unsubAudit();
         };
-    }, [currentUser?.id, appConfig.appVersion]);
+    }, [currentUser?.id, currentUser?.role, appConfig.appVersion]);
 
     useEffect(() => {
         if (currentUser) setAndroidRole(currentUser.role, currentUser.id);
