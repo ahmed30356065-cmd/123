@@ -309,6 +309,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                     onBulkStatusUpdate={handleBulkStatusUpdate}
                     onBulkDelete={handleBulkDelete}
                     appName={fullAppName}
+                    currentUser={props.user}
                 />
             );
             case 'reports': return <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} />;
@@ -487,6 +488,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                         onBulkStatusUpdate={handleBulkStatusUpdate}
                         onBulkDelete={handleBulkDelete}
                         appName={fullAppName}
+                        currentUser={props.user}
                     />
                 </div>
 

@@ -14,10 +14,16 @@
     font-style: normal;
   }
 
+  @font-face {
+    font-family: 'NumFont';
+    src: local('Arial');
+    unicode-range: U+0030-0039;
+  }
+
   body {
     background-color: #111827;
     color: #ffffff;
-    font-family: 'ArabicAdd', system-ui, sans-serif !important;
+    font-family: 'NumFont', 'ArabicAdd', system-ui, sans-serif !important;
     -webkit-tap-highlight-color: transparent; /* Remove blue tap box */
     -webkit-touch-callout: none; /* Disable long-press callouts */
     user-select: none; /* Prevent text selection */

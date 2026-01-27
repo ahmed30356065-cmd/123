@@ -12,15 +12,16 @@ interface EditOrderModalProps {
     customer: Customer,
     notes?: string,
     merchantId: string,
-    merchantName: string, // Added merchantName
+    merchantName: string,
     driverId?: string | null,
     deliveryFee?: number | null,
     items?: CartItem[],
     totalPrice?: number
   }) => void;
+  currentUserRole?: string;
 }
 
-const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drivers, onClose, onSave }) => {
+const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drivers, onClose, onSave, currentUserRole }) => {
   // Safeguard: order.customer might be null in old records
   const [customer, setCustomer] = useState<Customer>(order.customer || { phone: '', address: '' });
   const [notes, setNotes] = useState(order.notes || '');
@@ -86,10 +87,14 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
     // Logic for Fee: If empty, send null to clear it
     const fee = deliveryFee !== '' ? parseFloat(String(deliveryFee)) : null;
 
-    if (order.status === OrderStatus.Pending && driverId && (fee === undefined || fee === null || fee <= 0)) {
-      setError('عند تعيين مندوب لطلب قيد الانتظار، يجب تحديد سعر توصيل صالح.');
-      setActiveTab('delivery');
-      return;
+    // RULE: Only Admin can accept/assign with 0 fee
+    // If NOT admin, and assigning driver (or updating pending w/ assign), fee must be > 0
+    if (currentUserRole !== 'admin') {
+      if (order.status === OrderStatus.Pending && driverId && (fee === undefined || fee === null || fee <= 0)) {
+        setError('يجب تحديد سعر توصيل صالح (أكبر من صفر). فقط الإدارة يمكنها قبول طلبات مجانية.');
+        setActiveTab('delivery');
+        return;
+      }
     }
 
     // Lookup merchant name to ensure consistency

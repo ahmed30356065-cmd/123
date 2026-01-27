@@ -184,10 +184,36 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
     };
 
     const fetchAppConfig = async () => {
-        // Fetch from firebase 'system_metadata' or similar
-        // Mock:
-        setAppName('GOO NOW');
-        setAppVersion('1.0.5');
+        // Fetch from firebase 'system_metadata'
+        const unsubscribe = subscribeToCollection('system_metadata', (data: any[]) => {
+            const config = data.find(d => d.id === 'config');
+            if (config) {
+                if (config.appName) setAppName(config.appName);
+                if (config.appVersion) setAppVersion(config.appVersion);
+            }
+        });
+        return unsubscribe;
+    };
+
+    const handleSaveAppConfig = async () => {
+        if (!appName || !appVersion) {
+            showToast('يرجى تعبئة جميع الحقول', 'error');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            await updateData('system_metadata', 'config', {
+                appName,
+                appVersion,
+                updatedAt: new Date().toISOString()
+            });
+            showToast('تم حفظ إعدادات التطبيق بنجاح', 'success');
+        } catch (error) {
+            showToast('حدث خطأ أثناء الحفظ', 'error');
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const fetchUpdateHistory = async () => {
@@ -409,7 +435,10 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                             />
                         </div>
                         <div className="mt-6 flex justify-end">
-                            <button className="px-6 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors text-sm border border-gray-600">
+                            <button
+                                onClick={handleSaveAppConfig}
+                                className="px-6 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors text-sm border border-gray-600"
+                            >
                                 حفظ التغييرات
                             </button>
                         </div>

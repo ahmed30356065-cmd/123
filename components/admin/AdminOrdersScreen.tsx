@@ -31,6 +31,7 @@ interface AdminOrdersScreenProps {
     onBulkStatusUpdate?: (status: OrderStatus) => void;
     onBulkDelete?: (status: OrderStatus | 'all') => void;
     appName?: string;
+    currentUser?: User; // New Prop
 }
 
 const FilterCard: React.FC<{
@@ -59,7 +60,7 @@ const FilterCard: React.FC<{
     </button>
 ));
 
-const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders, users, deleteOrder, editOrder, onNavigateToAdd, permissions, onOpenStatusModal, onBulkAssign, onBulkStatusUpdate, onBulkDelete, appName }) => {
+const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders, users, deleteOrder, editOrder, onNavigateToAdd, permissions, onOpenStatusModal, onBulkAssign, onBulkStatusUpdate, onBulkDelete, appName, currentUser }) => {
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -153,7 +154,16 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
 
     const handleBulkAssignConfirm = () => {
         if (!bulkDriverId || !bulkFee) return;
-        onBulkAssign?.(bulkDriverId, parseFloat(bulkFee));
+
+        // Restriction Check:
+        const fee = parseFloat(bulkFee);
+        if (currentUser?.role !== 'admin' && fee <= 0) {
+            setLocalToast('عفواً، فقط الإدارة يمكنها تعيين طلبات مجانية (سعر 0)');
+            setTimeout(() => setLocalToast(null), 3000);
+            return;
+        }
+
+        onBulkAssign?.(bulkDriverId, fee);
         setIsBulkAssignOpen(false);
         setBulkDriverId('');
         setBulkFee('');
@@ -407,7 +417,7 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
                 </div>
             )}
 
-            {editingOrder && <EditOrderModal order={editingOrder} merchants={merchants} drivers={drivers} onClose={() => setEditingOrder(null)} onSave={(data) => { editOrder(editingOrder.id, data); setEditingOrder(null); }} />}
+            {editingOrder && <EditOrderModal order={editingOrder} merchants={merchants} drivers={drivers} onClose={() => setEditingOrder(null)} onSave={(data) => { editOrder(editingOrder.id, data); setEditingOrder(null); }} currentUserRole={currentUser?.role} />}
 
             {deletingOrder && (
                 <ConfirmationModal

@@ -31,12 +31,12 @@ interface SupervisorPanelProps {
 const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
   const userPermissions = props.user.permissions || [];
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  
+
   const getDefaultView = (): SupervisorView => {
     if (userPermissions.includes('view_orders')) return 'orders';
     if (userPermissions.includes('view_users')) return 'users';
     if (userPermissions.includes('view_wallet')) return 'wallet';
-    return 'orders'; 
+    return 'orders';
   }
 
   const [view, setView] = useState<SupervisorView>(getDefaultView());
@@ -44,24 +44,25 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
   const renderView = () => {
     switch (view) {
       case 'orders':
-        return userPermissions.includes('view_orders') ? <AdminOrdersScreen 
-            {...props}
-            permissions={userPermissions}
+        return userPermissions.includes('view_orders') ? <AdminOrdersScreen
+          {...props}
+          permissions={userPermissions}
+          currentUser={props.user}
         /> : null;
       case 'users':
         // Supervisors should only see drivers and merchants
         const visibleUsers = props.users.filter(u => u.role === 'driver' || u.role === 'merchant');
-        return userPermissions.includes('view_users') ? <AdminUsersScreen 
-            {...props}
-            users={visibleUsers}
-            onAdminAddUser={props.adminAddUser}
-            onDeleteUser={props.deleteUser}
-            permissions={userPermissions}
-            setEditingUser={setEditingUser}
+        return userPermissions.includes('view_users') ? <AdminUsersScreen
+          {...props}
+          users={visibleUsers}
+          onAdminAddUser={props.adminAddUser}
+          onDeleteUser={props.deleteUser}
+          permissions={userPermissions}
+          setEditingUser={setEditingUser}
         /> : null;
       case 'wallet':
-        return userPermissions.includes('view_wallet') ? <AdminWalletScreen 
-            {...props}
+        return userPermissions.includes('view_wallet') ? <AdminWalletScreen
+          {...props}
         /> : null;
       default:
         return null;
@@ -85,24 +86,24 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
             <span className="text-red-500">DELI</span>
             <span className="text-white"> NOW</span>
           </h1>
-          <div className="w-6"/>
+          <div className="w-6" />
         </div>
       </header>
-      
+
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-20">
         {renderView()}
       </main>
 
       {availableViews.length > 0 && (
-         <AdminBottomNav 
-            activeView={view as any} 
-            onNavigate={(v) => setView(v as SupervisorView)}
-            availableViews={availableViews}
+        <AdminBottomNav
+          activeView={view as any}
+          onNavigate={(v) => setView(v as SupervisorView)}
+          availableViews={availableViews}
         />
       )}
 
       {editingUser && (
-        <EditUserModal 
+        <EditUserModal
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSave={(id, data) => {
