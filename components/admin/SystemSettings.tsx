@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     UploadIcon, CheckCircleIcon, XIcon, CloudIcon, BoltIcon,
     SettingsIcon, RocketIcon, ServerIcon, ActivityIcon, SaveIcon,
-    AlertTriangleIcon, TrashIcon // Assuming AlertTriangleIcon exists or mapping it
+    AlertTriangleIcon, TrashIcon, MobileIcon, RefreshCwIcon
 } from '../icons';
 import {
     updateData, uploadFile, subscribeToCollection,
