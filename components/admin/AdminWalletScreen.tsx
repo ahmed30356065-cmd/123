@@ -241,7 +241,7 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-lg text-white">{driver.name}</h3>
-                                        <p className="text-xs text-gray-500 font-mono">{driver.id}</p>
+                                        <p className="text-xs text-blue-300 font-mono tracking-widest font-bold">#{driver.id.slice(-6)}</p>
                                     </div>
                                 </div>
                             </div>

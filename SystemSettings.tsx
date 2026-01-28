@@ -133,9 +133,9 @@ const SchemaModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect }) => {
     const [viewProvider, setViewProvider] = useState<'firebase' | 'supabase'>('firebase');
     const [activeProvider, setActiveProvider] = useState<'firebase' | 'supabase' | null>(null);
-    
+
     const [configJson, setConfigJson] = useState('');
-    
+
     // Supabase State
     const [supabaseUrl, setSupabaseUrl] = useState('');
     const [supabaseKey, setSupabaseKey] = useState('');
@@ -143,7 +143,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
     const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error' | 'migrating'>('idle');
     const [errorMessage, setErrorMessage] = useState('');
     const [isConfigured, setIsConfigured] = useState(false);
-    
+
     // Unified processing state for the overlay
     const [isProcessing, setIsProcessing] = useState(false);
     const [processStep, setProcessStep] = useState('');
@@ -158,16 +158,16 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
     useEffect(() => {
         // Check if system is explicitly stopped
         const systemStatus = localStorage.getItem('system_status');
-        
+
         const storedProvider = localStorage.getItem('db_provider') as 'firebase' | 'supabase';
-        
+
         if (systemStatus === 'stopped') {
             setActiveProvider(null);
         } else if (storedProvider) {
             setActiveProvider(storedProvider);
         } else {
             // Default is firebase if not stopped and no provider set (first run or implicit)
-             setActiveProvider('firebase');
+            setActiveProvider('firebase');
         }
 
         const savedFirebaseConfig = localStorage.getItem('firebase_config');
@@ -207,14 +207,14 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             try {
                 const text = event.target?.result as string;
                 const json = JSON.parse(text);
-                
+
                 let webConfig = {};
 
                 // Check if it's an Android google-services.json
                 if (json.project_info && json.client && Array.isArray(json.client) && json.client.length > 0) {
                     const client = json.client[0]; // Take the first client
                     const projectInfo = json.project_info;
-                    
+
                     // Extract relevant fields and map them to Web SDK format
                     webConfig = {
                         apiKey: client.api_key?.[0]?.current_key,
@@ -224,7 +224,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         messagingSenderId: projectInfo.project_number,
                         appId: client.client_info?.mobilesdk_app_id
                     };
-                    
+
                     setStatus('idle');
                     setErrorMessage('');
                 } else if (json.apiKey && json.projectId) {
@@ -233,9 +233,9 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                     setStatus('idle');
                     setErrorMessage('');
                 } else {
-                     setErrorMessage('الملف لا يحتوي على البيانات المطلوبة (google-services.json أو Web Config).');
-                     setStatus('error');
-                     return;
+                    setErrorMessage('الملف لا يحتوي على البيانات المطلوبة (google-services.json أو Web Config).');
+                    setStatus('error');
+                    return;
                 }
 
                 setConfigJson(JSON.stringify(webConfig, null, 2));
@@ -246,7 +246,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             }
         };
         reader.readAsText(file);
-        
+
         // Reset input value to allow selecting the same file again if needed
         e.target.value = '';
     };
@@ -265,7 +265,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
 
             if (viewProvider === 'firebase') {
                 const config = JSON.parse(configJson);
-                
+
                 if (!config.apiKey || !config.projectId) {
                     throw new Error("تكوين غير صحيح. لم يتم العثور على apiKey أو projectId.");
                 }
@@ -286,7 +286,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                 localStorage.setItem('firebase_config', JSON.stringify(config));
                 localStorage.setItem('db_provider', 'firebase');
                 setActiveProvider('firebase');
-                
+
             } else {
                 // Supabase
                 if (!supabaseUrl || !supabaseKey) {
@@ -314,12 +314,12 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                 localStorage.setItem('db_provider', 'supabase');
                 setActiveProvider('supabase');
             }
-            
+
             setIsConfigured(true);
             setStatus('success');
-            
+
             setProcessStep("تم تفعيل النظام بنجاح! العودة للوحة التحكم...");
-            
+
             // Wait a bit for user to see success message inside the overlay
             await new Promise(r => setTimeout(r, 2000));
 
@@ -327,7 +327,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
             if (onSuccess) {
                 onSuccess();
             } else {
-                 setIsProcessing(false);
+                setIsProcessing(false);
             }
 
         } catch (e: any) {
@@ -341,7 +341,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
 
     const performMigration = async (migrateFn: (col: string, data: any[]) => Promise<void>) => {
         setProcessStep("جاري تأمين ونقل البيانات...");
-            
+
         try {
             const loadFromLocal = (key: string) => {
                 const stored = localStorage.getItem(key);
@@ -356,16 +356,16 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
 
             setProcessStep("جاري نقل حسابات المستخدمين...");
             await migrateFn('users', loadFromLocal('users'));
-            
+
             setProcessStep("جاري نقل سجل الطلبات...");
             await migrateFn('orders', loadFromLocal('orders'));
-            
+
             setProcessStep("جاري نقل الرسائل والمدفوعات...");
             await migrateFn('messages', loadFromLocal('messages'));
             await migrateFn('payments', loadFromLocal('payments'));
-            
+
             await migrateFn('resetRequests', loadFromLocal('passwordResetRequests'));
-            
+
         } catch (migrationError: any) {
             console.error("Migration failed:", migrationError);
             throw new Error(`فشل نقل البيانات: ${migrationError.message}`);
@@ -376,18 +376,18 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
         setShowDisconnectConfirm(false);
         setIsProcessing(true);
         setProcessStep("جاري قطع الاتصال بقاعدة البيانات...");
-        
+
         setTimeout(() => {
             setProcessStep("جاري إيقاف الخدمات السحابية...");
-            
+
             // Mark system as explicitly stopped
             localStorage.setItem('system_status', 'stopped');
-            
+
             // We also clear the active provider state to reflect the UI change immediately
             setActiveProvider(null);
-            
+
             setStatus('idle');
-            
+
             setTimeout(() => {
                 if (onDisconnect) {
                     onDisconnect();
@@ -418,7 +418,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
                         <span className="text-white"> NOW</span>
                     </div>
                 </div>
-                
+
                 <div className="relative w-64 h-2 bg-gray-700 rounded-full overflow-hidden mb-4">
                     <div className={`absolute top-0 left-0 h-full ${viewProvider === 'firebase' ? 'bg-red-600' : 'bg-green-500'} animate-[progress_2s_ease-in-out_infinite] w-1/3 rounded-full`}></div>
                 </div>
@@ -438,168 +438,272 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ onSuccess, onDisconnect
     const isActive = activeProvider === viewProvider;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 text-white p-4">
-            <div className="text-center">
-                <h2 className="text-3xl font-bold mb-2 flex items-center justify-center gap-3">
-                    {viewProvider === 'firebase' ? <CloudIcon className="w-10 h-10 text-red-500" /> : <BoltIcon className="w-10 h-10 text-green-500" />}
-                    <span>إعدادات قاعدة البيانات</span>
+        <div className="max-w-5xl mx-auto space-y-8 text-white p-6 pb-32 animate-fadeIn">
+            <div className="text-center mb-8">
+                <h2 className="text-3xl font-black mb-2 flex items-center justify-center gap-3">
+                    <span className="bg-gradient-to-r from-red-500 to-orange-500 text-transparent bg-clip-text">إعدادات النظام</span>
+                    <span className="text-gray-600">|</span>
+                    <span className="text-xl text-gray-400 font-medium">الربط السحابي</span>
                 </h2>
-                <p className="text-gray-400">اربط التطبيق بقاعدة بيانات سحابية للمزامنة الفورية.</p>
+                <p className="text-gray-400">إدارة ربط التطبيق بقواعد البيانات السحابية للمزامنة الحية</p>
             </div>
 
-            {/* Provider Selector */}
-            <div className="flex bg-gray-800 p-1 rounded-lg max-w-md mx-auto mb-6 relative">
-                <button 
+            {/* Provider Selection Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Firebase Card */}
+                <div
                     onClick={() => { setViewProvider('firebase'); setErrorMessage(''); }}
-                    className={`flex-1 py-2 px-4 rounded-md font-bold transition-colors flex items-center justify-center gap-2 relative ${viewProvider === 'firebase' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                    className={`relative overflow-hidden group cursor-pointer transition-all duration-300 border-2 rounded-2xl p-6 ${viewProvider === 'firebase'
+                            ? 'bg-gray-800/80 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.15)]'
+                            : 'bg-gray-800/40 border-gray-700 hover:border-gray-600 hover:bg-gray-800/60'
+                        }`}
                 >
-                    <CloudIcon className="w-5 h-5" />
-                    Firebase
-                    {activeProvider === 'firebase' && (
-                        <span className="absolute top-2 left-2 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-gray-800 animate-pulse"></span>
+                    <div className="flex items-start justify-between mb-4">
+                        <div className={`p-3 rounded-xl transition-colors ${viewProvider === 'firebase' ? 'bg-red-500/20 text-red-500' : 'bg-gray-700/50 text-gray-400'}`}>
+                            <CloudIcon className="w-8 h-8" />
+                        </div>
+                        {activeProvider === 'firebase' && (
+                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 text-xs font-bold">
+                                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                                متصل
+                            </span>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className={`text-xl font-bold mb-1 ${viewProvider === 'firebase' ? 'text-white' : 'text-gray-400'}`}>Firebase</h3>
+                        <p className="text-sm text-gray-500 leading-relaxed">
+                            منصة جوجل المتكاملة. الخيار الأفضل للأداء العالي، الإشعارات، والتحليلات المتقدمة.
+                        </p>
+                    </div>
+                    {viewProvider === 'firebase' && (
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 blur-[50px] rounded-full pointer-events-none -mr-10 -mt-10"></div>
                     )}
-                </button>
-                <button 
-                    onClick={() => { setViewProvider('supabase'); setErrorMessage(''); }}
-                    className={`flex-1 py-2 px-4 rounded-md font-bold transition-colors flex items-center justify-center gap-2 relative ${viewProvider === 'supabase' ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white'}`}
-                >
-                    <BoltIcon className="w-5 h-5" />
-                    Supabase
-                    {activeProvider === 'supabase' && (
-                        <span className="absolute top-2 left-2 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-gray-800 animate-pulse"></span>
-                    )}
-                </button>
-            </div>
-
-            <div className={`bg-gray-800 p-6 rounded-xl shadow-lg border-t-4 ${isActive ? 'border-green-500' : 'border-red-500'}`}>
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-gray-200">
-                        {viewProvider === 'firebase' ? 'إعداد Firebase' : 'إعداد Supabase'}
-                    </h3>
-                    <span className={`px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 ${isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                        {isActive && <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>}
-                        {isActive ? 'نظام مفعل (Online)' : 'تم الإيقاف (Stopped)'}
-                    </span>
                 </div>
 
-                {viewProvider === 'firebase' ? (
-                    <div className="space-y-4">
-                        {!isConfigured && (
-                            <div className="bg-blue-900/30 border border-blue-500/30 p-4 rounded-lg mb-6 text-sm text-blue-200">
-                                <p className="font-bold mb-1">طريقة التفعيل:</p>
-                                <ol className="list-decimal list-inside space-y-1">
-                                    <li>قم بتحميل ملف <code>google-services.json</code> من Firebase Console.</li>
-                                    <li>اضغط أدناه لرفع الملف.</li>
-                                </ol>
-                            </div>
+                {/* Supabase Card */}
+                <div
+                    onClick={() => { setViewProvider('supabase'); setErrorMessage(''); }}
+                    className={`relative overflow-hidden group cursor-pointer transition-all duration-300 border-2 rounded-2xl p-6 ${viewProvider === 'supabase'
+                            ? 'bg-gray-800/80 border-green-500 shadow-[0_0_30px_rgba(34,197,94,0.15)]'
+                            : 'bg-gray-800/40 border-gray-700 hover:border-gray-600 hover:bg-gray-800/60'
+                        }`}
+                >
+                    <div className="flex items-start justify-between mb-4">
+                        <div className={`p-3 rounded-xl transition-colors ${viewProvider === 'supabase' ? 'bg-green-500/20 text-green-500' : 'bg-gray-700/50 text-gray-400'}`}>
+                            <BoltIcon className="w-8 h-8" />
+                        </div>
+                        {activeProvider === 'supabase' && (
+                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 text-xs font-bold">
+                                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                                متصل
+                            </span>
                         )}
-                        <div>
-                            <p className="block text-sm font-medium text-gray-400 mb-2">ملف التكوين (google-services.json)</p>
-                            <div 
-                                onClick={handleTriggerUpload}
-                                className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer hover:bg-gray-700 transition-colors"
-                            >
-                                <div className="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
-                                    <UploadIcon className="w-10 h-10 text-gray-400 mb-3" />
-                                    <p className="mb-2 text-sm text-gray-400"><span className="font-semibold">اضغط لرفع الملف</span></p>
+                    </div>
+                    <div>
+                        <h3 className={`text-xl font-bold mb-1 ${viewProvider === 'supabase' ? 'text-white' : 'text-gray-400'}`}>Supabase</h3>
+                        <p className="text-sm text-gray-500 leading-relaxed">
+                            بديل مفتوح المصدر لـ Firebase. يوفر قاعدة بيانات SQL قوية وواجهات برمجية مرنة.
+                        </p>
+                    </div>
+                    {viewProvider === 'supabase' && (
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 blur-[50px] rounded-full pointer-events-none -mr-10 -mt-10"></div>
+                    )}
+                </div>
+            </div>
+
+            {/* Detailed Configuration Panel */}
+            <div className={`bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-700 transition-all duration-500 ${viewProvider ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                <div className="p-6 border-b border-gray-700/50 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            {viewProvider === 'firebase' ? <CloudIcon className="w-5 h-5 text-red-500" /> : <BoltIcon className="w-5 h-5 text-green-500" />}
+                            إعدادات {viewProvider === 'firebase' ? 'Firebase' : 'Supabase'}
+                        </h3>
+                        <p className="text-sm text-gray-400 mt-1">
+                            {viewProvider === 'firebase' ? 'قم برفع ملف google-services.json الخاص بمشروعك.' : 'أدخل رابط المشروع ومفتاح API الخاص بـ Supabase.'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="p-6 bg-gray-900/50">
+                    {viewProvider === 'firebase' ? (
+                        <div className="flex flex-col md:flex-row gap-6">
+                            {/* Upload Area */}
+                            <div className="flex-1">
+                                <div
+                                    onClick={handleTriggerUpload}
+                                    className={`relative group flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${isConfigured
+                                            ? 'border-green-500/30 bg-green-500/5 hover:bg-green-500/10'
+                                            : 'border-gray-600 bg-gray-800 hover:bg-gray-700 hover:border-gray-500'
+                                        }`}
+                                >
+                                    <div className="flex flex-col items-center justify-center p-6 text-center space-y-3 pointer-events-none">
+                                        <div className={`p-4 rounded-full transition-transform duration-300 group-hover:scale-110 ${isConfigured ? 'bg-green-500/20 text-green-500' : 'bg-gray-700 text-gray-400'}`}>
+                                            <UploadIcon className="w-8 h-8" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-base font-bold text-gray-300 group-hover:text-white transition-colors">
+                                                {isConfigured ? 'ملف التكوين جاهز' : 'رفع ملف google-services.json'}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {isConfigured ? 'اضغط لاستبدال الملف' : 'اضغط هنا لاختيار الملف من جهازك'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {isConfigured && (
+                                        <div className="absolute top-3 right-3 text-green-500 bg-green-500/10 p-1 rounded-full animate-bounce">
+                                            <CheckCircleIcon className="w-5 h-5" />
+                                        </div>
+                                    )}
+                                </div>
+                                <input ref={fileInputRef} type="file" className="hidden" accept=".json" onChange={handleFileUpload} />
+                            </div>
+
+                            {/* Info Area */}
+                            {configJson && !errorMessage && (
+                                <div className="flex-1 flex flex-col h-48">
+                                    <div className="flex-1 bg-black/40 rounded-xl border border-gray-700/50 p-4 relative overflow-hidden group">
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => {
+                                                    const blob = new Blob([configJson], { type: 'application/json' });
+                                                    const url = URL.createObjectURL(blob);
+                                                    const a = document.createElement('a');
+                                                    a.href = url;
+                                                    a.download = 'google-services.json';
+                                                    a.click();
+                                                }}
+                                                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white shadow-lg"
+                                                title="تحميل الملف"
+                                            >
+                                                <UploadIcon className="w-4 h-4 rotate-180" />
+                                            </button>
+                                        </div>
+                                        <pre className="text-[10px] text-green-400 font-mono leading-relaxed h-full overflow-y-auto custom-scrollbar select-all">
+                                            {configJson}
+                                        </pre>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-300 mb-2">Project URL</label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={supabaseUrl}
+                                            onChange={(e) => setSupabaseUrl(e.target.value)}
+                                            placeholder="https://xyz.supabase.co"
+                                            className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:border-green-500 focus:ring-1 focus:ring-green-500Outline-none transition-all shadow-inner"
+                                        />
+                                        <div className="absolute left-3 top-3.5 text-gray-500">
+                                            <CloudIcon className="w-5 h-5" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-300 mb-2">API Key (Anon/Public)</label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={supabaseKey}
+                                            onChange={(e) => setSupabaseKey(e.target.value)}
+                                            placeholder="eyJhbGciOiJIUzI1NiIsInR..."
+                                            className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all shadow-inner font-mono text-sm"
+                                        />
+                                        <div className="absolute left-3 top-3.5 text-gray-500">
+                                            <BoltIcon className="w-5 h-5" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <input ref={fileInputRef} type="file" className="hidden" accept=".json" onChange={handleFileUpload} />
-                        </div>
-                         {configJson && !errorMessage && (
-                            <div className="p-3 bg-gray-900/50 rounded-lg max-h-32 overflow-y-auto">
-                                <pre className="text-xs text-green-400 font-mono">{configJson}</pre>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {!isConfigured && (
-                             <div className="bg-blue-900/30 border border-blue-500/30 p-4 rounded-lg mb-6 text-sm text-blue-200">
-                                <p className="font-bold mb-1">طريقة التفعيل:</p>
-                                <ol className="list-decimal list-inside space-y-1">
-                                    <li>أنشئ مشروعاً جديداً في Supabase.</li>
-                                    <li>اضغط على الزر أدناه للحصول على كود SQL لإنشاء الجداول.</li>
-                                    <li>نفذ الكود في <strong>SQL Editor</strong> داخل Supabase.</li>
-                                    <li>انسخ <code>Project URL</code> و <code>Anon Key</code>.</li>
-                                </ol>
-                                <button 
+
+                            <div className="bg-blue-900/10 border border-blue-500/20 rounded-xl p-5 flex flex-col justify-between">
+                                <div>
+                                    <h4 className="font-bold text-blue-200 mb-3 flex items-center gap-2">
+                                        <CheckCircleIcon className="w-5 h-5" />
+                                        تعليمات التشغيل
+                                    </h4>
+                                    <ul className="space-y-2 text-sm text-blue-200/70 list-disc list-inside">
+                                        <li>قم بإنشاء مشروع جديد على Supabase.</li>
+                                        <li>انسخ كود SQL Schema لإنشاء الجداول.</li>
+                                        <li>نفذ الكود في "SQL Editor" في لوحة التحكم.</li>
+                                        <li>انسخ الرابط والمفتاح من إعدادات المشروع.</li>
+                                    </ul>
+                                </div>
+
+                                <button
                                     onClick={() => setShowSchemaModal(true)}
-                                    className="mt-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm transition-colors flex items-center"
+                                    className="mt-4 w-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 py-3 rounded-lg border border-blue-500/30 transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2 font-bold"
                                 >
-                                    <ClipboardListIcon className="w-4 h-4 mr-2" />
-                                    نسخ كود إنشاء الجداول (SQL)
+                                    <ClipboardListIcon className="w-5 h-5" />
+                                    عرض ونسخ كود SQL
                                 </button>
                             </div>
-                        )}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Project URL</label>
-                            <input 
-                                type="text" 
-                                value={supabaseUrl}
-                                onChange={(e) => setSupabaseUrl(e.target.value)}
-                                placeholder="https://xyz.supabase.co"
-                                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-green-500 outline-none"
-                            />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">API Key (anon/public)</label>
-                            <input 
-                                type="text" 
-                                value={supabaseKey}
-                                onChange={(e) => setSupabaseKey(e.target.value)}
-                                placeholder="eyJhbGciOiJIUzI1NiIsInR..."
-                                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-green-500 outline-none"
-                            />
-                        </div>
-                    </div>
-                )}
-                
-                {errorMessage && (
-                    <div className="mt-4 p-4 bg-red-900/50 border border-red-500/50 rounded-lg flex items-start gap-2 text-red-200 text-sm">
-                        <XIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <p className="font-bold">خطأ:</p>
-                            <p>{errorMessage}</p>
-                        </div>
-                    </div>
-                )}
+                    )}
 
-                <div className="flex gap-4 pt-6 border-t border-gray-700 mt-6">
-                    {!isActive ? (
-                        <button
-                            onClick={handleSave}
-                            disabled={viewProvider === 'firebase' ? !configJson : (!supabaseUrl || !supabaseKey)}
-                            className={`flex-1 ${viewProvider === 'firebase' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'} disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition-colors flex justify-center items-center gap-2`}
-                        >
-                            {viewProvider === 'firebase' ? <CloudIcon className="w-5 h-5" /> : <BoltIcon className="w-5 h-5" />}
-                            <span>تفعيل هذا النظام</span>
-                        </button>
-                    ) : (
-                        <div className="flex-1 bg-gray-700/50 text-gray-400 font-bold py-3 rounded-lg flex justify-center items-center gap-2 cursor-default border border-gray-600">
-                            <CheckCircleIcon className="w-5 h-5 text-green-500" />
-                            <span>النظام يعمل حالياً</span>
+                    {errorMessage && (
+                        <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-200 animate-fadeIn">
+                            <div className="p-2 bg-red-500/20 rounded-full flex-shrink-0">
+                                <XIcon className="w-5 h-5 text-red-400" />
+                            </div>
+                            <p className="text-sm font-medium">{errorMessage}</p>
                         </div>
                     )}
-                    
-                    {isActive && (
-                        <button
-                            onClick={() => setShowDisconnectConfirm(true)}
-                            className="px-6 bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold py-3 rounded-lg transition-colors"
-                        >
-                            إيقاف
-                        </button>
-                    )}
+                </div>
+
+                {/* Footer Configuration Actions */}
+                <div className="p-6 bg-gray-800 border-t border-gray-700 flex items-center justify-between">
+                    <div className="text-gray-500 text-xs hidden md:block">
+                        تأكد من صحة البيانات قبل الضغط على تفعيل.
+                    </div>
+
+                    <div className="flex gap-4 w-full md:w-auto">
+                        {isActive && (
+                            <button
+                                onClick={() => setShowDisconnectConfirm(true)}
+                                className="px-6 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold transition-all hover:shadow-lg border border-gray-600"
+                            >
+                                إيقاف المزامنة
+                            </button>
+                        )}
+
+                        {!isActive && (
+                            <button
+                                onClick={handleSave}
+                                disabled={viewProvider === 'firebase' ? !configJson : (!supabaseUrl || !supabaseKey)}
+                                className={`flex-1 md:flex-none px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 ${viewProvider === 'firebase'
+                                        ? 'bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 shadow-red-900/30'
+                                        : 'bg-gradient-to-r from-green-600 to-teal-500 hover:from-green-500 hover:to-teal-400 shadow-green-900/30'
+                                    }`}
+                            >
+                                {viewProvider === 'firebase' ? <CloudIcon className="w-5 h-5" /> : <BoltIcon className="w-5 h-5" />}
+                                <span>تفعيل وبدء المزامنة</span>
+                            </button>
+                        )}
+
+                        {isActive && (
+                            <div className="flex-1 md:flex-none px-8 py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 font-bold flex items-center justify-center gap-2 cursor-default">
+                                <CheckCircleIcon className="w-5 h-5" />
+                                النظام يعمل
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
+            {/* Modal Components... */}
             {showDisconnectConfirm && (
-                <ConfirmationModal 
-                    title="تأكيد إيقاف المزامنة"
-                    message="هل أنت متأكد من رغبتك في قطع الاتصال بقاعدة البيانات السحابية؟ سيعود التطبيق للعمل في الوضع المحلي."
+                <ConfirmationModal
+                    title="إيقاف المزامنة"
+                    message="هل أنت متأكد؟ سيعود التطبيق للعمل محلياً."
                     onClose={() => setShowDisconnectConfirm(false)}
                     onConfirm={confirmDisconnect}
-                    confirmButtonText="نعم، إيقاف"
+                    confirmButtonText="إيقاف"
                     confirmVariant="danger"
                 />
             )}

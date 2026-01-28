@@ -31,7 +31,8 @@ interface AdminOrdersScreenProps {
     onBulkStatusUpdate?: (status: OrderStatus) => void;
     onBulkDelete?: (status: OrderStatus | 'all') => void;
     appName?: string;
-    currentUser?: User; // New Prop
+    currentUser?: User;
+    viewMode?: 'default' | 'shopping' | 'special'; // Added viewMode
 }
 
 const FilterCard: React.FC<{
@@ -60,7 +61,7 @@ const FilterCard: React.FC<{
     </button>
 ));
 
-const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders, users, deleteOrder, editOrder, onNavigateToAdd, permissions, onOpenStatusModal, onBulkAssign, onBulkStatusUpdate, onBulkDelete, appName, currentUser }) => {
+const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders, users, deleteOrder, editOrder, onNavigateToAdd, permissions, onOpenStatusModal, onBulkAssign, onBulkStatusUpdate, onBulkDelete, appName, currentUser, viewMode = 'default' }) => {
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -71,6 +72,13 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
     const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
     // Updated Filter Type: 'all' | 'merchant' (GOO NOW) | 'special' (Special Requests)
     const [filterType, setFilterType] = useState<'all' | 'merchant' | 'special'>('all');
+
+    // Sync filterType with viewMode
+    React.useEffect(() => {
+        if (viewMode === 'shopping') setFilterType('merchant');
+        else if (viewMode === 'special') setFilterType('special');
+        else setFilterType('all');
+    }, [viewMode]);
 
     const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
     const [isDeleteToolsOpen, setIsDeleteToolsOpen] = useState(false);
@@ -106,8 +114,9 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
         if (editingOrder) { setEditingOrder(null); return true; }
         if (deletingOrder) { setDeletingOrder(null); return true; }
 
-        // Navigation Logic: If inside a specific Filter Type (Special/Merchant), go back to "All"
-        if (filterType !== 'all') {
+        // Navigation Logic: If inside a specific Filter Type (Special/Merchant) AND viewMode is default, go back to "All"
+        // If viewMode is NOT default (Active Tab is Shopping/Special), we don't want back button to switch tabs, maybe just exit app logic or do nothing
+        if (viewMode === 'default' && filterType !== 'all') {
             setFilterType('all');
             setStatusFilter('all'); // Optional: Reset status filter too
             return true;
@@ -115,7 +124,7 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
 
         if (currentPage > 1) { setCurrentPage(currentPage - 1); return true; }
         return false;
-    }, [editingOrder, deletingOrder, isBulkAssignOpen, isDeleteToolsOpen, deleteTargetStatus, isDriverSelectorOpen, isBulkStatusToolsOpen, bulkStatusTarget, currentPage, filterType]);
+    }, [editingOrder, deletingOrder, isBulkAssignOpen, isDeleteToolsOpen, deleteTargetStatus, isDriverSelectorOpen, isBulkStatusToolsOpen, bulkStatusTarget, currentPage, filterType, viewMode]);
 
     // ... (URL Logic Omitted for brevity, kept same) ...
 
@@ -132,6 +141,7 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
         return {
             all: relevantOrders.length,
             [OrderStatus.Pending]: relevantOrders.filter(o => o.status === OrderStatus.Pending).length,
+            [OrderStatus.Ready]: relevantOrders.filter(o => o.status === OrderStatus.Ready).length, // Added Ready Count
             [OrderStatus.InTransit]: relevantOrders.filter(o => o.status === OrderStatus.InTransit).length,
             [OrderStatus.Delivered]: relevantOrders.filter(o => o.status === OrderStatus.Delivered).length,
             [OrderStatus.Cancelled]: relevantOrders.filter(o => o.status === OrderStatus.Cancelled).length,
@@ -144,13 +154,18 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
         };
     }, [orders, filterType]);
 
-    const filterOptions = [
-        { value: 'all', label: 'الكل', icon: <TruckIconV2 />, colorClasses: 'bg-blue-500/20 text-blue-400' },
-        { value: OrderStatus.Pending, label: 'قيد الانتظار', icon: <ClockIcon />, colorClasses: 'bg-yellow-500/20 text-yellow-400' },
-        { value: OrderStatus.InTransit, label: 'قيد التوصيل', icon: <RouteIcon />, colorClasses: 'bg-sky-500/20 text-sky-400' },
-        { value: OrderStatus.Delivered, label: 'تم التوصيل', icon: <CheckCircleIcon />, colorClasses: 'bg-green-500/20 text-green-400' },
-        { value: OrderStatus.Cancelled, label: 'ملغي', icon: <XIcon />, colorClasses: 'bg-red-500/20 text-red-400' },
-    ];
+    const filterOptions = useMemo(() => {
+        const options = [
+            { value: 'all', label: 'الكل', icon: <TruckIconV2 />, colorClasses: 'bg-blue-500/20 text-blue-400' },
+            { value: OrderStatus.Pending, label: 'قيد الانتظار', icon: <ClockIcon />, colorClasses: 'bg-yellow-500/20 text-yellow-400' },
+            // Ready (تم التجهيز) is only for Shopping
+            ...(viewMode === 'shopping' ? [{ value: OrderStatus.Ready, label: 'تم التجهيز', icon: <CheckCircleIcon />, colorClasses: 'bg-teal-500/20 text-teal-400' }] : []),
+            { value: OrderStatus.InTransit, label: 'قيد التوصيل', icon: <RouteIcon />, colorClasses: 'bg-sky-500/20 text-sky-400' },
+            { value: OrderStatus.Delivered, label: 'تم التوصيل', icon: <CheckCircleIcon />, colorClasses: 'bg-green-500/20 text-green-400' },
+            { value: OrderStatus.Cancelled, label: 'ملغي', icon: <XIcon />, colorClasses: 'bg-red-500/20 text-red-400' },
+        ];
+        return options;
+    }, [viewMode]);
 
     const handleBulkAssignConfirm = () => {
         if (!bulkDriverId || !bulkFee) return;
@@ -172,6 +187,7 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
     const getDeleteModalInfo = (status: OrderStatus | 'all') => {
         switch (status) {
             case OrderStatus.Pending: return { title: 'حذف الطلبات قيد الانتظار', message: 'سيتم حذف جميع الطلبات التي ما زالت قيد الانتظار (لم يتم تعيين مندوب). هل أنت متأكد؟' };
+            case OrderStatus.Ready: return { title: 'حذف الطلبات الجاهزة', message: 'سيتم حذف جميع الطلبات التي تم تجهيزها. هل أنت متأكد؟' }; // Added Ready Case
             case OrderStatus.InTransit: return { title: 'حذف الطلبات قيد التوصيل', message: 'تنبيه: سيتم حذف الطلبات الجاري توصيلها حالياً! هل أنت متأكد من المتابعة؟' };
             case OrderStatus.Delivered: return { title: 'حذف الطلبات المستلمة', message: 'سيتم تنظيف السجل وحذف جميع الطلبات المكتملة. هل أنت متأكد؟' };
             case OrderStatus.Cancelled: return { title: 'حذف الطلبات الملغية', message: 'سيتم إزالة جميع الطلبات الملغية نهائياً من النظام.' };
@@ -184,6 +200,8 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
         switch (status) {
             case OrderStatus.Pending:
                 return { title: 'إعادة تعيين الكل إلى "قيد الانتظار"', message: 'سيتم تحويل جميع الطلبات الحالية (التي ليست ملغية) إلى حالة "قيد الانتظار" وإلغاء تعيين المناديب. هل أنت متأكد؟', variant: 'primary' };
+            case OrderStatus.Ready:
+                return { title: 'تغيير الكل إلى "تم التجهيز"', message: 'سيتم تحويل جميع الطلبات إلى حالة "تم التجهيز". هل أنت متأكد؟', variant: 'primary' }; // Added Ready Case
             case OrderStatus.Delivered:
                 return { title: 'إكمال جميع الطلبات', message: 'سيتم تحويل جميع الطلبات الجارية (قيد التوصيل) إلى حالة "تم التوصيل" وتحديث السجلات المالية. هل أنت متأكد؟', variant: 'success' };
             default:
@@ -285,31 +303,17 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
                         label={opt.label}
                         count={statusCounts[opt.value as any]}
                         icon={opt.icon}
-                        isActive={filterType === 'all' && statusFilter === opt.value}
-                        onClick={() => { setFilterType('all'); setStatusFilter(opt.value as any); }}
+                        isActive={filterType !== 'merchant' && filterType !== 'special' ? (statusFilter === opt.value) : (statusFilter === opt.value)} // Simplified: Status filter is independent of Type filter visually in terms of "Active" state, but we want to show it's active.
+                        onClick={() => {
+                            // If we are in default mode, we can switch freely.
+                            // If we are in viewMode='shopping', filtering by status keeps us in 'merchant' type.
+                            setStatusFilter(opt.value as any);
+                        }}
                         colorClasses={opt.colorClasses}
                     />
                 ))}
 
-                {/* GOO NOW (Merchant Orders) Filter */}
-                <FilterCard
-                    label={appName || 'GOO NOW'}
-                    count={statusCounts.totalMerchantOrders}
-                    icon={<ShoppingCartIcon />}
-                    isActive={filterType === 'merchant'}
-                    onClick={() => { setStatusFilter('all'); setFilterType('merchant'); }}
-                    colorClasses="bg-orange-500/20 text-orange-400"
-                />
-
-                {/* Special Requests Filter */}
-                <FilterCard
-                    label="طلبات خاصة"
-                    count={statusCounts.totalSpecialRequests}
-                    icon={<RocketIcon />}
-                    isActive={filterType === 'special'}
-                    onClick={() => { setStatusFilter('all'); setFilterType('special'); }}
-                    colorClasses="bg-purple-500/20 text-purple-400"
-                />
+                {/* Custom Filters (Shopping/Special) Removed from here as per request */}
 
                 {canManage && (
                     <>

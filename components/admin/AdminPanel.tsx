@@ -489,6 +489,39 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                         onBulkDelete={handleBulkDelete}
                         appName={fullAppName}
                         currentUser={props.user}
+                        viewMode="default"
+                    />
+                </div>
+
+                <div className={view === 'shopping' ? 'block' : 'hidden'}>
+                    <AdminOrdersScreen
+                        orders={props.orders} users={props.users}
+                        deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
+                        editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
+                        adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                        onNavigateToAdd={handleNavigateToAdd}
+                        onBulkAssign={handleBulkAssign}
+                        onBulkStatusUpdate={handleBulkStatusUpdate}
+                        onBulkDelete={handleBulkDelete}
+                        appName={fullAppName}
+                        currentUser={props.user}
+                        viewMode="shopping"
+                    />
+                </div>
+
+                <div className={view === 'special' ? 'block' : 'hidden'}>
+                    <AdminOrdersScreen
+                        orders={props.orders} users={props.users}
+                        deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
+                        editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
+                        adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                        onNavigateToAdd={handleNavigateToAdd}
+                        onBulkAssign={handleBulkAssign}
+                        onBulkStatusUpdate={handleBulkStatusUpdate}
+                        onBulkDelete={handleBulkDelete}
+                        appName={fullAppName}
+                        currentUser={props.user}
+                        viewMode="special"
                     />
                 </div>
 

@@ -273,11 +273,19 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
                 <label className="block text-xs text-gray-400 mb-2 font-bold uppercase">سعر التوصيل (EGP)</label>
                 <div className="relative">
                   <input
-                    type="number"
+                    type="tel"
+                    inputMode="numeric"
+                    lang="en"
                     value={deliveryFee}
-                    onChange={(e) => setDeliveryFee(e.target.value)}
+                    onChange={(e) => {
+                      // Allow only numbers and decimals
+                      const val = e.target.value.replace(/[^0-9.]/g, '');
+                      setDeliveryFee(val);
+                    }}
                     placeholder="0"
+                    dir="ltr"
                     className="w-full bg-[#111] border border-gray-600 text-white text-xl font-bold py-3 px-4 pl-12 rounded-xl focus:border-blue-500 focus:outline-none font-mono"
+                    style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
                   />
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">EGP</span>
                 </div>

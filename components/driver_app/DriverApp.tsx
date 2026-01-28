@@ -11,37 +11,26 @@ import OrderLimitModal from './OrderLimitModal';
 import { setAndroidRole, NativeBridge } from '../../utils/NativeBridge';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
-type HomeTab = 'home' | 'in-transit' | 'delinow'; 
-type View = 'home' | 'wallet'; // Removed 'messages' from view type
+import SnakeGame from '../games/SnakeGame'; // Added import
+
+type HomeTab = 'home' | 'in-transit' | 'delinow';
+type View = 'home' | 'wallet' | 'games';
+
+const getTimestamp = (d: any) => d ? new Date(d).getTime() : 0;
 
 interface DriverAppProps {
     driver: User;
-    orders: Order[];
     users: User[];
-    onUpdateOrderStatus: (orderId: string, status: OrderStatus) => void;
-    onAcceptOrder: (orderId: string, driverId: string, deliveryFee: number) => void;
-    onLogout: () => void;
-    onUpdateUser: (userId: string, updatedData: Partial<User>) => void;
-    showNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
+    orders: Order[];
     messages: Message[];
-    seenMessageIds: string[];
-    markMessageAsSeen: (messageId: string) => void;
-    hideMessage: (messageId: string) => void;
-    deletedMessageIds: string[];
+    onUpdateUser: (u: User) => Promise<void>;
     appTheme: AppTheme;
-    onUpdateTheme?: (config: any) => void;
-    initialRoute?: { target: string; id?: string } | null;
     appConfig?: AppConfig;
+    initialRoute?: { target: string; id?: string };
+    deletedMessageIds: string[];
+    markMessageAsSeen: (id: string) => void;
+    hideMessage: (id: string) => void;
 }
-
-// Optimized helper outside component to avoid recreation
-const getTimestamp = (val: any) => {
-    if (!val) return 0;
-    if (val.seconds) return val.seconds * 1000;
-    if (typeof val.toDate === 'function') return val.toDate().getTime();
-    if (val instanceof Date) return val.getTime();
-    return new Date(val).getTime() || 0;
-};
 
 const DriverApp: React.FC<DriverAppProps> = (props) => {
     const [currentView, setCurrentView] = useState<View>('home');
@@ -49,7 +38,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [showLimitModal, setShowLimitModal] = useState(false);
-    
+
     // Notification Dropdown State
     const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
     const notifDropdownRef = useRef<HTMLDivElement>(null);
@@ -63,10 +52,10 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
     useEffect(() => {
         if (props.initialRoute?.target === 'order' && props.initialRoute.id) {
             const order = props.orders.find(o => o.id === props.initialRoute?.id);
-            if (order) { 
-                setSelectedOrder(order); 
+            if (order) {
+                setSelectedOrder(order);
                 // Auto switch tab if order is active
-                if (order.status === OrderStatus.InTransit) setActiveHomeTab('in-transit'); 
+                if (order.status === OrderStatus.InTransit) setActiveHomeTab('in-transit');
             }
         } else if (props.initialRoute?.target === 'messages') {
             // Instead of changing view, open dropdown
@@ -83,9 +72,9 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
     // Handle click outside to close dropdown
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-          if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target as Node)) {
-            setIsNotifDropdownOpen(false);
-          }
+            if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target as Node)) {
+                setIsNotifDropdownOpen(false);
+            }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -96,11 +85,11 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
         if (isProfileModalOpen) { setIsProfileModalOpen(false); return true; }
         if (showLimitModal) { setShowLimitModal(false); return true; }
         if (selectedOrder) { setSelectedOrder(null); return true; }
-        
+
         if (currentView !== 'home') { setCurrentView('home'); return true; }
         if (activeHomeTab !== 'home') { setActiveHomeTab('home'); return true; }
-        
-        return false; 
+
+        return false;
     }, [isProfileModalOpen, showLimitModal, selectedOrder, currentView, activeHomeTab, isNotifDropdownOpen]);
 
     // High-performance filtering and sorting
@@ -121,30 +110,30 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
         // Updated Sorting Logic:
         // Pending (New) Orders: Oldest First (FIFO) so old orders are prioritized at the top
         pending.sort((a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt));
-        
+
         // Active Orders: Oldest First (FIFO)
         active.sort((a, b) => getTimestamp(a.createdAt) - getTimestamp(b.createdAt));
 
-        return { 
-            standardNewOrders: pending.filter(o => o.type !== 'shopping_order'), 
-            delinowNewOrders: pending.filter(o => o.type === 'shopping_order'), 
-            inTransitOrders: active 
+        return {
+            standardNewOrders: pending.filter(o => o.type !== 'shopping_order'),
+            delinowNewOrders: pending.filter(o => o.type === 'shopping_order'),
+            inTransitOrders: active
         };
     }, [props.orders, props.driver.id]);
 
     // Filter messages for dropdown
-    const driverMessages = useMemo(() => 
-        props.messages.filter(m => 
-            m.targetRole === 'driver' && 
+    const driverMessages = useMemo(() =>
+        props.messages.filter(m =>
+            m.targetRole === 'driver' &&
             (m.targetId === 'all' || m.targetId === props.driver.id) &&
-            !props.deletedMessageIds.includes(m.id) && 
+            !props.deletedMessageIds.includes(m.id) &&
             !m.deletedBy?.includes(props.driver.id)
         ).sort((a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt)),
-    [props.messages, props.driver.id, props.deletedMessageIds]);
+        [props.messages, props.driver.id, props.deletedMessageIds]);
 
-    const unseenMessagesCount = useMemo(() => 
-        driverMessages.filter(m => !m.readBy?.includes(props.driver.id)).length, 
-    [driverMessages, props.driver.id]); 
+    const unseenMessagesCount = useMemo(() =>
+        driverMessages.filter(m => !m.readBy?.includes(props.driver.id)).length,
+        [driverMessages, props.driver.id]);
 
     // Mark messages as seen when dropdown opens
     useEffect(() => {
@@ -159,54 +148,54 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
 
     const getFrameContainerClass = (type?: string) => {
         if (type?.startsWith('data:') || type?.startsWith('http')) return 'p-0';
-        switch(type) {
+        switch (type) {
             case 'gold': return 'p-[2px] bg-gradient-to-tr from-[#BF953F] via-[#FCF6BA] to-[#B38728] shadow-[0_0_8px_rgba(252,246,186,0.4)]';
             case 'neon': return 'p-[2px] bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_8px_rgba(34,211,238,0.5)]';
             case 'royal': return 'p-[2px] bg-gradient-to-bl from-indigo-900 via-purple-500 to-indigo-900 shadow-sm border border-purple-500/30';
             case 'fire': return 'p-[2px] bg-gradient-to-t from-yellow-500 via-red-500 to-yellow-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.4)]';
-            default: return 'p-0'; 
+            default: return 'p-0';
         }
     };
 
     const getBadgeIcon = (type?: string) => {
-      if (!type || type === 'none') return null;
+        if (!type || type === 'none') return null;
 
-      if (type?.startsWith('data:') || type?.startsWith('http')) {
-          return (
-              <div className="w-7 h-7 min-w-[1.75rem] rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shadow-sm overflow-hidden p-0.5 ml-2 backdrop-blur-sm">
-                  <img src={type} className="w-full h-full object-contain drop-shadow-sm" alt="badge" />
-              </div>
-          );
-      }
-      
-      let IconComponent = null;
-      let styleClass = '';
+        if (type?.startsWith('data:') || type?.startsWith('http')) {
+            return (
+                <div className="w-7 h-7 min-w-[1.75rem] rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shadow-sm overflow-hidden p-0.5 ml-2 backdrop-blur-sm">
+                    <img src={type} className="w-full h-full object-contain drop-shadow-sm" alt="badge" />
+                </div>
+            );
+        }
 
-      switch(type) {
-        case 'verified': IconComponent = VerifiedIcon; styleClass = "text-blue-400 fill-blue-500/20"; break;
-        case 'vip': IconComponent = CrownIcon; styleClass = "text-yellow-400 fill-yellow-500/20"; break;
-        case 'star': IconComponent = StarIcon; styleClass = "text-purple-400 fill-purple-500/20"; break;
-        case 'popular': IconComponent = RocketIcon; styleClass = "text-red-400 fill-red-500/20"; break;
-      }
+        let IconComponent = null;
+        let styleClass = '';
 
-      if (IconComponent) return <IconComponent className={`w-4 h-4 ml-1 ${styleClass}`} />;
-      return null;
+        switch (type) {
+            case 'verified': IconComponent = VerifiedIcon; styleClass = "text-blue-400 fill-blue-500/20"; break;
+            case 'vip': IconComponent = CrownIcon; styleClass = "text-yellow-400 fill-yellow-500/20"; break;
+            case 'star': IconComponent = StarIcon; styleClass = "text-purple-400 fill-purple-500/20"; break;
+            case 'popular': IconComponent = RocketIcon; styleClass = "text-red-400 fill-red-500/20"; break;
+        }
+
+        if (IconComponent) return <IconComponent className={`w-4 h-4 ml-1 ${styleClass}`} />;
+        return null;
     };
 
     const isCustomFrame = (frame?: string) => frame?.startsWith('data:') || frame?.startsWith('http');
 
     const handleClearNotifications = () => {
-         // Just visual clearing/marking all as deleted locally if desired, 
-         // but usually "Clear All" in dropdown context might mean mark as read or delete all.
-         // For safety, let's just close the dropdown.
-         setIsNotifDropdownOpen(false);
+        // Just visual clearing/marking all as deleted locally if desired, 
+        // but usually "Clear All" in dropdown context might mean mark as read or delete all.
+        // For safety, let's just close the dropdown.
+        setIsNotifDropdownOpen(false);
     };
 
     return (
         <div className="fixed inset-0 flex flex-col bg-[#1A1A1A] text-white overflow-hidden" dir="rtl">
             {isProfileModalOpen && <DriverProfileModal driver={props.driver} onClose={() => setIsProfileModalOpen(false)} onLogout={props.onLogout} onUpdateUser={props.onUpdateUser} currentTheme={props.appTheme} onUpdateTheme={props.onUpdateTheme} />}
             {showLimitModal && <OrderLimitModal onClose={() => setShowLimitModal(false)} currentCount={inTransitOrders.length} maxLimit={props.driver.maxConcurrentOrders || 0} />}
-            
+
             {selectedOrder ? (
                 <div className="fixed inset-0 bg-[#1A1A1A] z-50 flex flex-col animate-fadeIn">
                     <header className="flex-none flex bg-[#1A1A1A] border-b border-gray-800 h-14 items-center px-4 pt-safe box-content">
@@ -234,10 +223,10 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                             <span className="text-red-500">{firstWord}</span>
                             <span className="text-white ml-1">{restOfName}</span>
                         </h1>
-                        
+
                         {/* Notification Bell with Dropdown */}
                         <div className="relative" ref={notifDropdownRef}>
-                            <button 
+                            <button
                                 onClick={() => setIsNotifDropdownOpen(!isNotifDropdownOpen)}
                                 className={`relative p-2 transition-colors ${isNotifDropdownOpen ? 'text-red-500' : 'text-gray-400 hover:text-white'}`}
                             >
@@ -258,7 +247,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                                             </button>
                                         )}
                                     </div>
-                                    
+
                                     <div className="max-h-80 overflow-y-auto custom-scrollbar p-2 space-y-2">
                                         {driverMessages.length === 0 ? (
                                             <div className="text-center py-8 text-gray-500">
@@ -270,9 +259,9 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                                                 const formattedDate = (() => {
                                                     try {
                                                         const d = new Date(msg.createdAt);
-                                                        if(isNaN(d.getTime())) return '';
+                                                        if (isNaN(d.getTime())) return '';
                                                         return d.toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' });
-                                                    } catch(e) { return ''; }
+                                                    } catch (e) { return ''; }
                                                 })();
 
                                                 return (
@@ -288,14 +277,14 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                                                                     <span className="text-[9px] text-gray-500 font-mono">{formattedDate}</span>
                                                                 </div>
                                                             </div>
-                                                            <button 
+                                                            <button
                                                                 onClick={(e) => { e.stopPropagation(); props.hideMessage(msg.id); }}
                                                                 className="text-gray-600 hover:text-red-400 transition-colors p-1"
                                                             >
                                                                 <TrashIcon className="w-3.5 h-3.5" />
                                                             </button>
                                                         </div>
-                                                        
+
                                                         {/* Body */}
                                                         <div>
                                                             {msg.image && (
@@ -322,7 +311,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                             )}
                         </div>
                     </header>
-                    
+
                     {currentView === 'home' && (
                         <div className="flex-none px-3 py-2">
                             <div className="flex bg-[#2A2A2A] rounded-xl p-1 border border-gray-700">
@@ -332,7 +321,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                             </div>
                         </div>
                     )}
-                    
+
                     <main className="flex-1 overflow-y-auto pb-28 scroll-smooth">
                         {currentView === 'home' && <HomeScreen driver={props.driver} users={props.users} standardNewOrders={standardNewOrders} delinowNewOrders={delinowNewOrders} inTransitOrders={inTransitOrders} onViewOrder={setSelectedOrder} onUpdateUser={props.onUpdateUser} activeTab={activeHomeTab} theme={props.appTheme} />}
                         {currentView === 'wallet' && <WalletScreen driver={props.driver} orders={props.orders} users={props.users} />}

@@ -1,6 +1,10 @@
 
 import React from 'react';
-import { TruckIconV2, DollarSignIcon, SettingsIcon, ImageIcon, StoreIcon, UsersIcon, MessageSquareIcon, HeadsetIcon } from '../icons';
+import {
+    TruckIconV2, UsersIcon, StoreIcon, HeadsetIcon,
+    MessageSquareIcon, ImageIcon, DollarSignIcon, SettingsIcon,
+    RocketIcon, ShoppingCartIcon // Added new icons
+} from '../icons';
 
 export type AdminView = 'orders' | 'users' | 'stores' | 'notifications' | 'wallet' | 'messages' | 'settings' | 'slider' | 'customizer' | 'support';
 
@@ -17,8 +21,8 @@ const AdminBottomNav: React.FC<AdminBottomNavProps> = ({ activeView, onNavigate,
         { id: 'orders', label: 'الرئيسية', icon: TruckIconV2 },
         { id: 'users', label: 'المستخدمين', icon: UsersIcon },
         { id: 'stores', label: 'المتاجر', icon: StoreIcon },
-        { id: 'support', label: 'الدعم', icon: HeadsetIcon },
-        { id: 'messages', label: 'الرسائل', icon: MessageSquareIcon },
+        { id: 'special', label: 'خدمة خاصة', icon: RocketIcon }, // Replaced Customer Service
+        { id: 'shopping', label: 'طلبات تسوق', icon: ShoppingCartIcon }, // Replaced Messages
         { id: 'slider', label: 'العروض', icon: ImageIcon },
         { id: 'wallet', label: 'المحفظة', icon: DollarSignIcon },
         { id: 'settings', label: 'الإعدادات', icon: SettingsIcon },
@@ -34,7 +38,7 @@ const AdminBottomNav: React.FC<AdminBottomNavProps> = ({ activeView, onNavigate,
 
     const navItemsToShow = availableViews
         ? allNavItems.filter(item => availableViews.includes(item.id))
-        : allNavItems.filter(item => ['orders', 'users', 'stores', 'support', 'messages', 'wallet', 'settings'].includes(item.id));
+        : allNavItems.filter(item => ['orders', 'users', 'stores', 'special', 'shopping', 'wallet', 'settings'].includes(item.id));
 
     const isLight = mode === 'light';
 

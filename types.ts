@@ -94,6 +94,7 @@ export interface Customer {
 export enum OrderStatus {
   WaitingMerchant = 'بانتظار التاجر',
   Preparing = 'جاري التحضير',
+  Ready = 'تم التجهيز',
   Pending = 'قيد الانتظار',
   InTransit = 'قيد التوصيل',
   Delivered = 'تم التوصيل',

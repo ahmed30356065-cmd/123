@@ -16,6 +16,7 @@ interface OrderCardProps {
 const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, onDelete, onOpenStatusModal }) => {
     const driver = useMemo(() => users.find(u => u.id === order.driverId), [users, order.driverId]);
     const merchantUser = useMemo(() => users.find(u => u.id === order.merchantId), [users, order.merchantId]);
+    const customerUser = useMemo(() => users.find(u => u.phone === order.customer?.phone), [users, order.customer?.phone]);
     const isShoppingOrder = order.type === 'shopping_order';
 
     const parseDate = (dateVal: any) => {
@@ -135,13 +136,23 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                 {/* Merchant Section & Order Details */}
                 <div className="flex flex-col bg-orange-900/10 p-3 rounded-xl border border-orange-500/10">
                     <div className="flex items-start gap-3 mb-2">
-                        <div className="mt-1 p-1.5 rounded-full bg-orange-500/10 text-orange-400 flex-shrink-0">
-                            <StoreIcon className="w-4 h-4" />
+                        <div className="mt-1 p-1.5 rounded-full bg-orange-500/10 text-orange-400 flex-shrink-0 overflow-hidden w-8 h-8 flex items-center justify-center border border-orange-500/20">
+                            {order.merchantId === 'delinow' ? (
+                                customerUser?.storeImage ? (
+                                    <img src={customerUser.storeImage} alt="Customer" className="w-full h-full object-cover" />
+                                ) : (
+                                    <UserIcon className="w-4 h-4" />
+                                )
+                            ) : (
+                                <StoreIcon className="w-4 h-4" />
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-[10px] text-orange-400 font-bold mb-0.5">المرسل (التاجر)</p>
+                            <p className="text-[10px] text-orange-400 font-bold mb-0.5">{order.merchantId === 'delinow' ? 'صاحب الطلب' : 'المرسل (التاجر)'}</p>
                             <p className="text-white font-black text-sm truncate">
-                                {order.merchantId === 'delinow' ? 'طلب خدمة خاصة' : (merchantUser?.name || order.merchantName || 'طلب مباشر من العميل')}
+                                {order.merchantId === 'delinow'
+                                    ? (customerUser?.name || order.customer?.name || 'طلب خدمة خاصة')
+                                    : (merchantUser?.name || order.merchantName || 'طلب مباشر من العميل')}
                             </p>
                         </div>
                     </div>

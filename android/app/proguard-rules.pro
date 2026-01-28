@@ -39,12 +39,5 @@
 # WARNING: This might break some reflection-heavy libraries if not carefully tested
 -overloadaggressively
 
-# Remove attributes that give away code structure (optional, but requested for high security)
--keepattributes *Annotation*
--keepattributes JavascriptInterface
--keepattributes Signature
--keepattributes Exceptions
 # Removing SourceFile/LineNumberTable makes stacktraces useless but code harder to map
--renamesourcefileattribute '' 
--keepattributes SourceFile,LineNumberTable
-
+-renamesourcefileattribute ''

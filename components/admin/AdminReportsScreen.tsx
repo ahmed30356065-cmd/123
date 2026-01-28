@@ -717,7 +717,7 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
                                 <CoinsIcon className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-xs text-orange-200 font-bold mb-1">نسبة الشطارة (15%)</p>
+                                <p className="text-xs text-orange-200 font-bold mb-1">أرباح الأدمن (حتى الآن)</p>
                                 <h3 className="text-2xl font-black text-white">{stats.commission15Percent.toLocaleString('en-US')} <span className="text-sm font-normal text-orange-300">ج.م</span></h3>
                             </div>
                         </div>
