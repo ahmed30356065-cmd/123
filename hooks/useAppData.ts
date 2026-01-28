@@ -161,9 +161,6 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 const conf = updateData as unknown as UpdateConfig;
                 setUpdateConfig(conf);
 
-                // STRICT VERSION CHECK LOGIC
-                // Only show update if Remote Version > Local Version (CURRENT_APP_VERSION)
-                // We use a simple semantic version comparator or string comparison if format is consistent
                 const localVer = '2.0.0'; // HARDCODED BUILD VERSION
 
                 // DEBUG: Show what we're checking
@@ -183,23 +180,19 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 console.log('[UPDATE CHECK]', debugInfo);
 
                 if (conf.isActive && conf.version !== localVer) {
-                    // Check Target Roles
+                    // 1. Check Target Roles
                     if (conf.target_roles && Array.isArray(conf.target_roles) && conf.target_roles.length > 0) {
                         const userRole = currentUser?.role;
                         if (!userRole || !conf.target_roles.includes(userRole)) {
                             console.log('[UPDATE CHECK] ❌ User role not in target roles. Skipping update.');
-                            alert(`⚠️ التحديث غير مخصص لك!\n\nدورك: ${userRole || 'غير معرّف'}\nالأدوار المستهدفة: ${conf.target_roles.join(', ')}`);
                             return;
                         }
-                        console.log('[UPDATE CHECK] ✅ User role matches target roles.');
                     }
 
-                    // Normalize versions for comparison (remove 'v', 'version', spaces)
+                    // 2. Version Comparison
                     const cleanRemote = conf.version.toLowerCase().replace(/[^0-9.]/g, '');
                     const cleanLocal = localVer.toLowerCase().replace(/[^0-9.]/g, '');
 
-                    // Simple numeric comparison for semver "Major.Minor.Patch" (e.g. 1.0.6 vs 1.0.7)
-                    // We split by '.' and compare each segment numerically to avoid string sorting issues (e.g. "1.10" < "1.2" in string sort)
                     const remoteParts = cleanRemote.split('.').map(Number);
                     const localParts = cleanLocal.split('.').map(Number);
 
@@ -213,32 +206,24 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                         if (r < l) { isRemoteNewer = false; break; }
                     }
 
-                    console.log('[UPDATE CHECK] Is remote newer?', isRemoteNewer);
-
                     if (isRemoteNewer || (conf.forceUpdate && conf.version === localVer)) {
                         const skippedVersion = localStorage.getItem('skipped_update_version');
                         console.log('[UPDATE CHECK] Skipped version in storage:', skippedVersion);
 
                         if (conf.forceUpdate || skippedVersion !== conf.version) {
                             console.log('[UPDATE CHECK] ✅ SHOWING UPDATE SCREEN');
-                            alert(`✅ يجب أن تظهر نافذة التحديث الآن!\n\n${debugInfo}`);
                             setShowUpdate(true);
                         } else {
                             console.log('[UPDATE CHECK] ❌ User already skipped this version');
-                            alert(`⚠️ سبق وتجاهلت هذا الإصدار!\n\nالإصدار المتجاهل: ${skippedVersion}\n\n(اضغط زر "اختبار نافذة التحديث" لمسحه)`);
                         }
                     } else {
                         console.log('[UPDATE CHECK] ❌ Remote version is not newer');
-                        alert(`⚠️ الإصدار البعيد ليس أحدث!\n\n${debugInfo}\n\nالنتيجة: الإصدار البعيد ${isRemoteNewer ? 'أحدث' : 'ليس أحدث'}`);
                     }
                 } else if (conf.isActive && conf.forceUpdate && conf.version === localVer) {
-                    // Explicit handling for same-version forced updates (e.g. testing)
                     console.log('[UPDATE CHECK] ✅ Force update for same version - SHOWING UPDATE SCREEN');
-                    alert(`✅ فرض التحديث للإصدار نفسه!\n\n${debugInfo}`);
                     setShowUpdate(true);
                 } else {
                     console.log('[UPDATE CHECK] ❌ Update not active or version matches');
-                    alert(`⚠️ التحديث غير نشط أو الإصدارات متطابقة!\n\n${debugInfo}`);
                 }
             }
         });

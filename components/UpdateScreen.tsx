@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { DownloadIcon, LinkIcon } from './icons';
+import React, { useState, useEffect } from 'react';
+import { DownloadIcon, LinkIcon, RocketIcon, AlertTriangleIcon } from './icons';
 import { UpdateConfig } from '../types';
 import { downloadFileFromFirestore } from '../services/firebase';
 
@@ -14,12 +14,23 @@ const UpdateScreen: React.FC<UpdateScreenProps> = ({ config, onDismiss }) => {
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [statusText, setStatusText] = useState('');
     const [imageError, setImageError] = useState(false);
+    const [debugLog, setDebugLog] = useState<string[]>([]); // internal debug log
+
+    const addLog = (msg: string) => {
+        setDebugLog(prev => [...prev.slice(-4), msg]); // Keep last 5 logs
+        console.log(`[UpdateScreen] ${msg}`);
+    };
 
     const handleUpdate = async () => {
-        if (!config.url) return;
+        if (!config.url) {
+            addLog("Error: No URL provided");
+            setStatusText("خطأ: لا يوجد رابط");
+            return;
+        }
 
         setIsDownloading(true);
         setDownloadProgress(0);
+        addLog("Starting update process...");
 
         try {
             let finalUrl = config.url;
@@ -27,79 +38,79 @@ const UpdateScreen: React.FC<UpdateScreenProps> = ({ config, onDismiss }) => {
             // Check if it's a Firestore Chunked File
             if (config.url.startsWith('FIRESTORE_FILE:')) {
                 setStatusText('جاري تجميع ملف التحديث...');
+                addLog("Fetching firestore chunks...");
                 const fileId = config.url.split(':')[1];
                 finalUrl = await downloadFileFromFirestore(fileId);
                 setDownloadProgress(30);
                 setStatusText('تم التجهيز! جاري التحميل...');
+                addLog("Firestore file assembled.");
             }
 
-            // Check if we're in Android WebView and this is an APK
-            if (typeof window !== 'undefined' && (window as any).Android?.downloadAndInstallApk && config.type === 'apk') {
-                // Use native Android download with progress tracking
-                setStatusText('جاري التحميل...');
+            // --- NATIVE INSTALL CHECK ---
+            // We use a safe check for the Android bridge
+            const androidBridge = (window as any).Android;
+            const isNativeAvailable = typeof androidBridge !== 'undefined' && typeof androidBridge.downloadAndInstallApk === 'function';
 
-                // Simulate progress (actual progress would come from native side)
+            if (isNativeAvailable && config.type === 'apk') {
+                addLog("Using Native Android Installer");
+                setStatusText('جاري التحميل والتثبيت...');
+
+                // Simulate progress for UX (Native handles actual background DL)
                 const progressInterval = setInterval(() => {
                     setDownloadProgress(prev => {
-                        if (prev >= 95) {
-                            clearInterval(progressInterval);
-                            return 95;
-                        }
-                        return prev + 5;
+                        if (prev >= 90) { clearInterval(progressInterval); return 90; }
+                        return prev + 10;
                     });
-                }, 300);
+                }, 400);
 
                 const fileName = `GOO_NOW_v${config.version}.apk`;
 
-                // Finalize download visual
-                clearInterval(progressInterval);
-                setDownloadProgress(100);
-                setStatusText('تم التحميل! جاري التثبيت...');
-
-                // Small delay to let UI render 100% before native intent takes over possibly pausing JS
+                // Small delay to ensure UI updates
                 setTimeout(() => {
                     try {
-                        (window as any).Android.downloadAndInstallApk(finalUrl, fileName);
+                        addLog(`Invoking native: ${fileName}`);
+                        androidBridge.downloadAndInstallApk(finalUrl, fileName);
+
+                        clearInterval(progressInterval);
+                        setDownloadProgress(100);
+                        setStatusText('تم بدء التثبيت التلقائي!');
+                        addLog("Native intent sent.");
                     } catch (err) {
+                        addLog(`Native Error: ${err}`);
                         console.error("Native Install Error", err);
-                        setStatusText('فشل التثبيت التلقائي - جاري فتح المتصفح');
-                        window.open(finalUrl, '_blank');
+                        fallbackToBrowser(finalUrl, fileName);
                     }
                 }, 500);
 
             } else {
-                // Fallback to browser download (for browsers or unexpected failures)
-                setStatusText('جاري التحميل...');
-                const link = document.createElement('a');
-                link.href = finalUrl;
-                link.target = '_blank';
-                if (config.type === 'apk') {
-                    link.download = `GOO_NOW_v${config.version}.apk`;
-                }
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                setDownloadProgress(100);
-                setStatusText('تم بدء التحميل!');
+                addLog("Native bridge missing or not APK. Using Browser.");
+                fallbackToBrowser(finalUrl, `GOO_NOW_v${config.version}.apk`);
             }
 
-            // Reset after delay
+            // Reset UI after delay (give user time to read)
             setTimeout(() => {
-                setIsDownloading(false);
-                setDownloadProgress(0);
-                setStatusText('');
-            }, 8000);
+                if (!isNativeAvailable) setIsDownloading(false); // Only reset if not native (native might kill app)
+            }, 5000);
 
         } catch (e) {
+            addLog(`Update Failed: ${e}`);
             console.error("Update failed:", e);
             setStatusText('فشل تحميل التحديث');
-            setTimeout(() => {
-                setIsDownloading(false);
-                setDownloadProgress(0);
-                setStatusText('');
-            }, 2000);
+            setTimeout(() => setIsDownloading(false), 2000);
         }
+    };
+
+    const fallbackToBrowser = (url: string, fileName: string) => {
+        setStatusText('جاري التحميل عبر المتصفح...');
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setDownloadProgress(100);
+        setStatusText('تم فتح رابط التحميل!');
     };
 
     return (
@@ -110,20 +121,30 @@ const UpdateScreen: React.FC<UpdateScreenProps> = ({ config, onDismiss }) => {
 
             <div className="relative z-10 w-full max-w-sm text-center">
 
-                {/* Animated Logo */}
+                {/* Animated Logo / Icon */}
                 <div className="relative mb-8 flex justify-center">
                     <div className="absolute inset-0 bg-blue-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
                     <div className="w-24 h-24 bg-[#1e293b] rounded-[1.5rem] flex items-center justify-center border-4 border-gray-700 shadow-2xl relative z-10 animate-bounce-slow overflow-hidden">
                         {!imageError ? (
                             <img
-                                src="/app-icon.png"
+                                // TRY NATIVE ASSET PATH FIRST
+                                src="file:///android_asset/app-icon.png"
                                 alt="GOO NOW"
                                 className="w-full h-full object-cover"
-                                onError={() => setImageError(true)}
+                                onError={(e) => {
+                                    // IF NATIVE FAILS, TRY SERVER PATH, THEN FALLBACK
+                                    const target = e.target as HTMLImageElement;
+                                    if (target.src.includes('file:///android_asset')) {
+                                        target.src = "/app-icon.png";
+                                    } else {
+                                        setImageError(true);
+                                    }
+                                }}
                             />
                         ) : (
-                            <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 w-full h-full">
-                                <span className="text-2xl">📱</span>
+                            // PROFESSIONAL FALLBACK ICON
+                            <div className="flex flex-col items-center justify-center bg-gradient-to-br from-blue-900 to-slate-900 w-full h-full">
+                                <RocketIcon className="w-10 h-10 text-blue-400 mb-1" />
                             </div>
                         )}
                         {/* Notification Badge */}
@@ -191,7 +212,6 @@ const UpdateScreen: React.FC<UpdateScreenProps> = ({ config, onDismiss }) => {
                                 <a
                                     href={config.url}
                                     target="_blank"
-                                    rel="noreferrer"
                                     className="px-4 py-3 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-colors border border-white/5 flex items-center justify-center"
                                     title="تحميل مباشر (إذا فشل التلقائي)"
                                     download // Attribute to hint download
@@ -201,6 +221,17 @@ const UpdateScreen: React.FC<UpdateScreenProps> = ({ config, onDismiss }) => {
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* Debug Footer (Visible only if logs exist) */}
+                {debugLog.length > 0 && (
+                    <div className="mt-4 p-2 bg-black/50 rounded text-[10px] text-left font-mono text-gray-400 w-full overflow-hidden">
+                        {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+                    </div>
+                )}
+
+                <div className="mt-8 text-xs text-gray-600 font-mono">
+                    GOO NOW UPDATE CENTER
                 </div>
             </div>
         </div>
