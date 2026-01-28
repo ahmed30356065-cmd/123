@@ -325,6 +325,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                     <main className="flex-1 overflow-y-auto pb-28 scroll-smooth">
                         {currentView === 'home' && <HomeScreen driver={props.driver} users={props.users} standardNewOrders={standardNewOrders} delinowNewOrders={delinowNewOrders} inTransitOrders={inTransitOrders} onViewOrder={setSelectedOrder} onUpdateUser={props.onUpdateUser} activeTab={activeHomeTab} theme={props.appTheme} />}
                         {currentView === 'wallet' && <WalletScreen driver={props.driver} orders={props.orders} users={props.users} />}
+                        {currentView === 'games' && <SnakeGame />}
                     </main>
                     <BottomNav activePage={currentView} onNavigate={(v) => setCurrentView(v as View)} messageCount={unseenMessagesCount} theme={props.appTheme} />
                 </>
