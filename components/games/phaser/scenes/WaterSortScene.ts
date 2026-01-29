@@ -201,29 +201,33 @@ export default class WaterSortScene extends Phaser.Scene {
         this.tubeData = finalState;
     }
 
-    // SAFE ZONE LAYOUT - REDESIGNED
+    // SAFE ZONE LAYOUT - REDESIGNED FOR 2-ROW PREFERENCE
     private drawTubes() {
         this.tubes.forEach(t => t.destroy());
         this.tubes = [];
         this.tubeOriginalPositions = [];
 
         // 1. Define Available Space
-        const availW = this.scale.width - 40; // 20px padding each side
-        const availH = this.scale.height - (CONFIG.TOP_PADDING + CONFIG.BOTTOM_PADDING);
+        const availW = this.scale.width - 20; // 10px padding each side
+        const topPad = 160;
+        const botPad = 220;
+        const availH = this.scale.height - (topPad + botPad);
 
         // 2. Determine Grid Configuration
-        // Prefer 4 columns maximum to keep tubes readable on mobile
-        let cols = 4;
+        // Strategy: Always aim for 2 rows if possible to keep it "side-by-side"
+        // Only use 1 row if very few tubes. Only use 3 rows if absolutely necessary.
+        let rows = 2;
 
-        // If few tubes, center them nicely
-        if (this.tubeCount <= 4) cols = this.tubeCount;
-        else cols = Math.ceil(this.tubeCount / 2);
-        if (cols > 4) cols = 4;
+        if (this.tubeCount <= 5) {
+            rows = 1;
+        } else if (this.tubeCount > 14) {
+            rows = 3;
+        }
 
-        const rows = Math.ceil(this.tubeCount / cols);
+        const cols = Math.ceil(this.tubeCount / rows);
 
         // 3. Calculate Scale
-        const rawRowH = CONFIG.TUBE_HEIGHT + 40; // Reduced vertical gap
+        const rawRowH = CONFIG.TUBE_HEIGHT + 40; // Vertical gap
         const rawGridW = cols * CONFIG.TUBE_WIDTH + (cols - 1) * CONFIG.TUBE_GAP;
         const rawGridH = rows * rawRowH;
 
@@ -233,25 +237,29 @@ export default class WaterSortScene extends Phaser.Scene {
         // Take the smaller scale to fit
         let scale = Math.min(scaleW, scaleH);
 
-        // Clamp scale to keep visuals high quality
+        // Clamp scale nicely
         if (scale > 1.0) scale = 1.0;
-        if (scale < 0.65) scale = 0.65; // Never go too small
+        // Allow smaller scale if needed to fit 6-7 tubes in a row, but try to stop before it's unreadable
+        if (scale < 0.55) scale = 0.55;
 
         // 4. Calculate Positioning
         const finalRowH = rawRowH * scale;
         const totalContentH = rows * finalRowH;
 
-        // Center vertically, or scroll if too big (but we clamp scale to avoid overflow optimally)
-        let startY = CONFIG.TOP_PADDING + (availH - totalContentH) / 2;
-        if (totalContentH > availH) startY = CONFIG.TOP_PADDING; // Top align if huge
+        // Center vertically
+        let startY = topPad + (availH - totalContentH) / 2;
+
+        // If content is huge, ensure it starts at topPad
+        if (totalContentH > availH) startY = topPad;
 
         // 5. Build Grid
         for (let i = 0; i < this.tubeCount; i++) {
             const r = Math.floor(i / cols);
             const c = i % cols;
 
-            // Center rows 
+            // Center the last row if simpler
             let itemsInRow = cols;
+            // If it's the last row and we have a remainder
             if (r === rows - 1) {
                 const remainder = this.tubeCount % cols;
                 if (remainder !== 0) itemsInRow = remainder;
@@ -259,6 +267,8 @@ export default class WaterSortScene extends Phaser.Scene {
 
             const rowWidth = itemsInRow * CONFIG.TUBE_WIDTH + (itemsInRow - 1) * CONFIG.TUBE_GAP;
             const rowWidthScaled = rowWidth * scale;
+
+            // Center horizontally
             const rowStartX = (this.scale.width - rowWidthScaled) / 2 + (CONFIG.TUBE_WIDTH * scale) / 2;
 
             const x = rowStartX + c * (CONFIG.TUBE_WIDTH + CONFIG.TUBE_GAP) * scale;
@@ -268,10 +278,10 @@ export default class WaterSortScene extends Phaser.Scene {
             container.setScale(scale);
 
             const bg = this.add.image(0, 0, 'tube_3d');
-            bg.setScale(0.25); // Texture was supersampled 4x
+            bg.setScale(0.25);
             container.add(bg);
 
-            // Hit area slightly larger for easier tapping
+            // Hit area 
             const hit = new Phaser.Geom.Rectangle(-50, -180, 100, 360);
             container.setInteractive(hit, Phaser.Geom.Rectangle.Contains);
             container.on('pointerdown', (e: any) => { e.event.stopPropagation(); this.handleTubeClick(i); });
