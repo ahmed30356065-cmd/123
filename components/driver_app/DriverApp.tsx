@@ -11,7 +11,7 @@ import OrderLimitModal from './OrderLimitModal';
 import { setAndroidRole, NativeBridge } from '../../utils/NativeBridge';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
-import SnakeGame from '../games/SnakeGame'; // Added import
+import WaterSortGame from '../games/WaterSortGame';
 
 type HomeTab = 'home' | 'in-transit' | 'delinow';
 type View = 'home' | 'wallet' | 'games';
@@ -38,6 +38,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [showLimitModal, setShowLimitModal] = useState(false);
+
 
     // Notification Dropdown State
     const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
@@ -86,7 +87,9 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
         if (showLimitModal) { setShowLimitModal(false); return true; }
         if (selectedOrder) { setSelectedOrder(null); return true; }
 
-        if (currentView !== 'home') { setCurrentView('home'); return true; }
+        if (currentView !== 'home') {
+            setCurrentView('home'); return true;
+        }
         if (activeHomeTab !== 'home') { setActiveHomeTab('home'); return true; }
 
         return false;
@@ -325,7 +328,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                     <main className="flex-1 overflow-y-auto pb-28 scroll-smooth">
                         {currentView === 'home' && <HomeScreen driver={props.driver} users={props.users} standardNewOrders={standardNewOrders} delinowNewOrders={delinowNewOrders} inTransitOrders={inTransitOrders} onViewOrder={setSelectedOrder} onUpdateUser={props.onUpdateUser} activeTab={activeHomeTab} theme={props.appTheme} />}
                         {currentView === 'wallet' && <WalletScreen driver={props.driver} orders={props.orders} users={props.users} />}
-                        {currentView === 'games' && <SnakeGame />}
+                        {currentView === 'games' && <WaterSortGame currentUser={props.driver} onExit={() => setCurrentView('home')} />}
                     </main>
                     <BottomNav activePage={currentView} onNavigate={(v) => setCurrentView(v as View)} messageCount={unseenMessagesCount} theme={props.appTheme} />
                 </>

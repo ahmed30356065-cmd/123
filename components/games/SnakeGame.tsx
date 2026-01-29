@@ -30,8 +30,12 @@ const SnakeGame: React.FC = () => {
 
     // Initialize High Score
     useEffect(() => {
-        const saved = localStorage.getItem('snake_highscore');
-        if (saved) setHighScore(parseInt(saved));
+        try {
+            const saved = localStorage.getItem('snake_highscore');
+            if (saved) setHighScore(parseInt(saved));
+        } catch (e) {
+            console.error('Failed to load high score:', e);
+        }
     }, []);
 
     // Sound Effects (Web Audio API)
@@ -65,7 +69,8 @@ const SnakeGame: React.FC = () => {
                 osc.stop(ctx.currentTime + 0.5);
             }
         } catch (e) {
-            // Ignore audio errors
+            // Ignore audio errors gracefully
+            console.warn('Audio play failed:', e);
         }
     };
 
@@ -94,7 +99,11 @@ const SnakeGame: React.FC = () => {
         playSound('die');
         if (score > highScore) {
             setHighScore(score);
-            localStorage.setItem('snake_highscore', score.toString());
+            try {
+                localStorage.setItem('snake_highscore', score.toString());
+            } catch (e) {
+                console.error('Failed to save high score:', e);
+            }
         }
     };
 
@@ -228,7 +237,7 @@ const SnakeGame: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center p-4 h-full w-full bg-[#0a0a0a] text-white">
+        <div className="flex flex-col items-center justify-center p-4 min-h-[50vh] h-full w-full bg-[#0a0a0a] text-white">
             {/* Header / Stats */}
             <div className="w-full max-w-sm flex justify-between items-center mb-4 px-2">
                 <div className="flex flex-col">
