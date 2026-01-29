@@ -8,21 +8,22 @@ const COLORS = [
 
 const CONFIG = {
     TUBE_WIDTH: 75,
-    TUBE_HEIGHT: 240,
+    TUBE_HEIGHT: 280,        // Increased to properly contain 4 liquid segments
     LIQUID_HEIGHT: 60,
     MAX_CAPACITY: 4,
-    TUBE_GAP: 25,
+    TUBE_GAP: 35,            // Increased spacing between tubes
     POUR_SPEED: 260,
     CORNER_RADIUS: 24,
     // LAYOUT SAFE ZONES
-    TOP_PADDING: 240,    // Increased for Header/Status Bar clearance
-    BOTTOM_PADDING: 300  // HUGE Space for Game Controls + App Bottom Nav
+    TOP_PADDING: 100,        // Reduced to lower tubes on screen
+    BOTTOM_PADDING: 200      // Space for Game Controls
 };
 
 export default class WaterSortScene extends Phaser.Scene {
     private tubes: Phaser.GameObjects.Container[] = [];
     private tubeData: number[][] = [];
     private completedTubes: boolean[] = [];
+    private tubeOriginalPositions: { x: number, y: number }[] = [];  // Store original grid positions
     private selectedTubeIndex: number = -1;
     private isPouring: boolean = false;
     private history: { source: number, target: number, color: number, count: number }[] = [];
@@ -200,63 +201,70 @@ export default class WaterSortScene extends Phaser.Scene {
     private drawTubes() {
         this.tubes.forEach(t => t.destroy());
         this.tubes = [];
+        this.tubeOriginalPositions = [];
 
-        // Horizontal Availability
-        const availW = this.scale.width - 40;
+        // 1. Define Available Space
+        const availW = this.scale.width - 40; // 20px padding each side
+        // Use more vertical space
+        const topPad = 120; 
+        const botPad = 180;
+        const availH = this.scale.height - (topPad + botPad);
 
-        // Vertical Availability: Total Height MINUS Top/Bottom Padding
-        // This is critical. The game must FIT inside this 'Safe Box'.
-        const availH = this.scale.height - (CONFIG.TOP_PADDING + CONFIG.BOTTOM_PADDING);
-
+        // 2. Determine Grid Configuration
         let cols = 5;
         if (this.tubeCount <= 5) cols = this.tubeCount;
-        else cols = Math.ceil(this.tubeCount / 2);
-        if (cols > 5) cols = 5;
+        else cols = Math.ceil(this.tubeCount / 2); // Prefer 2 rows balanced
+        if (cols > 5) cols = 5; // Max 5 columns
 
         const rows = Math.ceil(this.tubeCount / cols);
 
-        // 1. Calculate Width Scale
-        const gridW = cols * CONFIG.TUBE_WIDTH + (cols - 1) * CONFIG.TUBE_GAP;
-        let scaleW = 1;
-        if (gridW > availW) scaleW = availW / gridW;
+        // 3. Calculate Scale based on Content Size
+        const rawRowH = CONFIG.TUBE_HEIGHT + 60; // Tube + gap
+        const rawGridW = cols * CONFIG.TUBE_WIDTH + (cols - 1) * CONFIG.TUBE_GAP;
+        const rawGridH = rows * rawRowH;
 
-        // 2. Calculate Height Scale
-        // Each tube is TUBE_HEIGHT. Plus minimal gap of 30px between rows.
-        const ROW_H = CONFIG.TUBE_HEIGHT + 40;
-        const gridH = rows * ROW_H;
-        let scaleH = 1;
-        if (gridH > availH) scaleH = availH / gridH;
-
-        // 3. Final Scale = Minimal of both to ensure fit
+        let scaleW = availW / rawGridW;
+        let scaleH = availH / rawGridH;
+        
+        // Take the smaller scale to fit both dimensions, but limit max scale
         let scale = Math.min(scaleW, scaleH);
-
-        // Cap scale to reasonable limits
         if (scale > 1.0) scale = 1.0;
-        if (scale < 0.6) scale = 0.6; // Don't go microscopic
+        if (scale < 0.65) scale = 0.65; // Prevent too small tubes
 
-        // Recalculate based on final scale
-        const finalRowH = ROW_H * scale;
+        // 4. Calculate Vertical Positioning
+        const finalRowH = rawRowH * scale;
         const totalContentH = rows * finalRowH;
+        
+        // Center vertically if content fits, otherwise start from topPad
+        // If content is huge, it might go into bottom area (scrolling-like behavior desired)
+        let startY = topPad + (availH - totalContentH) / 2;
+        
+        // If huge content, ensure it starts at topPad properly
+        if (totalContentH > availH) {
+            startY = topPad;
+        }
 
-        // Center vertically within the AVAILABLE SPACE (start after Top Padding)
-        const startY = CONFIG.TOP_PADDING + (availH - totalContentH) / 2;
-
+        // 5. Build Grid
         for (let i = 0; i < this.tubeCount; i++) {
             const r = Math.floor(i / cols);
             const c = i % cols;
 
-            // Centering Row
+            // Center the generic row
             let itemsInRow = cols;
+            // Handle last row centering if incomplete
             if (r === rows - 1) {
-                itemsInRow = this.tubeCount % cols;
-                if (itemsInRow === 0) itemsInRow = cols;
+                const remainder = this.tubeCount % cols;
+                if (remainder !== 0) itemsInRow = remainder;
             }
 
             const rowWidth = itemsInRow * CONFIG.TUBE_WIDTH + (itemsInRow - 1) * CONFIG.TUBE_GAP;
-            const rowStartX = (this.scale.width - rowWidth * scale) / 2 + (CONFIG.TUBE_WIDTH * scale) / 2;
+            const rowWidthScaled = rowWidth * scale;
+            
+            // Calculate X to center the row
+            const rowStartX = (this.scale.width - rowWidthScaled) / 2 + (CONFIG.TUBE_WIDTH * scale) / 2;
 
             const x = rowStartX + c * (CONFIG.TUBE_WIDTH + CONFIG.TUBE_GAP) * scale;
-            const y = startY + r * finalRowH; // StartY already accounts for padding
+            const y = startY + r * finalRowH;
 
             const container = this.add.container(x, y);
             container.setScale(scale);
@@ -270,6 +278,7 @@ export default class WaterSortScene extends Phaser.Scene {
             container.on('pointerdown', (e: any) => { e.event.stopPropagation(); this.handleTubeClick(i); });
 
             this.tubes.push(container);
+            this.tubeOriginalPositions.push({ x, y });
             this.updateTubeVisuals(i);
         }
     }
@@ -279,7 +288,8 @@ export default class WaterSortScene extends Phaser.Scene {
         cont.getAll('name', 'liquid').forEach(o => o.destroy());
         cont.getAll('name', 'cap').forEach(o => o.destroy());
 
-        let yPos = CONFIG.TUBE_HEIGHT / 2 - 10;
+        // Start liquids from BOTTOM of tube
+        let yPos = CONFIG.TUBE_HEIGHT / 2 - 5;  // Bottom of tube (with small margin)
         const data = this.tubeData[idx];
 
         for (let i = 0; i < data.length; i++) {
@@ -347,7 +357,8 @@ export default class WaterSortScene extends Phaser.Scene {
     private deselectSource() {
         if (this.selectedTubeIndex !== -1) {
             const t = this.tubes[this.selectedTubeIndex];
-            this.tweens.add({ targets: t, y: t.y + 30, duration: 150, ease: 'Power2' });
+            const origPos = this.tubeOriginalPositions[this.selectedTubeIndex];
+            this.tweens.add({ targets: t, x: origPos.x, y: origPos.y, duration: 150, ease: 'Power2' });
             this.selectedTubeIndex = -1;
         }
     }
@@ -377,7 +388,7 @@ export default class WaterSortScene extends Phaser.Scene {
 
         const pourX = tgtTube.x + (isRight ? -55 : 55) * srcTube.scale;
         const pourY = tgtTube.y - (CONFIG.TUBE_HEIGHT / 2 + 50) * srcTube.scale;
-        const origX = srcTube.x; const origY = srcTube.y + 30;
+        const origPos = this.tubeOriginalPositions[srcIdx];  // Get exact grid position
 
         this.tweens.add({
             targets: srcTube, x: pourX, y: pourY, angle: angle,
@@ -435,7 +446,7 @@ export default class WaterSortScene extends Phaser.Scene {
                         }
 
                         this.tweens.add({
-                            targets: srcTube, x: origX, y: origY + 30, angle: 0, duration: 250,
+                            targets: srcTube, x: origPos.x, y: origPos.y, angle: 0, duration: 250,  // Return to exact grid position
                             onComplete: () => {
                                 this.isPouring = false; this.selectedTubeIndex = -1;
                                 this.saveState(); this.checkWin();

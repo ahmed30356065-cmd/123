@@ -71,10 +71,10 @@ const WaterSortGame: React.FC<WaterSortGameProps> = ({ currentUser, onExit }) =>
     };
 
     return (
-        <div className="w-full h-[100dvh] relative bg-[#0f1016] overflow-hidden fixed inset-0 flex flex-col font-sans select-none touching-none pt-[env(safe-area-inset-top,24px)]">
+        <div className="w-full h-[100dvh] relative bg-[#1A1A1A] overflow-hidden fixed inset-0 flex flex-col font-sans select-none touching-none pt-[env(safe-area-inset-top,24px)]">
 
             {/* HEADER */}
-            <div className="absolute top-0 left-0 right-0 p-6 z-40 flex justify-between items-start pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 pt-12 px-6 pb-6 z-40 flex justify-between items-start pointer-events-none">
                 <button onClick={() => setShowLeaderboard(true)} className="pointer-events-auto bg-gradient-to-br from-yellow-500/20 to-orange-500/20 backdrop-blur-md border border-yellow-500/30 p-2.5 rounded-xl text-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)] active:scale-95 transition-all group">
                     <TrophyIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
                 </button>
