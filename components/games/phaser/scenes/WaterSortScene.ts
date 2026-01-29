@@ -7,15 +7,15 @@ const COLORS = [
 ];
 
 const CONFIG = {
-    TUBE_WIDTH: 60,
-    TUBE_HEIGHT: 260,
+    TUBE_WIDTH: 75,
+    TUBE_HEIGHT: 240,
     LIQUID_HEIGHT: 60,
     MAX_CAPACITY: 4,
     TUBE_GAP: 25,
     POUR_SPEED: 260,
     CORNER_RADIUS: 24,
     // LAYOUT SAFE ZONES
-    TOP_PADDING: 180,    // Space for Header
+    TOP_PADDING: 240,    // Increased for Header/Status Bar clearance
     BOTTOM_PADDING: 300  // HUGE Space for Game Controls + App Bottom Nav
 };
 

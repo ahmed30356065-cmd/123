@@ -71,7 +71,7 @@ const WaterSortGame: React.FC<WaterSortGameProps> = ({ currentUser, onExit }) =>
     };
 
     return (
-        <div className="w-full h-[100dvh] relative bg-[#0f1016] overflow-hidden fixed inset-0 flex flex-col font-sans select-none touching-none">
+        <div className="w-full h-[100dvh] relative bg-[#0f1016] overflow-hidden fixed inset-0 flex flex-col font-sans select-none touching-none pt-[env(safe-area-inset-top,24px)]">
 
             {/* HEADER */}
             <div className="absolute top-0 left-0 right-0 p-6 z-40 flex justify-between items-start pointer-events-none">
@@ -103,7 +103,7 @@ const WaterSortGame: React.FC<WaterSortGameProps> = ({ currentUser, onExit }) =>
                 bottom-40 = 160px. Game padding is 300px.
                 Controls sit HAPPILY in the middle of the padding.
             */}
-            <div className="absolute bottom-40 left-0 right-0 px-8 flex justify-center gap-10 items-end z-50 pointer-events-auto">
+            <div className="absolute bottom-12 left-0 right-0 px-8 flex justify-center gap-10 items-end z-50 pointer-events-auto">
                 <button onClick={() => handleAction('restart')} className="group flex flex-col items-center gap-1 active:scale-90 transition-transform">
                     <div className="w-10 h-10 rounded-xl bg-[#23263a] flex items-center justify-center shadow-lg border border-white/5 group-hover:bg-[#2a2d45] hover:border-white/20 transition-all">
                         <RefreshCwIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />

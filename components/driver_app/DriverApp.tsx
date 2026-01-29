@@ -209,6 +209,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                 </div>
             ) : (
                 <>
+                    {currentView !== 'games' && (
                     <header className="flex-none bg-[#1A1A1A] z-30 border-b border-gray-800 h-14 flex justify-between items-center px-4 pt-safe box-content relative">
                         <button onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-2 bg-white/5 py-1 px-3 rounded-full hover:bg-white/10 transition-colors">
                             <div className={`relative flex items-center justify-center rounded-full ${!isCustomFrame(props.driver.specialFrame) ? getFrameContainerClass(props.driver.specialFrame) : ''}`}>
@@ -314,6 +315,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                             )}
                         </div>
                     </header>
+                    )}
 
                     {currentView === 'home' && (
                         <div className="flex-none px-3 py-2">
@@ -330,7 +332,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                         {currentView === 'wallet' && <WalletScreen driver={props.driver} orders={props.orders} users={props.users} />}
                         {currentView === 'games' && <WaterSortGame currentUser={props.driver} onExit={() => setCurrentView('home')} />}
                     </main>
-                    <BottomNav activePage={currentView} onNavigate={(v) => setCurrentView(v as View)} messageCount={unseenMessagesCount} theme={props.appTheme} />
+                    {currentView !== 'games' && <BottomNav activePage={currentView} onNavigate={(v) => setCurrentView(v as View)} messageCount={unseenMessagesCount} theme={props.appTheme} />}
                 </>
             )}
         </div>
