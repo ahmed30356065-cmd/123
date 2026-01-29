@@ -7,23 +7,23 @@ const COLORS = [
 ];
 
 const CONFIG = {
-    TUBE_WIDTH: 75,
-    TUBE_HEIGHT: 280,        // Increased to properly contain 4 liquid segments
-    LIQUID_HEIGHT: 60,
+    TUBE_WIDTH: 74,
+    TUBE_HEIGHT: 240,        // Reduced height nicely
+    LIQUID_HEIGHT: 50,       // Adjusted for 4 segments (4 * 50 = 200 < 240)
     MAX_CAPACITY: 4,
-    TUBE_GAP: 35,            // Increased spacing between tubes
+    TUBE_GAP: 30,
     POUR_SPEED: 260,
     CORNER_RADIUS: 24,
     // LAYOUT SAFE ZONES
-    TOP_PADDING: 100,        // Reduced to lower tubes on screen
-    BOTTOM_PADDING: 200      // Space for Game Controls
+    TOP_PADDING: 180,        // Increased to avoid UI overlap
+    BOTTOM_PADDING: 220      // Increased to avoid control buttons overlap
 };
 
 export default class WaterSortScene extends Phaser.Scene {
     private tubes: Phaser.GameObjects.Container[] = [];
     private tubeData: number[][] = [];
     private completedTubes: boolean[] = [];
-    private tubeOriginalPositions: { x: number, y: number }[] = [];  // Store original grid positions
+    private tubeOriginalPositions: { x: number, y: number }[] = [];
     private selectedTubeIndex: number = -1;
     private isPouring: boolean = false;
     private history: { source: number, target: number, color: number, count: number }[] = [];
@@ -88,7 +88,7 @@ export default class WaterSortScene extends Phaser.Scene {
         }
 
         if (!this.textures.exists('tube_3d')) {
-            const scale = 4; // Supersample
+            const scale = 4; // High res
             const w = CONFIG.TUBE_WIDTH * scale;
             const h = CONFIG.TUBE_HEIGHT * scale;
             const r = CONFIG.CORNER_RADIUS * scale;
@@ -96,43 +96,47 @@ export default class WaterSortScene extends Phaser.Scene {
             const canvas = this.textures.createCanvas('tube_3d', w, h);
             const ctx = canvas!.getContext();
 
-            // Body Gradient
+            // Glass Body
             const grad = ctx.createLinearGradient(0, 0, w, 0);
-            grad.addColorStop(0, 'rgba(30,30,35,0.4)');
-            grad.addColorStop(0.2, 'rgba(80,80,90,0.1)');
-            grad.addColorStop(0.5, 'rgba(30,30,35,0.05)');
-            grad.addColorStop(0.8, 'rgba(40,40,50,0.3)');
-            grad.addColorStop(1, 'rgba(20,20,25,0.6)');
+            grad.addColorStop(0, 'rgba(60,60,70,0.3)');
+            grad.addColorStop(0.2, 'rgba(120,120,130,0.1)');
+            grad.addColorStop(0.5, 'rgba(60,60,70,0.05)');
+            grad.addColorStop(0.8, 'rgba(80,80,90,0.2)');
+            grad.addColorStop(1, 'rgba(40,40,50,0.4)');
 
             ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.roundRect(0, 0, w, h, r);
             ctx.fill();
 
-            // Highlight
+            // Glossy Highlight
             const hGrad = ctx.createLinearGradient(0, 0, w, 0);
-            hGrad.addColorStop(0.1, 'rgba(255,255,255,0)');
-            hGrad.addColorStop(0.15, 'rgba(255,255,255,0.3)');
-            hGrad.addColorStop(0.2, 'rgba(255,255,255,0)');
+            hGrad.addColorStop(0, 'rgba(255,255,255,0.05)');
+            hGrad.addColorStop(0.1, 'rgba(255,255,255,0.4)');
+            hGrad.addColorStop(0.25, 'rgba(255,255,255,0.05)');
+            hGrad.addColorStop(0.8, 'rgba(255,255,255,0)');
+            hGrad.addColorStop(0.9, 'rgba(255,255,255,0.2)');
+
             ctx.fillStyle = hGrad;
             ctx.beginPath();
             ctx.roundRect(0, 0, w, h, r);
             ctx.fill();
 
-            // Rim
+            // Rim & Border
             const rimGrad = ctx.createLinearGradient(0, 0, w, 0);
-            rimGrad.addColorStop(0, '#555');
-            rimGrad.addColorStop(0.5, '#fff');
-            rimGrad.addColorStop(1, '#555');
+            rimGrad.addColorStop(0, '#888');
+            rimGrad.addColorStop(0.5, '#eee');
+            rimGrad.addColorStop(1, '#888');
 
-            ctx.lineWidth = 1.5 * scale;
+            ctx.lineWidth = 2 * scale;
             ctx.strokeStyle = rimGrad;
             ctx.beginPath();
             ctx.roundRect(0, 0, w, h, [r, r, r, r]);
             ctx.stroke();
 
+            // Inner subtle border
             ctx.lineWidth = 0.5 * scale;
-            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
             ctx.stroke();
 
             canvas!.refresh();
@@ -183,7 +187,7 @@ export default class WaterSortScene extends Phaser.Scene {
         for (let i = 0; i < colorCount; i++) finalState.push(Array(4).fill(i));
         for (let i = 0; i < 2; i++) finalState.push([]);
 
-        const moves = 150 + this.level * 15; // More depth
+        const moves = 150 + this.level * 15;
         for (let m = 0; m < moves; m++) {
             const s = Phaser.Math.Between(0, this.tubeCount - 1);
             if (finalState[s].length === 0) continue;
@@ -197,7 +201,7 @@ export default class WaterSortScene extends Phaser.Scene {
         this.tubeData = finalState;
     }
 
-    // SAFE ZONE LAYOUT
+    // SAFE ZONE LAYOUT - REDESIGNED
     private drawTubes() {
         this.tubes.forEach(t => t.destroy());
         this.tubes = [];
@@ -205,53 +209,49 @@ export default class WaterSortScene extends Phaser.Scene {
 
         // 1. Define Available Space
         const availW = this.scale.width - 40; // 20px padding each side
-        // Use more vertical space
-        const topPad = 120; 
-        const botPad = 180;
-        const availH = this.scale.height - (topPad + botPad);
+        const availH = this.scale.height - (CONFIG.TOP_PADDING + CONFIG.BOTTOM_PADDING);
 
         // 2. Determine Grid Configuration
-        let cols = 5;
-        if (this.tubeCount <= 5) cols = this.tubeCount;
-        else cols = Math.ceil(this.tubeCount / 2); // Prefer 2 rows balanced
-        if (cols > 5) cols = 5; // Max 5 columns
+        // Prefer 4 columns maximum to keep tubes readable on mobile
+        let cols = 4;
+
+        // If few tubes, center them nicely
+        if (this.tubeCount <= 4) cols = this.tubeCount;
+        else cols = Math.ceil(this.tubeCount / 2);
+        if (cols > 4) cols = 4;
 
         const rows = Math.ceil(this.tubeCount / cols);
 
-        // 3. Calculate Scale based on Content Size
-        const rawRowH = CONFIG.TUBE_HEIGHT + 60; // Tube + gap
+        // 3. Calculate Scale
+        const rawRowH = CONFIG.TUBE_HEIGHT + 40; // Reduced vertical gap
         const rawGridW = cols * CONFIG.TUBE_WIDTH + (cols - 1) * CONFIG.TUBE_GAP;
         const rawGridH = rows * rawRowH;
 
         let scaleW = availW / rawGridW;
         let scaleH = availH / rawGridH;
-        
-        // Take the smaller scale to fit both dimensions, but limit max scale
-        let scale = Math.min(scaleW, scaleH);
-        if (scale > 1.0) scale = 1.0;
-        if (scale < 0.65) scale = 0.65; // Prevent too small tubes
 
-        // 4. Calculate Vertical Positioning
+        // Take the smaller scale to fit
+        let scale = Math.min(scaleW, scaleH);
+
+        // Clamp scale to keep visuals high quality
+        if (scale > 1.0) scale = 1.0;
+        if (scale < 0.65) scale = 0.65; // Never go too small
+
+        // 4. Calculate Positioning
         const finalRowH = rawRowH * scale;
         const totalContentH = rows * finalRowH;
-        
-        // Center vertically if content fits, otherwise start from topPad
-        // If content is huge, it might go into bottom area (scrolling-like behavior desired)
-        let startY = topPad + (availH - totalContentH) / 2;
-        
-        // If huge content, ensure it starts at topPad properly
-        if (totalContentH > availH) {
-            startY = topPad;
-        }
+
+        // Center vertically, or scroll if too big (but we clamp scale to avoid overflow optimally)
+        let startY = CONFIG.TOP_PADDING + (availH - totalContentH) / 2;
+        if (totalContentH > availH) startY = CONFIG.TOP_PADDING; // Top align if huge
 
         // 5. Build Grid
         for (let i = 0; i < this.tubeCount; i++) {
             const r = Math.floor(i / cols);
             const c = i % cols;
 
-            // Center the generic row
+            // Center rows 
             let itemsInRow = cols;
-            // Handle last row centering if incomplete
             if (r === rows - 1) {
                 const remainder = this.tubeCount % cols;
                 if (remainder !== 0) itemsInRow = remainder;
@@ -259,8 +259,6 @@ export default class WaterSortScene extends Phaser.Scene {
 
             const rowWidth = itemsInRow * CONFIG.TUBE_WIDTH + (itemsInRow - 1) * CONFIG.TUBE_GAP;
             const rowWidthScaled = rowWidth * scale;
-            
-            // Calculate X to center the row
             const rowStartX = (this.scale.width - rowWidthScaled) / 2 + (CONFIG.TUBE_WIDTH * scale) / 2;
 
             const x = rowStartX + c * (CONFIG.TUBE_WIDTH + CONFIG.TUBE_GAP) * scale;
@@ -270,10 +268,11 @@ export default class WaterSortScene extends Phaser.Scene {
             container.setScale(scale);
 
             const bg = this.add.image(0, 0, 'tube_3d');
-            bg.setScale(0.25);
+            bg.setScale(0.25); // Texture was supersampled 4x
             container.add(bg);
 
-            const hit = new Phaser.Geom.Rectangle(-40, -150, 80, 300);
+            // Hit area slightly larger for easier tapping
+            const hit = new Phaser.Geom.Rectangle(-50, -180, 100, 360);
             container.setInteractive(hit, Phaser.Geom.Rectangle.Contains);
             container.on('pointerdown', (e: any) => { e.event.stopPropagation(); this.handleTubeClick(i); });
 
@@ -288,8 +287,7 @@ export default class WaterSortScene extends Phaser.Scene {
         cont.getAll('name', 'liquid').forEach(o => o.destroy());
         cont.getAll('name', 'cap').forEach(o => o.destroy());
 
-        // Start liquids from BOTTOM of tube
-        let yPos = CONFIG.TUBE_HEIGHT / 2 - 5;  // Bottom of tube (with small margin)
+        let yPos = CONFIG.TUBE_HEIGHT / 2 - 10;
         const data = this.tubeData[idx];
 
         for (let i = 0; i < data.length; i++) {
@@ -297,25 +295,28 @@ export default class WaterSortScene extends Phaser.Scene {
             const g = this.add.graphics();
             g.name = 'liquid';
             const h = CONFIG.LIQUID_HEIGHT;
-            const w = CONFIG.TUBE_WIDTH - 10;
+            const w = CONFIG.TUBE_WIDTH - 12; // Fit inside glass
             const lx = -w / 2;
             const ly = yPos - h;
 
             g.fillStyle(color, 0.95);
-            if (i === 0) g.fillRoundedRect(lx, ly, w, h, { tl: 0, tr: 0, bl: 20, br: 20 });
+
+            // If bottom piece, round bottom corners
+            if (i === 0) g.fillRoundedRect(lx, ly, w, h, { tl: 0, tr: 0, bl: 18, br: 18 });
             else g.fillRect(lx, ly, w, h);
 
-            g.fillStyle(0x000000, 0.2);
+            // Subtle depth side shading
+            g.fillStyle(0x000000, 0.1);
             g.fillRect(lx, ly, 6, h);
             g.fillRect(lx + w - 6, ly, 6, h);
 
-            // Surface
+            // Meniscus Surface
             const surf = this.add.graphics();
             surf.name = 'liquid';
             const c = Phaser.Display.Color.IntegerToColor(color);
-            c.brighten(20);
+            c.brighten(15);
             surf.fillStyle(c.color, 1);
-            surf.fillEllipse(0, ly, w, 8);
+            surf.fillEllipse(0, ly, w, 10);
 
             cont.add(g);
             cont.add(surf);
@@ -326,9 +327,9 @@ export default class WaterSortScene extends Phaser.Scene {
             const cap = this.add.graphics();
             cap.name = 'cap';
             cap.fillStyle(0xFFD700);
-            cap.fillRoundedRect(-CONFIG.TUBE_WIDTH / 2 - 2, -CONFIG.TUBE_HEIGHT / 2 - 10, CONFIG.TUBE_WIDTH + 4, 20, 5);
+            cap.fillRoundedRect(-CONFIG.TUBE_WIDTH / 2 - 2, -CONFIG.TUBE_HEIGHT / 2 - 12, CONFIG.TUBE_WIDTH + 4, 24, 6);
             cap.fillStyle(0xffffff, 0.4);
-            cap.fillRect(-10, -CONFIG.TUBE_HEIGHT / 2 - 10, 20, 20);
+            cap.fillRect(-10, -CONFIG.TUBE_HEIGHT / 2 - 12, 20, 24);
             cont.add(cap);
         }
     }
@@ -369,9 +370,13 @@ export default class WaterSortScene extends Phaser.Scene {
         if (tgt.length >= CONFIG.MAX_CAPACITY) { this.deselectSource(); return; }
         const color = src[src.length - 1];
         if (tgt.length > 0 && tgt[tgt.length - 1] !== color) { this.shakeTube(tgtIdx); this.deselectSource(); return; }
+
         let amount = 0;
         for (let i = src.length - 1; i >= 0; i--) { if (src[i] === color) amount++; else break; }
-        const actual = Math.min(amount, CONFIG.MAX_CAPACITY - tgt.length);
+        // Can only move as much as space allows
+        const availableSpace = CONFIG.MAX_CAPACITY - tgt.length;
+        const actual = Math.min(amount, availableSpace);
+
         this.animatePour(srcIdx, tgtIdx, actual, color);
     }
 
@@ -386,9 +391,10 @@ export default class WaterSortScene extends Phaser.Scene {
         const isRight = tgtTube.x > srcTube.x;
         const angle = isRight ? 55 : -55;
 
-        const pourX = tgtTube.x + (isRight ? -55 : 55) * srcTube.scale;
-        const pourY = tgtTube.y - (CONFIG.TUBE_HEIGHT / 2 + 50) * srcTube.scale;
-        const origPos = this.tubeOriginalPositions[srcIdx];  // Get exact grid position
+        // Position source tube near successful target
+        const pourX = tgtTube.x + (isRight ? -60 : 60) * srcTube.scale;
+        const pourY = tgtTube.y - (CONFIG.TUBE_HEIGHT / 2 + 60) * srcTube.scale;
+        const origPos = this.tubeOriginalPositions[srcIdx];
 
         this.tweens.add({
             targets: srcTube, x: pourX, y: pourY, angle: angle,
@@ -399,18 +405,21 @@ export default class WaterSortScene extends Phaser.Scene {
 
                 const rad = Phaser.Math.DegToRad(angle);
                 const halfW = (CONFIG.TUBE_WIDTH / 2) * srcTube.scale;
+                // Pour from lip
                 const halfH = (CONFIG.TUBE_HEIGHT / 2) * srcTube.scale;
 
-                let lx = halfW; let ly = -halfH;
-                if (!isRight) { lx = -halfW; }
+                // Adjust spout position
+                let lx = isRight ? halfW : -halfW;
+                let ly = -halfH;
 
                 const cos = Math.cos(rad); const sin = Math.sin(rad);
                 const rx = lx * cos - ly * sin; const ry = lx * sin + ly * cos;
                 const startP = { x: srcTube.x + rx, y: srcTube.y + ry };
 
                 const tgtContentH = this.tubeData[tgtIdx].length * CONFIG.LIQUID_HEIGHT;
-                const endP = { x: tgtTube.x, y: tgtTube.y + CONFIG.TUBE_HEIGHT / 2 - tgtContentH - 10 * srcTube.scale };
+                const endP = { x: tgtTube.x, y: tgtTube.y + (CONFIG.TUBE_HEIGHT / 2 - tgtContentH - 20) * srcTube.scale };
 
+                // Bezier flow
                 const control = { x: (startP.x + endP.x) / 2, y: startP.y };
                 const curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(startP.x, startP.y), new Phaser.Math.Vector2(control.x, control.y), new Phaser.Math.Vector2(endP.x, endP.y));
 
@@ -418,6 +427,7 @@ export default class WaterSortScene extends Phaser.Scene {
                 this.splashEmitter.setParticleTint(COLORS[color]);
                 this.splashEmitter.start();
 
+                // Logic Update
                 for (let k = 0; k < count; k++) { this.tubeData[srcIdx].pop(); this.tubeData[tgtIdx].push(color); }
                 this.history.push({ source: srcIdx, target: tgtIdx, color, count });
                 this.saveState();
@@ -446,7 +456,7 @@ export default class WaterSortScene extends Phaser.Scene {
                         }
 
                         this.tweens.add({
-                            targets: srcTube, x: origPos.x, y: origPos.y, angle: 0, duration: 250,  // Return to exact grid position
+                            targets: srcTube, x: origPos.x, y: origPos.y, angle: 0, duration: 250,
                             onComplete: () => {
                                 this.isPouring = false; this.selectedTubeIndex = -1;
                                 this.saveState(); this.checkWin();
@@ -504,6 +514,7 @@ export default class WaterSortScene extends Phaser.Scene {
     }
 
     private showWinModal() {
+        // Dark overlay
         const rect = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, 0x000000, 0.85);
         rect.setInteractive();
 
