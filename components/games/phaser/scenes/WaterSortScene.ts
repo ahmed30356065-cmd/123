@@ -243,7 +243,11 @@ export default class WaterSortScene extends Phaser.Scene {
             const t = Phaser.Math.Between(0, this.tubeCount - 1);
             if (s === t) continue;
             if (finalState[t].length < 4) {
-                const v = finalState[s].pop();
+                const v = finalState[s][finalState[s].length - 1];
+                // CRITICAL FIX: Prevent repeats in generation
+                if (finalState[t].length > 0 && finalState[t][finalState[t].length - 1] === v) continue;
+
+                finalState[s].pop();
                 if (v !== undefined) finalState[t].push(v);
             }
         }

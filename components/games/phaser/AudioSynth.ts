@@ -18,20 +18,18 @@ export class AudioSynth {
     public playPop() {
         this.resume();
         const t = this.ctx.currentTime;
+        // High quality "Bubble Pop"
         const osc = this.ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, t);
-        osc.frequency.exponentialRampToValueAtTime(100, t + 0.1); // Faster drop for "Pop"
+        osc.frequency.setValueAtTime(300, t);
+        osc.frequency.exponentialRampToValueAtTime(600, t + 0.1);
 
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.8, t + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.5, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
 
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start(t);
-        osc.stop(t + 0.15);
+        osc.connect(g); g.connect(this.masterGain);
+        osc.start(t); osc.stop(t + 0.2);
     }
 
     public playPourSound(durationMs: number) {
@@ -39,97 +37,80 @@ export class AudioSynth {
         const t = this.ctx.currentTime;
         const duration = durationMs / 1000;
 
-        // Layer 1: High Frequency "Splash" (Crispness)
+        // "Liquid Stream" - White Noise via Bandpass
         const bufSize = this.ctx.sampleRate * duration;
         const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
         const data = buf.getChannelData(0);
         for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
 
-        const noise1 = this.ctx.createBufferSource();
-        noise1.buffer = buf;
-        const hpf = this.ctx.createBiquadFilter();
-        hpf.type = 'highpass';
-        hpf.frequency.value = 1000;
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buf;
 
-        const g1 = this.ctx.createGain();
-        g1.gain.setValueAtTime(0, t);
-        g1.gain.linearRampToValueAtTime(0.3, t + 0.05);
-        g1.gain.linearRampToValueAtTime(0, t + duration);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, t); // Muffled liquid sound
+        filter.Q.value = 1;
 
-        noise1.connect(hpf); hpf.connect(g1); g1.connect(this.masterGain);
-        noise1.start(t);
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.4, t + 0.1);
+        g.gain.linearRampToValueAtTime(0, t + duration);
 
-        // Layer 2: Main Body (Bandpass)
-        const noise2 = this.ctx.createBufferSource();
-        noise2.buffer = buf;
-        const bpf = this.ctx.createBiquadFilter();
-        bpf.type = 'bandpass';
-        bpf.frequency.setValueAtTime(400, t);
-        bpf.frequency.linearRampToValueAtTime(800, t + duration); // Pitch rise as it fills
+        noise.connect(filter); filter.connect(g); g.connect(this.masterGain);
+        noise.start(t);
 
-        const g2 = this.ctx.createGain();
-        g2.gain.setValueAtTime(0, t);
-        g2.gain.linearRampToValueAtTime(0.6, t + 0.05);
-        g2.gain.linearRampToValueAtTime(0, t + duration);
-
-        noise2.connect(bpf); bpf.connect(g2); g2.connect(this.masterGain);
-        noise2.start(t);
-
-        // Layer 3: Discrete Bubbles (The "Glug")
-        const glugs = Math.floor(duration * 12);
+        // "Glugging" - Randomized sine bubbles
+        const glugs = Math.floor(duration * 15);
         for (let i = 0; i < glugs; i++) {
-            const time = t + (Math.random() * duration * 0.8);
+            const gt = t + Math.random() * (duration - 0.1);
             const osc = this.ctx.createOscillator();
-            osc.type = 'sine';
-            const freq = 300 + Math.random() * 400;
-            osc.frequency.setValueAtTime(freq, time);
-            osc.frequency.exponentialRampToValueAtTime(freq + 200, time + 0.05); // Chirp up
+            osc.frequency.setValueAtTime(400 + Math.random() * 300, gt);
+            osc.frequency.exponentialRampToValueAtTime(800, gt + 0.05);
 
             const gg = this.ctx.createGain();
-            gg.gain.setValueAtTime(0, time);
-            gg.gain.linearRampToValueAtTime(0.4, time + 0.01);
-            gg.gain.exponentialRampToValueAtTime(0.01, time + 0.08);
+            gg.gain.setValueAtTime(0, gt);
+            gg.gain.linearRampToValueAtTime(0.3, gt + 0.01);
+            gg.gain.exponentialRampToValueAtTime(0.01, gt + 0.08);
 
-            osc.connect(gg);
-            gg.connect(this.masterGain);
-            osc.start(time);
-            osc.stop(time + 0.1);
+            osc.connect(gg); gg.connect(this.masterGain);
+            osc.start(gt); osc.stop(gt + 0.1);
         }
     }
 
     public playTubeComplete() {
         this.resume();
         const t = this.ctx.currentTime;
-        // Crystal Chime
+        // "Glass Ding"
         const osc = this.ctx.createOscillator();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, t); // A5
+        osc.frequency.setValueAtTime(1200, t);
+
         const g = this.ctx.createGain();
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(0.4, t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.01, t + 1.0);
-        osc.connect(g);
-        g.connect(this.masterGain);
-        osc.start(t);
-        osc.stop(t + 1.2);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+
+        osc.connect(g); g.connect(this.masterGain);
+        osc.start(t); osc.stop(t + 1.5);
     }
 
     public playWinSound() {
         this.resume();
         const t = this.ctx.currentTime;
-        const freqs = [523.25, 659.25, 783.99, 1046.50]; // C Major
-        freqs.forEach((f, i) => {
+        // Celebration Chord (Cmaj7 Arpeggio)
+        const notes = [523.25, 659.25, 783.99, 987.77, 1046.50];
+        notes.forEach((f, i) => {
             const osc = this.ctx.createOscillator();
             osc.type = 'triangle';
             osc.frequency.value = f;
+
             const g = this.ctx.createGain();
-            g.gain.setValueAtTime(0, t + i * 0.1);
-            g.gain.linearRampToValueAtTime(0.3, t + i * 0.1 + 0.1);
-            g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 2);
-            osc.connect(g);
-            g.connect(this.masterGain);
-            osc.start(t + i * 0.1);
-            osc.stop(t + i * 0.1 + 2.5);
+            g.gain.setValueAtTime(0, t + i * 0.08);
+            g.gain.linearRampToValueAtTime(0.2, t + i * 0.08 + 0.05);
+            g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 1.5);
+
+            osc.connect(g); g.connect(this.masterGain);
+            osc.start(t + i * 0.08); osc.stop(t + i * 0.08 + 2.0);
         });
     }
 }
