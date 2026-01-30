@@ -20,7 +20,7 @@ const BronzeFrame = () => (
     <div className="absolute inset-0 border-[3px] border-amber-700 rounded-full shadow-[0_0_15px_rgba(180,83,9,0.5)] z-10"></div>
 );
 
-const WaterSortGame: React.FC<WaterSortGameProps> = ({ currentUser, onExit }) => {
+const WaterSortGame = ({ currentUser, onExit }: WaterSortGameProps) => {
     const [level, setLevel] = useState(1);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const { users } = useAppData(() => { });
@@ -110,9 +110,9 @@ const WaterSortGame: React.FC<WaterSortGameProps> = ({ currentUser, onExit }) =>
                     </div>
                 </button>
 
-                <button onClick={() => handleAction('addTube')} className="group flex flex-col items-center gap-1 -translate-y-2 active:scale-90 transition-transform">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-blue-600 to-blue-800 shadow-[0_8px_25px_rgba(37,99,235,0.4)] flex items-center justify-center border border-white/20">
-                        <PlusSquareIcon className="w-6 h-6 text-white" />
+                <button onClick={() => handleAction('addTube')} className="group flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-b from-blue-600 to-blue-800 shadow-lg flex items-center justify-center border border-white/20 group-hover:from-blue-500 group-hover:to-blue-700 transition-all">
+                        <PlusSquareIcon className="w-4 h-4 text-white" />
                     </div>
                 </button>
 
