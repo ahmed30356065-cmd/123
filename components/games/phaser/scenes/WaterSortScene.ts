@@ -249,7 +249,9 @@ export default class WaterSortScene extends Phaser.Scene {
         this.tubes = [];
         this.tubeOriginalPositions = [];
 
-        const availW = this.scale.width - 20;
+        // Increase side padding to prevent edge clipping (Important Fix)
+        const sidePadding = 48;
+        const availW = this.scale.width - sidePadding;
         const topPad = 140;
         const botPad = 220;
         const availH = this.scale.height - (topPad + botPad);
@@ -281,7 +283,8 @@ export default class WaterSortScene extends Phaser.Scene {
         let scale = Math.min(scaleW, scaleH);
 
         if (scale > 1.0) scale = 1.0;
-        if (scale < 0.5) scale = 0.5;
+        // LOWER MIN SCALE to ensure everything fits even at high tube counts
+        if (scale < 0.35) scale = 0.35;
 
         const finalRowH = rawRowH * scale;
         const totalContentH = rows * finalRowH;
