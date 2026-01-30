@@ -14,8 +14,13 @@ const COLORS = [
     0xF50057, // Pink
     0x76FF03, // Lime
     0x3D5AFE, // Indigo
-    0x26C6DA  // Teal
+    0x26C6DA, // Teal
+    0xFF3D00, // Deep Orange
+    0x651FFF, // Deep Purple
+    0x00B0FF, // Light Blue
+    0x1DE9B6  // Teal Accent
 ];
+
 
 const CONFIG = {
     TUBE_WIDTH: 74,
@@ -197,9 +202,12 @@ export default class WaterSortScene extends Phaser.Scene {
         localStorage.setItem('waterSortMaxLevel', lvl.toString());
         if (this.onLevelUp) this.onLevelUp(lvl);
 
-        const colorCount = Math.min(3 + (lvl - 1), 12);
+        // DIFFICULTY SCALING
+        const maxColors = COLORS.length;
+        const colorCount = Math.min(3 + (lvl - 1), maxColors); // Guard against OOB
         this.tubeCount = colorCount + 2;
         this.initialTubeCount = this.tubeCount;
+
 
         this.history = []; this.selectedTubeIndex = -1; this.isPouring = false;
         this.completedTubes = new Array(this.tubeCount).fill(false);
@@ -284,7 +292,8 @@ export default class WaterSortScene extends Phaser.Scene {
 
         if (scale > 1.0) scale = 1.0;
         // LOWER MIN SCALE to ensure everything fits even at high tube counts
-        if (scale < 0.35) scale = 0.35;
+        if (scale < 0.25) scale = 0.25;
+
 
         const finalRowH = rawRowH * scale;
         const totalContentH = rows * finalRowH;
