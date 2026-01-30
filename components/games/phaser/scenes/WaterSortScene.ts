@@ -1,22 +1,23 @@
 import Phaser from 'phaser';
 import { AudioSynth } from '../AudioSynth';
 
+// 1. IMPROVED COLORS (No dark/black colors, bright & vivid)
 const COLORS = [
-    0xE53935, 0x1E88E5, 0x43A047, 0xFDD835, 0x8E24AA, 0xFB8C00,
-    0x00ACC1, 0x6D4C41, 0xD81B60, 0x546E7A, 0xC0CA33, 0x3949AB
+    0xEF5350, 0x42A5F5, 0x66BB6A, 0xFFEE58, 0xAB47BC, 0xFFA726, // Red, Blue, Green, Yellow, Purple, Orange
+    0x26C6DA, 0x8D6E63, 0xEC407A, 0x78909C, 0xD4E157, 0x5C6BC0  // Cyan, Brown(Lighter), Pink, BlueGrey, Lime, Indigo
 ];
 
 const CONFIG = {
     TUBE_WIDTH: 74,
-    TUBE_HEIGHT: 240,        // Reduced height nicely
-    LIQUID_HEIGHT: 50,       // Adjusted for 4 segments (4 * 50 = 200 < 240)
+    TUBE_HEIGHT: 240,
+    LIQUID_HEIGHT: 50,
     MAX_CAPACITY: 4,
     TUBE_GAP: 30,
     POUR_SPEED: 260,
     CORNER_RADIUS: 24,
     // LAYOUT SAFE ZONES
-    TOP_PADDING: 180,        // Increased to avoid UI overlap
-    BOTTOM_PADDING: 220      // Increased to avoid control buttons overlap
+    TOP_PADDING: 180,
+    BOTTOM_PADDING: 220
 };
 
 export default class WaterSortScene extends Phaser.Scene {
@@ -45,6 +46,9 @@ export default class WaterSortScene extends Phaser.Scene {
         this.createEmitters();
         this.setupEvents();
 
+        // SPLASH SCREEN EFFECT
+        this.showSplashScreen();
+
         const savedState = localStorage.getItem('waterSortState_v2');
         if (savedState) {
             try {
@@ -62,6 +66,34 @@ export default class WaterSortScene extends Phaser.Scene {
             const savedLevel = localStorage.getItem('waterSortMaxLevel');
             this.startLevel(savedLevel ? parseInt(savedLevel) : 1);
         }
+    }
+
+    private showSplashScreen() {
+        // Simple overlay that fades out
+        const overlay = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, 0x1a1a1a);
+        const logoText = this.add.text(this.scale.width / 2, this.scale.height / 2, "WATER SORT", {
+            fontFamily: 'Arial Black', fontSize: '48px', color: '#4FC3F7',
+            stroke: '#FFF', strokeThickness: 4
+        }).setOrigin(0.5).setScale(0.5);
+
+        this.tweens.add({
+            targets: logoText,
+            scale: 1.2,
+            duration: 800,
+            ease: 'Back.out',
+            onComplete: () => {
+                this.tweens.add({
+                    targets: [overlay, logoText],
+                    alpha: 0,
+                    duration: 500,
+                    delay: 200,
+                    onComplete: () => {
+                        overlay.destroy();
+                        logoText.destroy();
+                    }
+                });
+            }
+        });
     }
 
     private setupEvents() {
@@ -100,7 +132,7 @@ export default class WaterSortScene extends Phaser.Scene {
 
             ctx.translate(pad, pad);
 
-            // 1. Glass Body (Background)
+            // 1. Glass Body
             const grad = ctx.createLinearGradient(0, 0, w, 0);
             grad.addColorStop(0, 'rgba(40,40,50,0.5)');
             grad.addColorStop(0.2, 'rgba(100,100,110,0.2)');
@@ -110,11 +142,10 @@ export default class WaterSortScene extends Phaser.Scene {
 
             ctx.fillStyle = grad;
             ctx.beginPath();
-            // Main body
             ctx.roundRect(0, 0, w, h, [r / 2, r / 2, r, r]);
             ctx.fill();
 
-            // 2. Glossy Highlight (Left)
+            // 2. Glossy Highlight
             const hGrad = ctx.createLinearGradient(0, 0, w * 0.5, 0);
             hGrad.addColorStop(0, 'rgba(255,255,255,0.05)');
             hGrad.addColorStop(0.2, 'rgba(255,255,255,0.3)');
@@ -125,11 +156,9 @@ export default class WaterSortScene extends Phaser.Scene {
             ctx.roundRect(0, 0, w * 0.4, h, r);
             ctx.fill();
 
-            // 3. Cylinder Top Rim (The Lip)
-            // Draw an ellipse at the top to simulate opening
-            const lipH = 12 * scale; // Height of the ellipse
+            // 3. Cylinder Top Rim (The Lip 3D)
+            const lipH = 12 * scale;
 
-            // Rim Border
             const rimGrad = ctx.createLinearGradient(0, 0, w, 0);
             rimGrad.addColorStop(0, '#555');
             rimGrad.addColorStop(0.5, '#eee');
@@ -144,7 +173,7 @@ export default class WaterSortScene extends Phaser.Scene {
             ctx.stroke();
 
             // Draw Top Opening Ellipse
-            ctx.fillStyle = 'rgba(20,20,30,0.3)'; // Inner dark
+            ctx.fillStyle = 'rgba(20,20,30,0.3)';
             ctx.beginPath();
             ctx.ellipse(w / 2, lipH / 2, w / 2 - lw / 2, lipH / 2, 0, 0, Math.PI * 2);
             ctx.fill();
@@ -174,11 +203,8 @@ export default class WaterSortScene extends Phaser.Scene {
         localStorage.setItem('waterSortMaxLevel', lvl.toString());
         if (this.onLevelUp) this.onLevelUp(lvl);
 
-        // DIFFICULTY SCALING: Increase tubes faster
-        // Base: 3 colors. Increase by 1 color every level until 14 colors max.
+        // DIFFICULTY SCALING
         const colorCount = Math.min(3 + (lvl - 1), 14);
-
-        // Tube count = colors + 2 empty tubes
         this.tubeCount = colorCount + 2;
         this.initialTubeCount = this.tubeCount;
 
@@ -229,28 +255,23 @@ export default class WaterSortScene extends Phaser.Scene {
         this.tubes = [];
         this.tubeOriginalPositions = [];
 
-        // 1. Define Available Space
         const availW = this.scale.width - 20;
         const topPad = 140;
         const botPad = 220;
         const availH = this.scale.height - (topPad + botPad);
 
-        // 2. Determine Grid Configuration
-        // USER REQUIREMENT: "Next to each other", "Not vertical".
-        // Strategy: Force 2 rows max until mostly impossible (size < 0.45).
         let rows = 1;
         if (this.tubeCount <= 6) {
             rows = 1;
         } else if (this.tubeCount <= 16) {
-            rows = 2; // Up to 8 per row. Standard for mobile Water Sort.
+            rows = 2;
         } else {
-            rows = 3; // Only for extreme levels (17+)
+            rows = 3;
         }
 
         const cols = Math.ceil(this.tubeCount / rows);
 
-        // 3. Calculate Scale
-        const rawRowH = CONFIG.TUBE_HEIGHT + 30; // Closer vertical gap
+        const rawRowH = CONFIG.TUBE_HEIGHT + 30;
         const rawGridW = cols * CONFIG.TUBE_WIDTH + (cols - 1) * CONFIG.TUBE_GAP;
         const rawGridH = rows * rawRowH;
 
@@ -259,27 +280,20 @@ export default class WaterSortScene extends Phaser.Scene {
 
         let scale = Math.min(scaleW, scaleH);
 
-        // Cap scale
         if (scale > 1.0) scale = 1.0;
-        // With 8 tubes, scale might drop to ~0.5. This is acceptable for "Side by Side" view.
         if (scale < 0.45) scale = 0.45;
 
-        // 4. Calculate Positioning
         const finalRowH = rawRowH * scale;
         const totalContentH = rows * finalRowH;
 
-        // Center vertically
         let startY = topPad + (availH - totalContentH) / 2;
         if (totalContentH > availH) startY = topPad;
 
-        // 5. Build Grid
         for (let i = 0; i < this.tubeCount; i++) {
             const r = Math.floor(i / cols);
             const c = i % cols;
 
-            // Center rows logic
             let itemsInRow = cols;
-            // If last row has remainder
             if (r === rows - 1) {
                 const remainder = this.tubeCount % cols;
                 if (remainder !== 0) itemsInRow = remainder;
@@ -296,12 +310,10 @@ export default class WaterSortScene extends Phaser.Scene {
             const container = this.add.container(x, y);
             container.setScale(scale);
 
-            // Tube Body
             const bg = this.add.image(0, 0, 'tube_3d');
             bg.setScale(0.25);
             container.add(bg);
 
-            // Wider Hit Area
             const hit = new Phaser.Geom.Rectangle(-50, -180, 100, 360);
             container.setInteractive(hit, Phaser.Geom.Rectangle.Contains);
             container.on('pointerdown', (e: any) => { e.event.stopPropagation(); this.handleTubeClick(i); });
@@ -313,40 +325,40 @@ export default class WaterSortScene extends Phaser.Scene {
     }
 
     private updateTubeVisuals(idx: number) {
+        if (!this.tubes[idx]) return; // CRASH FIX: Guard
         const cont = this.tubes[idx];
+
         cont.getAll('name', 'liquid').forEach(o => o.destroy());
         cont.getAll('name', 'cap').forEach(o => o.destroy());
 
         let yPos = CONFIG.TUBE_HEIGHT / 2 - 10;
         const data = this.tubeData[idx];
+        if (!data) return; // Guard
 
         for (let i = 0; i < data.length; i++) {
             const color = COLORS[data[i]];
             const g = this.add.graphics();
             g.name = 'liquid';
             const h = CONFIG.LIQUID_HEIGHT;
-            const w = CONFIG.TUBE_WIDTH - 12; // Fit inside glass
+            const w = CONFIG.TUBE_WIDTH - 12;
             const lx = -w / 2;
             const ly = yPos - h;
 
             g.fillStyle(color, 0.95);
-
-            // If bottom piece, round bottom corners
             if (i === 0) g.fillRoundedRect(lx, ly, w, h, { tl: 0, tr: 0, bl: 18, br: 18 });
             else g.fillRect(lx, ly, w, h);
 
-            // Subtle depth side shading
-            g.fillStyle(0x000000, 0.1);
-            g.fillRect(lx, ly, 6, h);
-            g.fillRect(lx + w - 6, ly, 6, h);
+            // Bright highlight
+            g.fillStyle(0xFFFFFF, 0.15);
+            g.fillRect(lx, ly, 8, h);
 
             // Meniscus Surface
             const surf = this.add.graphics();
             surf.name = 'liquid';
             const c = Phaser.Display.Color.IntegerToColor(color);
-            c.brighten(15);
+            c.brighten(20);
             surf.fillStyle(c.color, 1);
-            surf.fillEllipse(0, ly, w, 10);
+            surf.fillEllipse(0, ly, w, 8);
 
             cont.add(g);
             cont.add(surf);
@@ -358,8 +370,8 @@ export default class WaterSortScene extends Phaser.Scene {
             cap.name = 'cap';
             cap.fillStyle(0xFFD700);
             cap.fillRoundedRect(-CONFIG.TUBE_WIDTH / 2 - 2, -CONFIG.TUBE_HEIGHT / 2 - 12, CONFIG.TUBE_WIDTH + 4, 24, 6);
-            cap.fillStyle(0xffffff, 0.4);
-            cap.fillRect(-10, -CONFIG.TUBE_HEIGHT / 2 - 12, 20, 24);
+            cap.fillStyle(0xFFFFFF, 0.6);
+            cap.fillRoundedRect(-15, -CONFIG.TUBE_HEIGHT / 2 - 12, 10, 24, 2);
             cont.add(cap);
         }
     }
@@ -403,7 +415,6 @@ export default class WaterSortScene extends Phaser.Scene {
 
         let amount = 0;
         for (let i = src.length - 1; i >= 0; i--) { if (src[i] === color) amount++; else break; }
-        // Can only move as much as space allows
         const availableSpace = CONFIG.MAX_CAPACITY - tgt.length;
         const actual = Math.min(amount, availableSpace);
 
@@ -421,7 +432,6 @@ export default class WaterSortScene extends Phaser.Scene {
         const isRight = tgtTube.x > srcTube.x;
         const angle = isRight ? 55 : -55;
 
-        // Position source tube near successful target
         const pourX = tgtTube.x + (isRight ? -60 : 60) * srcTube.scale;
         const pourY = tgtTube.y - (CONFIG.TUBE_HEIGHT / 2 + 60) * srcTube.scale;
         const origPos = this.tubeOriginalPositions[srcIdx];
@@ -432,13 +442,10 @@ export default class WaterSortScene extends Phaser.Scene {
             onComplete: () => {
                 this.audio.playPourSound(CONFIG.POUR_SPEED);
                 const g = this.add.graphics();
-
                 const rad = Phaser.Math.DegToRad(angle);
                 const halfW = (CONFIG.TUBE_WIDTH / 2) * srcTube.scale;
-                // Pour from lip
                 const halfH = (CONFIG.TUBE_HEIGHT / 2) * srcTube.scale;
 
-                // Adjust spout position
                 let lx = isRight ? halfW : -halfW;
                 let ly = -halfH;
 
@@ -449,7 +456,7 @@ export default class WaterSortScene extends Phaser.Scene {
                 const tgtContentH = this.tubeData[tgtIdx].length * CONFIG.LIQUID_HEIGHT;
                 const endP = { x: tgtTube.x, y: tgtTube.y + (CONFIG.TUBE_HEIGHT / 2 - tgtContentH - 20) * srcTube.scale };
 
-                // Bezier flow
+                // Control points for smooth curve
                 const control = { x: (startP.x + endP.x) / 2, y: startP.y };
                 const curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(startP.x, startP.y), new Phaser.Math.Vector2(control.x, control.y), new Phaser.Math.Vector2(endP.x, endP.y));
 
@@ -457,7 +464,6 @@ export default class WaterSortScene extends Phaser.Scene {
                 this.splashEmitter.setParticleTint(COLORS[color]);
                 this.splashEmitter.start();
 
-                // Logic Update
                 for (let k = 0; k < count; k++) { this.tubeData[srcIdx].pop(); this.tubeData[tgtIdx].push(color); }
                 this.history.push({ source: srcIdx, target: tgtIdx, color, count });
                 this.saveState();
@@ -503,6 +509,10 @@ export default class WaterSortScene extends Phaser.Scene {
         this.audio.playPop();
         const m = this.history.pop()!;
         this.completedTubes[m.target] = false;
+
+        // Guard against invalid data just in case
+        if (!this.tubeData[m.target] || !this.tubeData[m.source]) return;
+
         for (let k = 0; k < m.count; k++) { this.tubeData[m.target].pop(); this.tubeData[m.source].push(m.color); }
         this.deselectSource();
         this.updateTubeVisuals(m.source);
@@ -514,13 +524,27 @@ export default class WaterSortScene extends Phaser.Scene {
         if (this.isPouring || this.hasWon) return;
         if (this.tubeCount >= this.initialTubeCount + 2) return;
 
-        this.audio.playPop();
         this.tubeData.push([]);
         this.completedTubes.push(false);
         this.tubeCount++;
+
         this.drawTubes();
         this.saveState();
         this.checkWin();
+
+        this.audio.playPop();
+        const lastIdx = this.tubeCount - 1;
+        if (this.tubes[lastIdx]) {
+            const t = this.tubes[lastIdx];
+            t.setAlpha(0);
+            t.y -= 50;
+            this.tweens.add({ targets: t, alpha: 1, y: t.y + 50, duration: 400, ease: 'Back.out' });
+
+            const burst = this.add.particles(t.x, t.y, 'particle', {
+                speed: 100, scale: { start: 1, end: 0 }, lifespan: 500, quantity: 20
+            });
+            burst.explode();
+        }
     }
 
     private checkWin() {
@@ -540,25 +564,32 @@ export default class WaterSortScene extends Phaser.Scene {
         this.audio.playWinSound();
         this.showWinModal();
         window.dispatchEvent(new CustomEvent('water-sort-level-complete', { detail: this.level }));
-        this.time.delayedCall(3000, () => this.startLevel(this.level + 1));
+        this.time.delayedCall(4000, () => this.startLevel(this.level + 1));
     }
 
     private showWinModal() {
-        // Dark overlay
-        const rect = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, 0x000000, 0.85);
+        const rect = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, 0x000000, 0.9);
         rect.setInteractive();
 
-        const txt = this.add.text(this.scale.width / 2, this.scale.height / 2, "LEVEL COMPLETED!", {
-            fontFamily: 'Arial', fontSize: '42px', color: '#FFD700', fontStyle: 'bold',
-            shadow: { offsetX: 0, offsetY: 4, color: '#000', blur: 10, fill: true }
+        const txt = this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, "AWESOME!", {
+            fontFamily: 'Arial Black', fontSize: '64px', color: '#FFD700',
+            stroke: '#FFFFFF', strokeThickness: 4,
+            shadow: { offsetX: 0, offsetY: 10, color: '#E65100', blur: 0, fill: true }
         }).setOrigin(0.5).setScale(0);
 
-        this.winContainer = this.add.container(0, 0, [rect, txt]);
+        const sub = this.add.text(this.scale.width / 2, this.scale.height / 2 + 30, `LEVEL ${this.level} COMPLETED`, {
+            fontFamily: 'Arial', fontSize: '24px', color: '#FFF'
+        }).setOrigin(0.5).setAlpha(0);
+
+        this.winContainer = this.add.container(0, 0, [rect, txt, sub]);
         this.winContainer.setDepth(100);
 
         this.tweens.add({
-            targets: txt, scale: 1, duration: 600, ease: 'Back.out',
-            onComplete: () => this.playConfetti()
+            targets: txt, scale: 1, duration: 800, ease: 'Elastic.out',
+            onComplete: () => {
+                this.tweens.add({ targets: sub, alpha: 1, duration: 400 });
+                this.playConfetti();
+            }
         });
     }
 
