@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     UploadIcon, CheckCircleIcon, XIcon, CloudIcon, BoltIcon,
     SettingsIcon, RocketIcon, ServerIcon, ActivityIcon, SaveIcon,
-    AlertTriangleIcon, TrashIcon, MobileIcon, RefreshCwIcon
+    AlertTriangleIcon, TrashIcon, MobileIcon, RefreshCwIcon,
+    CalendarIcon
 } from '../icons';
 import {
     updateData, uploadFile, subscribeToCollection,
@@ -12,6 +13,7 @@ import {
 } from '../../services/firebase';
 import firebase from 'firebase/compat/app'; // For batch operations types
 import { AppConfig, UpdateLog } from '../../types';
+import PromptModal from './PromptModal';
 
 // --- Types ---
 interface SystemSettingsProps {
@@ -117,6 +119,40 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, type?: 'danger' | 'info' }>({
         isOpen: false, title: '', message: '', onConfirm: () => { }
     });
+
+    const [promptConfig, setPromptConfig] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        placeholder?: string;
+        defaultValue?: string;
+        inputType?: 'text' | 'number';
+        onConfirm: (val: string) => void;
+        onClose: () => void;
+    }>({
+        isOpen: false, title: '', message: '', onConfirm: () => { }, onClose: () => { }
+    });
+
+    const showPrompt = (title: string, message: string, defaultValue = '', inputType: 'text' | 'number' = 'text', placeholder = ''): Promise<string | null> => {
+        return new Promise((resolve) => {
+            setPromptConfig({
+                isOpen: true,
+                title,
+                message,
+                defaultValue,
+                inputType,
+                placeholder,
+                onConfirm: (val) => {
+                    setPromptConfig(prev => ({ ...prev, isOpen: false }));
+                    resolve(val);
+                },
+                onClose: () => {
+                    setPromptConfig(prev => ({ ...prev, isOpen: false }));
+                    resolve(null);
+                }
+            });
+        });
+    };
 
     // General Config
     const [appName, setAppName] = useState('GOO NOW');
@@ -238,7 +274,14 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
         const today = new Date();
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
 
-        const dateStr = prompt('أدخل تاريخ (YYYY-MM-DD). سيتم حذف جميع الطلبات التي تم إنشاؤها *قبل* هذا التاريخ:', firstDayOfMonth);
+        const dateStr = await showPrompt(
+            'تنظيف البيانات القديمة',
+            'أدخل تاريخ (YYYY-MM-DD). سيتم حذف جميع الطلبات التي تم إنشاؤها *قبل* هذا التاريخ:',
+            firstDayOfMonth,
+            'text',
+            'YYYY-MM-DD'
+        );
+
         if (!dateStr) return;
 
         const cutoffDate = new Date(dateStr);
@@ -293,9 +336,10 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
 
     // --- NEW: Delete by ID Range (Surgical Fix) ---
     const handleRangeDelete = async () => {
-        const startStr = prompt('أدخل بداية نطاق الأرقام للحذف (من رقم):', '6');
+        const startStr = await showPrompt('تحديد بداية النطاق', 'أدخل رقم بداية نطاق الأرقام للحذف (من رقم):', '6', 'number');
         if (!startStr) return;
-        const endStr = prompt('أدخل نهاية نطاق الأرقام للحذف (إلى رقم):', '10000');
+
+        const endStr = await showPrompt('تحديد نهاية النطاق', 'أدخل رقم نهاية نطاق الأرقام للحذف (إلى رقم):', '10000', 'number');
         if (!endStr) return;
 
         const startId = parseInt(startStr);
@@ -364,7 +408,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                     const snapshot = await firebase.firestore().collection('orders').get(); // Direct fetch
                     if (snapshot.empty) return showToast('لا توجد طلبات', 'info');
 
-                    const orders = snapshot.docs.map(d => ({ ...d.data(), _docRef: d.ref }));
+                    const orders = snapshot.docs.map(d => ({ ...d.data() as any, _docRef: d.ref }));
 
                     // Sort by CreatedAt (Oldest First)
                     orders.sort((a, b) => {
@@ -675,6 +719,19 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                 onConfirm={modalConfig.onConfirm}
                 type={modalConfig.type}
             />
+
+            {promptConfig.isOpen && (
+                <PromptModal
+                    title={promptConfig.title}
+                    message={promptConfig.message}
+                    defaultValue={promptConfig.defaultValue}
+                    inputType={promptConfig.inputType}
+                    placeholder={promptConfig.placeholder}
+                    onConfirm={promptConfig.onConfirm}
+                    onClose={promptConfig.onClose}
+                    confirmButtonText="متابعة"
+                />
+            )}
         </div >
     );
 };
