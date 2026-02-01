@@ -167,8 +167,8 @@ const GamesManager: React.FC<GamesManagerProps> = ({ appConfig, onUpdateAppConfi
 
             {/* Modal */}
             {isAddModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="bg-[#222] border border-gray-700 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl animate-scale-in">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setIsAddModalOpen(false)}>
+                    <div className="bg-[#222] border border-gray-700 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between p-4 border-b border-gray-700">
                             <h3 className="font-bold">{editingGame ? 'تعديل لعبة' : 'إضافة لعبة جديدة'}</h3>
                             <button onClick={() => setIsAddModalOpen(false)}><XIcon className="w-5 h-5 text-gray-400 hover:text-white" /></button>
