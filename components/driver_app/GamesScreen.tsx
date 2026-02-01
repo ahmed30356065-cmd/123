@@ -43,6 +43,13 @@ const GameImage: React.FC<{ src: string; alt?: string; className?: string }> = (
 };
 
 const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame }) => {
+    // Redirect if games are disabled
+    React.useEffect(() => {
+        if (appConfig?.isGamesEnabled === false && onBack) {
+            onBack();
+        }
+    }, [appConfig?.isGamesEnabled, onBack]);
+
     const games = appConfig?.games?.filter(g => g.isActive) || [];
 
     return (
@@ -50,54 +57,54 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
             {/* Premium Header */}
             <div className="relative z-50 overflow-hidden bg-[#1a1a1a] shadow-xl border-b border-white/5 pt-safe sticky top-0">
                 <div className="absolute inset-0 bg-gradient-to-b from-red-600/10 to-transparent" />
-                <div className="relative z-10 flex items-center justify-between p-4">
+                <div className="relative z-10 flex items-center justify-between p-3">
                     <button
                         onClick={onBack}
-                        className="p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 active:scale-90 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50 flex items-center justify-center cursor-pointer"
+                        className="p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 active:scale-90 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50 flex items-center justify-center cursor-pointer"
                         aria-label="Back"
-                        style={{ minWidth: '44px', minHeight: '44px' }}
+                        style={{ minWidth: '36px', minHeight: '36px' }}
                     >
-                        <ChevronRightIcon className="w-6 h-6 text-gray-100 rotate-180" />
+                        <ChevronRightIcon className="w-5 h-5 text-gray-100 rotate-180" />
                     </button>
                     <div className="flex flex-col items-center">
-                        <h1 className="text-xl font-black tracking-tight text-white drop-shadow-sm">
+                        <h1 className="text-lg font-black tracking-tight text-white drop-shadow-sm">
                             منطقة الألعاب
                             <span className="text-red-500 ml-1">.</span>
                         </h1>
                     </div>
-                    <div className="w-10"></div> {/* Spacer */}
+                    <div className="w-8"></div> {/* Spacer */}
                 </div>
             </div>
 
             {/* Content */}
-            <div className="px-4 py-6 flex-1">
+            <div className="px-3 py-4 flex-1">
                 {games.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center animate-slideUp">
-                        <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-gray-800 to-black border border-white/5 flex items-center justify-center mb-6 shadow-2xl shadow-black/50">
-                            <GamepadIcon className="w-12 h-12 text-gray-600" />
+                        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-gray-800 to-black border border-white/5 flex items-center justify-center mb-6 shadow-2xl shadow-black/50">
+                            <GamepadIcon className="w-10 h-10 text-gray-600" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-200">لا توجد ألعاب متاحة</h3>
-                        <p className="text-sm text-gray-500 mt-2 max-w-[200px]">
+                        <h3 className="text-lg font-bold text-gray-200">لا توجد ألعاب متاحة</h3>
+                        <p className="text-xs text-gray-500 mt-2 max-w-[200px]">
                             نقوم بإضافة ألعاب جديدة دورياً. يرجى التحقق لاحقاً.
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-3">
                         {games.map((game, idx) => (
                             <button
                                 key={game.id}
                                 onClick={() => onPlayGame(game.url)}
-                                className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-[#202020] border border-white/5 shadow-lg active:scale-[0.98] transition-all duration-300 animate-slideUp"
+                                className="group relative aspect-square rounded-xl overflow-hidden bg-[#202020] border border-white/5 shadow-lg active:scale-[0.98] transition-all duration-300 animate-slideUp"
                                 style={{ animationDelay: `${idx * 100}ms` }}
                             >
                                 {/* Image Layer */}
-                                <div className="absolute inset-0 z-0">
+                                <div className="absolute inset-0 z-0 bg-gray-800">
                                     <GameImage
                                         src={game.image}
                                         alt={game.name}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-60"
+                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                                 </div>
 
                                 {/* Content Layer */}

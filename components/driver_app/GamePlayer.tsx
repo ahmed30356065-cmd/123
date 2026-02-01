@@ -13,14 +13,14 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ url, onClose }) => {
     return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col animate-fadeIn">
             {/* Header/Controls */}
-            <div className="absolute top-0 right-0 left-0 flex items-center justify-between p-4 pt-safe z-[60] pointer-events-none">
+            <div className="absolute top-0 right-0 left-0 flex items-center justify-between p-3 pt-safe z-[60] pointer-events-none">
                 <button
                     onClick={onClose}
-                    className="pointer-events-auto p-4 rounded-full bg-red-600 text-white shadow-xl shadow-red-600/40 hover:bg-red-700 active:scale-90 transition-transform duration-200 border border-white/20 z-50 flex items-center justify-center cursor-pointer"
+                    className="pointer-events-auto p-2 rounded-full bg-red-600 text-white shadow-lg shadow-red-600/40 hover:bg-red-700 active:scale-90 transition-transform duration-200 border border-white/20 z-50 flex items-center justify-center cursor-pointer"
                     aria-label="Close Game"
-                    style={{ minWidth: '48px', minHeight: '48px' }}
+                    style={{ minWidth: '36px', minHeight: '36px' }}
                 >
-                    <XIcon className="w-8 h-8" />
+                    <XIcon className="w-5 h-5" />
                 </button>
                 <div className="pointer-events-auto px-4 py-2 rounded-full bg-black/80 backdrop-blur-md border border-white/10 shadow-lg">
                     <span className="text-[10px] font-bold text-gray-200 uppercase tracking-widest">Game Mode</span>
