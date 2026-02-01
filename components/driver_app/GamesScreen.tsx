@@ -48,24 +48,22 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
     return (
         <div className="flex flex-col min-h-screen bg-[#111] text-white pb-24 animate-fadeIn">
             {/* Premium Header */}
-            <div className="relative overflow-hidden bg-[#1a1a1a] shadow-xl border-b border-white/5 pt-safe">
+            <div className="relative z-50 overflow-hidden bg-[#1a1a1a] shadow-xl border-b border-white/5 pt-safe sticky top-0">
                 <div className="absolute inset-0 bg-gradient-to-b from-red-600/10 to-transparent" />
-                <div className="relative z-10 flex items-center justify-between p-5">
+                <div className="relative z-10 flex items-center justify-between p-4">
                     <button
                         onClick={onBack}
-                        className="p-2.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                        className="p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 active:scale-90 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50 flex items-center justify-center cursor-pointer"
                         aria-label="Back"
+                        style={{ minWidth: '44px', minHeight: '44px' }}
                     >
-                        <ChevronRightIcon className="w-5 h-5 text-gray-100 rotate-180" />
+                        <ChevronRightIcon className="w-6 h-6 text-gray-100 rotate-180" />
                     </button>
                     <div className="flex flex-col items-center">
                         <h1 className="text-xl font-black tracking-tight text-white drop-shadow-sm">
                             منطقة الألعاب
                             <span className="text-red-500 ml-1">.</span>
                         </h1>
-                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mt-0.5">
-                            استراحة السائقين
-                        </p>
                     </div>
                     <div className="w-10"></div> {/* Spacer */}
                 </div>
