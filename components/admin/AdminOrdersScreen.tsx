@@ -260,20 +260,20 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
         }
 
         // 4. Sort (Latest First)
-        // 4. Sort (Strictly by ID Number Descending)
+        // 4. Sort (Strictly by ID Number ASCENDING: 1 -> Infinity)
         result.sort((a, b) => {
             const idA = parseInt(a.id.replace(/\D/g, '') || '0');
             const idB = parseInt(b.id.replace(/\D/g, '') || '0');
 
-            // Primary: ID Number (descending)
+            // Primary: ID Number (Ascending: 1, 2, 3...)
             if (idA !== idB) {
-                return idB - idA;
+                return idA - idB;
             }
 
-            // Secondary: Date (fallback)
+            // Secondary: Date (Ascending)
             const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
             const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return timeB - timeA;
+            return timeA - timeB;
         });
 
         return result;

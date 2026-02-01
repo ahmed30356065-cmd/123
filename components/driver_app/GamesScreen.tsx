@@ -9,6 +9,34 @@ interface GamesScreenProps {
     onPlayGame: (url: string) => void;
 }
 
+import { downloadFileFromFirestore } from '../../services/firebase';
+
+const GameImage: React.FC<{ src: string; alt?: string; className?: string }> = ({ src, alt, className }) => {
+    const [imgUrl, setImgUrl] = React.useState(src);
+
+    React.useEffect(() => {
+        let isMounted = true;
+        if (src && src.startsWith('FIRESTORE_FILE:')) {
+            const fileId = src.replace('FIRESTORE_FILE:', '');
+            // Only try to download if we have a valid ID
+            if (fileId) {
+                downloadFileFromFirestore(fileId)
+                    .then(url => {
+                        if (isMounted && url) setImgUrl(url);
+                    })
+                    .catch(err => {
+                        console.error("Failed to load game image:", err);
+                    });
+            }
+        } else {
+            setImgUrl(src);
+        }
+        return () => { isMounted = false; };
+    }, [src]);
+
+    return <img src={imgUrl} alt={alt} className={className} />;
+};
+
 const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame }) => {
     const games = appConfig?.games?.filter(g => g.isActive) || [];
 
@@ -44,9 +72,9 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
                             <button
                                 key={game.id}
                                 onClick={() => onPlayGame(game.url)}
-                                className="group relative aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-[#252525] hover:scale-[1.02] transition-all duration-300 active:scale-95 text-right"
+                                className="group relative aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-[#252525] hover:scale-[1.02] transition-all duration-300 active:scale-95 text-right w-full"
                             >
-                                <img
+                                <GameImage
                                     src={game.image}
                                     alt={game.name}
                                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-50"
