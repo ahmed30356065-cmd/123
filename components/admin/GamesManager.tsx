@@ -112,14 +112,22 @@ const GamesManager: React.FC<GamesManagerProps> = ({ appConfig, onUpdateAppConfi
                 <div className="flex items-center gap-4">
                     {/* Master Switch */}
                     <div className="flex items-center gap-3 bg-[#252525] px-4 py-2 rounded-xl border border-white/5">
-                        <span className={`text-xs font-bold ${appConfig?.isGamesEnabled !== false ? 'text-green-400' : 'text-gray-500'}`}>
-                            {appConfig?.isGamesEnabled !== false ? 'مفعل' : 'معطل'}
+                        <span className={`text-xs font-bold ${(appConfig?.isGamesEnabled ?? true) ? 'text-green-400' : 'text-gray-500'}`}>
+                            {(appConfig?.isGamesEnabled ?? true) ? 'مفعل' : 'معطل'}
                         </span>
                         <button
-                            onClick={() => onUpdateAppConfig({ ...appConfig, appName: appConfig?.appName || '', appVersion: appConfig?.appVersion || '', isGamesEnabled: !(appConfig?.isGamesEnabled ?? true) })}
-                            className={`w-12 h-6 rounded-full p-1 transition-colors ${appConfig?.isGamesEnabled !== false ? 'bg-green-600' : 'bg-gray-700'}`}
+                            onClick={() => {
+                                const currentState = appConfig?.isGamesEnabled ?? true;
+                                onUpdateAppConfig({
+                                    ...appConfig,
+                                    appName: appConfig?.appName || '',
+                                    appVersion: appConfig?.appVersion || '',
+                                    isGamesEnabled: !currentState
+                                });
+                            }}
+                            className={`w-12 h-6 rounded-full p-1 transition-colors ${(appConfig?.isGamesEnabled ?? true) ? 'bg-green-600' : 'bg-gray-700'}`}
                         >
-                            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${appConfig?.isGamesEnabled !== false ? 'translate-x-[-24px]' : 'translate-x-0'}`} />
+                            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${(appConfig?.isGamesEnabled ?? true) ? 'translate-x-[-24px]' : 'translate-x-0'}`} />
                         </button>
                     </div>
 
