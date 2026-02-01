@@ -291,6 +291,69 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
         );
     };
 
+    // --- NEW: Delete by ID Range (Surgical Fix) ---
+    const handleRangeDelete = async () => {
+        const startStr = prompt('أدخل بداية نطاق الأرقام للحذف (من رقم):', '6');
+        if (!startStr) return;
+        const endStr = prompt('أدخل نهاية نطاق الأرقام للحذف (إلى رقم):', '10000');
+        if (!endStr) return;
+
+        const startId = parseInt(startStr);
+        const endId = parseInt(endStr);
+
+        if (isNaN(startId) || isNaN(endId) || startId > endId) {
+            return showToast('نطاق غير صالح', 'error');
+        }
+
+        openConfirmModal('⚠️ حذف بنطاق الأرقام',
+            `سيتم حذف جميع الطلبات التي تحمل أرقاماً بين ${startId} و ${endId} (شاملة).\n\nهذا سيسمح بتصحيح عداد الطلبات.\n\nهل أنت متأكد؟`,
+            async () => {
+                showToast('جاري البحث والحذف...', 'info');
+                try {
+                    const snapshot = await firebase.firestore().collection('orders').get(); // Direct fetch
+
+                    const batchSize = 400;
+                    let batch = firebase.firestore().batch();
+                    let count = 0;
+                    let totalDeleted = 0;
+
+                    const ordersToDelete = snapshot.docs.filter(doc => {
+                        const data = doc.data();
+                        const idStr = data.id || '';
+                        const idNum = parseInt(idStr.replace(/\D/g, '') || '0');
+                        return idNum >= startId && idNum <= endId;
+                    });
+
+                    if (ordersToDelete.length === 0) {
+                        return showToast('لا توجد طلبات في هذا النطاق', 'info');
+                    }
+
+                    for (const doc of ordersToDelete) {
+                        batch.delete(doc.ref);
+                        count++;
+                        if (count >= batchSize) {
+                            await batch.commit();
+                            batch = firebase.firestore().batch();
+                            totalDeleted += count;
+                            count = 0;
+                        }
+                    }
+                    if (count > 0) {
+                        await batch.commit();
+                        totalDeleted += count;
+                    }
+
+                    showToast(`تم حذف ${totalDeleted} طلب في النطاق ${startId}-${endId}.`, 'success');
+                    setTimeout(() => window.location.reload(), 2000);
+
+                } catch (error) {
+                    console.error(error);
+                    showToast('حدث خطأ أثناء الحذف', 'error');
+                }
+            }, 'danger'
+        );
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-[#0f172a] text-white font-sans selection:bg-blue-500/30">
 
@@ -374,6 +437,24 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                                         icon={CheckCircleIcon}
                                         onClick={handleConditionalDelete}
                                         className="w-full justify-center py-3 bg-blue-600 hover:bg-blue-500"
+                                    />
+                                </div>
+
+                                {/* ID Range Delete Card */}
+                                <div className="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-xl hover:border-amber-500/30 transition-all group">
+                                    <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                        <AlertTriangleIcon className="w-6 h-6 text-amber-500" />
+                                    </div>
+                                    <h3 className="font-bold text-lg text-white mb-2">إصلاح تسلسل الأرقام</h3>
+                                    <p className="text-sm text-gray-400 leading-relaxed mb-6">
+                                        حذف الطلبات في نطاق محدد (مثلاً من 6 إلى 1000) لإزالة الفجوات وإصلاح العداد ليبدأ من الرقم الصحيح.
+                                    </p>
+                                    <ActionButton
+                                        label="حذف بنطاق الأرقام..."
+                                        variant="danger"
+                                        icon={TrashIcon}
+                                        onClick={handleRangeDelete}
+                                        className="w-full justify-center py-3"
                                     />
                                 </div>
 
