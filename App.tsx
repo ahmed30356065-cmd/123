@@ -95,7 +95,9 @@ const App: React.FC = () => {
 
     const generateNextId = (allOrders: Order[], isShopping: boolean) => {
         const prefix = isShopping ? 'S-' : 'ORD-';
-        const relevantOrders = allOrders.filter(o => o.id.startsWith(prefix));
+        // CRITICAL: Only count non-archived orders for ID generation
+        // This allows order IDs to reset to 1 after archiving
+        const relevantOrders = allOrders.filter(o => o.id.startsWith(prefix) && !o.isArchived);
         const maxId = relevantOrders.reduce((max, o) => {
             const numStr = o.id.replace(prefix, '');
             const num = parseInt(numStr || '0');

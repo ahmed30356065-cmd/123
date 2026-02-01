@@ -102,7 +102,7 @@ class MainActivity : AppCompatActivity() {
             webView.restoreState(savedInstanceState)
         } else {
             // Load the Web App from local assets ONLY if no saved state
-            webView.loadUrl("file:///android_asset/index.html")
+            webView.loadUrl("file:///android_asset/public/index.html")
         }
         
         // Log FCM Token

@@ -198,7 +198,8 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                             order.driverId === driver.id &&
                             order.status === OrderStatus.Delivered &&  // Strict: Only Delivered
                             order.status !== OrderStatus.Cancelled &&  // Double Strict: Never Cancelled
-                            !order.reconciled
+                            !order.reconciled &&
+                            !order.isArchived
                     );
 
                     const totalFees = unreconciledOrders.reduce((sum, order) => sum + (order.deliveryFee || 0), 0);
@@ -228,7 +229,8 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                     const hasActiveOrders = orders.some(o =>
                         String(o.driverId) === String(driver.id) &&
                         o.status !== OrderStatus.Delivered &&
-                        o.status !== OrderStatus.Cancelled
+                        o.status !== OrderStatus.Cancelled &&
+                        !o.isArchived // Ignore archived orders for active status check
                     );
 
                     return (

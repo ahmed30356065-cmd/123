@@ -27,8 +27,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({ driver, orders, users }) =>
         const isNotCancelled = order.status !== OrderStatus.Cancelled; // Strict Safety
         // Handle cases where reconciled might be undefined or null
         const isUnpaid = !order.reconciled;
+        const isNotArchived = !order.isArchived;
 
-        return isDriverMatch && isDelivered && isNotCancelled && isUnpaid;
+        return isDriverMatch && isDelivered && isNotCancelled && isUnpaid && isNotArchived;
     });
 
     // --- Precise Financial Calculations ---

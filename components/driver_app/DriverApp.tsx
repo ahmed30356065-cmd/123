@@ -11,8 +11,9 @@ import OrderLimitModal from './OrderLimitModal';
 import { setAndroidRole, NativeBridge } from '../../utils/NativeBridge';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
-import WaterSortGame from '../games/WaterSortGame';
 import PullToRefresh from '../common/PullToRefresh';
+import GamesScreen from './GamesScreen';
+import GamePlayer from './GamePlayer';
 
 type HomeTab = 'home' | 'in-transit' | 'delinow';
 type View = 'home' | 'wallet' | 'games';
@@ -39,6 +40,8 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [showLimitModal, setShowLimitModal] = useState(false);
+    const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null);
+
 
 
     // Notification Dropdown State
@@ -84,6 +87,8 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
 
     useAndroidBack(() => {
         if (isNotifDropdownOpen) { setIsNotifDropdownOpen(false); return true; }
+        if (activeGameUrl) { setActiveGameUrl(null); return true; }
+        if (activeGameUrl) { setActiveGameUrl(null); return true; }
         if (isProfileModalOpen) { setIsProfileModalOpen(false); return true; }
         if (showLimitModal) { setShowLimitModal(false); return true; }
         if (selectedOrder) { setSelectedOrder(null); return true; }
@@ -94,7 +99,8 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
         if (activeHomeTab !== 'home') { setActiveHomeTab('home'); return true; }
 
         return false;
-    }, [isProfileModalOpen, showLimitModal, selectedOrder, currentView, activeHomeTab, isNotifDropdownOpen]);
+        return false;
+    }, [isProfileModalOpen, showLimitModal, selectedOrder, currentView, activeHomeTab, isNotifDropdownOpen, activeGameUrl]);
 
     // High-performance filtering and sorting
     const { standardNewOrders, delinowNewOrders, inTransitOrders } = useMemo(() => {
@@ -208,6 +214,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
         <div className="fixed inset-0 flex flex-col bg-[#1A1A1A] text-white overflow-hidden" dir="rtl">
             {isProfileModalOpen && <DriverProfileModal driver={props.driver} onClose={() => setIsProfileModalOpen(false)} onLogout={props.onLogout} onUpdateUser={props.onUpdateUser} currentTheme={props.appTheme} onUpdateTheme={props.onUpdateTheme} />}
             {showLimitModal && <OrderLimitModal onClose={() => setShowLimitModal(false)} currentCount={inTransitOrders.length} maxLimit={props.driver.maxConcurrentOrders || 0} />}
+            {showLimitModal && <OrderLimitModal onClose={() => setShowLimitModal(false)} currentCount={inTransitOrders.length} maxLimit={props.driver.maxConcurrentOrders || 0} />}
 
             {selectedOrder ? (
                 <div className="fixed inset-0 bg-[#1A1A1A] z-50 flex flex-col animate-fadeIn">
@@ -219,113 +226,111 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                 </div>
             ) : (
                 <>
-                    {currentView !== 'games' && (
-                        <header className="flex-none bg-[#1A1A1A] z-30 border-b border-gray-800 h-14 flex justify-between items-center px-4 pt-safe box-content relative">
-                            <button onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-2 bg-white/5 py-1 px-3 rounded-full hover:bg-white/10 transition-colors">
-                                <div className={`relative flex items-center justify-center rounded-full ${!isCustomFrame(props.driver.specialFrame) ? getFrameContainerClass(props.driver.specialFrame) : ''}`}>
-                                    {isCustomFrame(props.driver.specialFrame) && (
-                                        <img src={props.driver.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-125 pointer-events-none" alt="frame" />
-                                    )}
-                                    <div className={`${isCustomFrame(props.driver.specialFrame) ? 'w-8 h-8' : 'w-8 h-8'} rounded-full overflow-hidden border border-white/20 relative z-0 flex items-center justify-center`}>
-                                        {props.driver.storeImage ? <img src={props.driver.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 m-1.5" />}
+                    <header className="flex-none bg-[#1A1A1A] z-30 border-b border-gray-800 h-14 flex justify-between items-center px-4 pt-safe box-content relative">
+                        <button onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-2 bg-white/5 py-1 px-3 rounded-full hover:bg-white/10 transition-colors">
+                            <div className={`relative flex items-center justify-center rounded-full ${!isCustomFrame(props.driver.specialFrame) ? getFrameContainerClass(props.driver.specialFrame) : ''}`}>
+                                {isCustomFrame(props.driver.specialFrame) && (
+                                    <img src={props.driver.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-125 pointer-events-none" alt="frame" />
+                                )}
+                                <div className={`${isCustomFrame(props.driver.specialFrame) ? 'w-8 h-8' : 'w-8 h-8'} rounded-full overflow-hidden border border-white/20 relative z-0 flex items-center justify-center`}>
+                                    {props.driver.storeImage ? <img src={props.driver.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 m-1.5" />}
+                                </div>
+                            </div>
+                            <span className="text-sm font-bold truncate max-w-[80px]">{props.driver.name}</span>
+                            {getBadgeIcon(props.driver.specialBadge)}
+                        </button>
+                        <h1 className="text-xl font-bold">
+                            <span className="text-red-500">{firstWord}</span>
+                            <span className="text-white ml-1">{restOfName}</span>
+                        </h1>
+
+                        {/* Notification Bell with Dropdown */}
+                        <div className="relative" ref={notifDropdownRef}>
+                            <button
+                                onClick={() => setIsNotifDropdownOpen(!isNotifDropdownOpen)}
+                                className={`relative p-2 transition-colors ${isNotifDropdownOpen ? 'text-red-500' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                <BellIcon className={`w-6 h-6`} />
+                                {unseenMessagesCount > 0 && (
+                                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse border border-[#1A1A1A]"></span>
+                                )}
+                            </button>
+
+                            {/* Notifications Dropdown */}
+                            {isNotifDropdownOpen && (
+                                <div className="absolute top-12 left-0 w-80 bg-[#1e1e1e] border border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden z-50 animate-pop-in origin-top-left">
+                                    <div className="p-3 border-b border-gray-700/50 bg-[#252525] flex justify-between items-center">
+                                        <span className="text-xs font-bold text-white">الإشعارات</span>
+                                        {driverMessages.length > 0 && (
+                                            <button onClick={handleClearNotifications} className="text-[10px] text-gray-400 hover:text-white transition-colors">
+                                                إغلاق
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="max-h-80 overflow-y-auto custom-scrollbar p-2 space-y-2">
+                                        {driverMessages.length === 0 ? (
+                                            <div className="text-center py-8 text-gray-500">
+                                                <BellIcon className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                                                <p className="text-[10px]">لا توجد إشعارات جديدة</p>
+                                            </div>
+                                        ) : (
+                                            driverMessages.map((msg) => {
+                                                const formattedDate = (() => {
+                                                    try {
+                                                        const d = new Date(msg.createdAt);
+                                                        if (isNaN(d.getTime())) return '';
+                                                        return d.toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+                                                    } catch (e) { return ''; }
+                                                })();
+
+                                                return (
+                                                    <div key={msg.id} className="group relative bg-[#252525] rounded-xl border border-gray-700/50 shadow-sm overflow-hidden p-3 transition-all hover:bg-[#2a2a2a]">
+                                                        {/* Header */}
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-8 h-8 rounded-full bg-red-900/20 flex items-center justify-center text-red-500">
+                                                                    <BellIcon className="w-4 h-4" />
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-xs font-bold text-white leading-tight">إدارة العمليات</h4>
+                                                                    <span className="text-[9px] text-gray-500 font-mono">{formattedDate}</span>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); props.hideMessage(msg.id); }}
+                                                                className="text-gray-600 hover:text-red-400 transition-colors p-1"
+                                                            >
+                                                                <TrashIcon className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Body */}
+                                                        <div>
+                                                            {msg.image && (
+                                                                <div className="mb-2 rounded-lg overflow-hidden border border-gray-600/30">
+                                                                    <img src={msg.image} alt="مرفق" className="w-full h-32 object-contain bg-black/40" />
+                                                                </div>
+                                                            )}
+                                                            <p className="text-gray-300 text-xs leading-relaxed font-medium">
+                                                                {msg.text}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Seen Status */}
+                                                        <div className="mt-2 flex items-center gap-1 text-[9px] text-gray-500">
+                                                            <CheckCircleIcon className="w-2.5 h-2.5 text-green-500" />
+                                                            <span>تمت القراءة</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
                                     </div>
                                 </div>
-                                <span className="text-sm font-bold truncate max-w-[80px]">{props.driver.name}</span>
-                                {getBadgeIcon(props.driver.specialBadge)}
-                            </button>
-                            <h1 className="text-xl font-bold">
-                                <span className="text-red-500">{firstWord}</span>
-                                <span className="text-white ml-1">{restOfName}</span>
-                            </h1>
-
-                            {/* Notification Bell with Dropdown */}
-                            <div className="relative" ref={notifDropdownRef}>
-                                <button
-                                    onClick={() => setIsNotifDropdownOpen(!isNotifDropdownOpen)}
-                                    className={`relative p-2 transition-colors ${isNotifDropdownOpen ? 'text-red-500' : 'text-gray-400 hover:text-white'}`}
-                                >
-                                    <BellIcon className={`w-6 h-6`} />
-                                    {unseenMessagesCount > 0 && (
-                                        <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse border border-[#1A1A1A]"></span>
-                                    )}
-                                </button>
-
-                                {/* Notifications Dropdown */}
-                                {isNotifDropdownOpen && (
-                                    <div className="absolute top-12 left-0 w-80 bg-[#1e1e1e] border border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden z-50 animate-pop-in origin-top-left">
-                                        <div className="p-3 border-b border-gray-700/50 bg-[#252525] flex justify-between items-center">
-                                            <span className="text-xs font-bold text-white">الإشعارات</span>
-                                            {driverMessages.length > 0 && (
-                                                <button onClick={handleClearNotifications} className="text-[10px] text-gray-400 hover:text-white transition-colors">
-                                                    إغلاق
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <div className="max-h-80 overflow-y-auto custom-scrollbar p-2 space-y-2">
-                                            {driverMessages.length === 0 ? (
-                                                <div className="text-center py-8 text-gray-500">
-                                                    <BellIcon className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                                                    <p className="text-[10px]">لا توجد إشعارات جديدة</p>
-                                                </div>
-                                            ) : (
-                                                driverMessages.map((msg) => {
-                                                    const formattedDate = (() => {
-                                                        try {
-                                                            const d = new Date(msg.createdAt);
-                                                            if (isNaN(d.getTime())) return '';
-                                                            return d.toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' });
-                                                        } catch (e) { return ''; }
-                                                    })();
-
-                                                    return (
-                                                        <div key={msg.id} className="group relative bg-[#252525] rounded-xl border border-gray-700/50 shadow-sm overflow-hidden p-3 transition-all hover:bg-[#2a2a2a]">
-                                                            {/* Header */}
-                                                            <div className="flex justify-between items-start mb-2">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="w-8 h-8 rounded-full bg-red-900/20 flex items-center justify-center text-red-500">
-                                                                        <BellIcon className="w-4 h-4" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <h4 className="text-xs font-bold text-white leading-tight">إدارة العمليات</h4>
-                                                                        <span className="text-[9px] text-gray-500 font-mono">{formattedDate}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); props.hideMessage(msg.id); }}
-                                                                    className="text-gray-600 hover:text-red-400 transition-colors p-1"
-                                                                >
-                                                                    <TrashIcon className="w-3.5 h-3.5" />
-                                                                </button>
-                                                            </div>
-
-                                                            {/* Body */}
-                                                            <div>
-                                                                {msg.image && (
-                                                                    <div className="mb-2 rounded-lg overflow-hidden border border-gray-600/30">
-                                                                        <img src={msg.image} alt="مرفق" className="w-full h-32 object-contain bg-black/40" />
-                                                                    </div>
-                                                                )}
-                                                                <p className="text-gray-300 text-xs leading-relaxed font-medium">
-                                                                    {msg.text}
-                                                                </p>
-                                                            </div>
-
-                                                            {/* Seen Status */}
-                                                            <div className="mt-2 flex items-center gap-1 text-[9px] text-gray-500">
-                                                                <CheckCircleIcon className="w-2.5 h-2.5 text-green-500" />
-                                                                <span>تمت القراءة</span>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </header>
-                    )}
+                            )}
+                        </div>
+                    </header>
 
                     {currentView === 'home' && (
                         <div className="flex-none px-3 py-2">
@@ -338,13 +343,13 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                     )}
 
                     <main className="flex-1 overflow-hidden relative">
-                        <PullToRefresh onRefresh={handleRefresh} className="pb-28">
+                        <PullToRefresh onRefresh={handleRefresh} className="pb-36">
                             {currentView === 'home' && <HomeScreen driver={props.driver} users={props.users} standardNewOrders={standardNewOrders} delinowNewOrders={delinowNewOrders} inTransitOrders={inTransitOrders} onViewOrder={setSelectedOrder} onUpdateUser={props.onUpdateUser} activeTab={activeHomeTab} theme={props.appTheme} />}
                             {currentView === 'wallet' && <WalletScreen driver={props.driver} orders={props.orders} users={props.users} />}
-                            {currentView === 'games' && <WaterSortGame currentUser={props.driver} onExit={() => setCurrentView('home')} />}
+                            {currentView === 'games' && <GamesScreen driver={props.driver} appConfig={props.appConfig} onBack={() => setCurrentView('home')} onPlayGame={(url) => setActiveGameUrl(url)} />}
                         </PullToRefresh>
                     </main>
-                    {currentView !== 'games' && <BottomNav activePage={currentView} onNavigate={(v) => setCurrentView(v as View)} messageCount={unseenMessagesCount} theme={props.appTheme} />}
+                    <BottomNav activePage={currentView} onNavigate={(v) => setCurrentView(v as View)} messageCount={unseenMessagesCount} theme={props.appTheme} appConfig={props.appConfig} />
                 </>
             )}
         </div>

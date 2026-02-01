@@ -3,10 +3,10 @@ import React from 'react';
 import {
     TruckIconV2, UsersIcon, StoreIcon, HeadsetIcon,
     MessageSquareIcon, ImageIcon, DollarSignIcon, SettingsIcon,
-    RocketIcon, ShoppingCartIcon // Added new icons
+    RocketIcon, ShoppingCartIcon, GamepadIcon // Added new icons
 } from '../icons';
 
-export type AdminView = 'orders' | 'users' | 'stores' | 'notifications' | 'wallet' | 'messages' | 'settings' | 'slider' | 'customizer' | 'support';
+export type AdminView = 'orders' | 'users' | 'stores' | 'notifications' | 'wallet' | 'messages' | 'settings' | 'slider' | 'customizer' | 'support' | 'games';
 
 interface AdminBottomNavProps {
     activeView: AdminView;
@@ -25,6 +25,7 @@ const AdminBottomNav: React.FC<AdminBottomNavProps> = ({ activeView, onNavigate,
         { id: 'shopping', label: 'طلبات تسوق', icon: ShoppingCartIcon }, // Replaced Messages
         { id: 'slider', label: 'العروض', icon: ImageIcon },
         { id: 'wallet', label: 'المحفظة', icon: DollarSignIcon },
+        { id: 'games', label: 'الألعاب', icon: GamepadIcon },
         { id: 'settings', label: 'الإعدادات', icon: SettingsIcon },
     ];
 
@@ -38,7 +39,7 @@ const AdminBottomNav: React.FC<AdminBottomNavProps> = ({ activeView, onNavigate,
 
     const navItemsToShow = availableViews
         ? allNavItems.filter(item => availableViews.includes(item.id))
-        : allNavItems.filter(item => ['orders', 'users', 'stores', 'special', 'shopping', 'wallet', 'settings'].includes(item.id));
+        : allNavItems.filter(item => ['orders', 'users', 'stores', 'special', 'shopping', 'wallet', 'settings', 'games'].includes(item.id));
 
     const isLight = mode === 'light';
 

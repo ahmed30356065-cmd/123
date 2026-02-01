@@ -1,7 +1,7 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Order, User, Payment, OrderStatus } from '../../types';
-import { ChartBarIcon, DollarSignIcon, TruckIconV2, CheckCircleIcon, ClockIcon, UsersIcon, StoreIcon, TrendingUpIcon, TrendingDownIcon, XIcon, CalendarIcon, ClipboardListIcon, SearchIcon, UserIcon, MapPinIcon, CoinsIcon } from '../icons';
+import { ChartBarIcon, DollarSignIcon, TruckIconV2, CheckCircleIcon, ClockIcon, UsersIcon, StoreIcon, TrendingUpIcon, TrendingDownIcon, XIcon, CalendarIcon, ClipboardListIcon, SearchIcon, UserIcon, MapPinIcon, CoinsIcon, TrashIcon, ExclamationIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
 interface AdminReportsScreenProps {
@@ -319,12 +319,12 @@ const DailyReportModal: React.FC<{
         const todayBusinessDate = getBusinessDate(new Date());
 
         // Filter orders for "Today" (6 AM today to 6 AM tomorrow)
-        const todayOrders = orders.filter(o => {
+        const todayOrders = orders.filter((o: Order) => {
             const oDate = (o.createdAt as any).seconds ? new Date((o.createdAt as any).seconds * 1000) : new Date(o.createdAt);
             return getBusinessDate(oDate).getTime() === todayBusinessDate.getTime();
         });
 
-        const delivered = todayOrders.filter(o => o.status === OrderStatus.Delivered);
+        const delivered = todayOrders.filter((o: Order) => o.status === OrderStatus.Delivered);
         const cancelled = todayOrders.filter(o => o.status === OrderStatus.Cancelled);
         const pending = todayOrders.filter(o => o.status === OrderStatus.Pending);
 
@@ -335,13 +335,19 @@ const DailyReportModal: React.FC<{
         const driverPerformance: Record<string, { name: string, count: number, total: number }> = {};
 
         delivered.forEach(o => {
-            const driver = users.find(u => u?.id === o.driverId);
+            const driver = users.find((u: User) => u?.id === o.driverId);
             if (driver) {
-                // Commission Calc
+                // Commission Calc: Only count if > 0 (Paid Daily)
+                let comm = 0;
                 if (driver.commissionType === 'fixed') {
-                    totalCommission += (driver.commissionRate || 0);
+                    comm = (driver.commissionRate || 0);
                 } else {
-                    totalCommission += (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
+                    comm = (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
+                }
+
+                // Strict "Paid Dailies" Logic: If result is effectively > 0
+                if (comm > 0) {
+                    totalCommission += comm;
                 }
 
                 // Driver Performance
@@ -357,6 +363,9 @@ const DailyReportModal: React.FC<{
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
+        // Admin Share (15%)
+        const adminShare = totalCommission * 0.15;
+
         return {
             date: todayBusinessDate,
             count: todayOrders.length,
@@ -366,6 +375,7 @@ const DailyReportModal: React.FC<{
             totalRevenue,
             totalDeliveryFees,
             totalCommission,
+            adminShare,
             topDrivers
         };
     }, [isOpen, orders, users]);
@@ -374,120 +384,87 @@ const DailyReportModal: React.FC<{
 
     return (
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
-            <div className="bg-[#0f172a] w-full max-w-4xl max-h-[90vh] rounded-3xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                {/* Header */}
-                <div className="p-6 border-b border-gray-800 bg-[#1e293b] flex justify-between items-center sticky top-0 z-10">
+            <div className="bg-[#0f172a] w-full max-w-3xl max-h-[90vh] rounded-3xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                {/* Compact Header */}
+                <div className="px-6 py-4 border-b border-gray-800 bg-[#1e293b] flex justify-between items-center sticky top-0 z-10">
                     <div>
-                        <h2 className="text-2xl font-black text-white flex items-center gap-2">
-                            التقرير اليومي الشامل
-                            <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-lg">اليومية الحالية</span>
+                        <h2 className="text-xl font-black text-white flex items-center gap-2">
+                            التقرير اليومي
+                            <span className="text-[10px] bg-blue-600/20 text-blue-300 px-2 py-0.5 rounded border border-blue-500/20">
+                                {dailyStats.date.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'short' })}
+                            </span>
                         </h2>
-                        <p className="text-sm text-gray-400 mt-1">
-                            {dailyStats.date.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </p>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-gray-800 rounded-full text-gray-400 hover:text-white hover:bg-red-500/20 hover:text-red-500 transition-all">
-                        <XIcon className="w-6 h-6" />
+                    <button onClick={onClose} className="p-1.5 bg-gray-800 rounded-lg text-gray-400 hover:text-white transition-all">
+                        <XIcon className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
 
-                    {/* Key Metrics Row */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-gray-800/50 p-4 rounded-2xl border border-gray-700">
-                            <p className="text-xs text-gray-500 font-bold mb-1">إجمالي الطلبات</p>
-                            <p className="text-3xl font-black text-white">{dailyStats.count}</p>
+                    {/* Compact Metrics Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-gray-800/40 p-3 rounded-xl border border-gray-700/50 flex flex-col items-center">
+                            <span className="text-[10px] text-gray-500 font-bold mb-1">الكل</span>
+                            <span className="text-2xl font-black text-white">{dailyStats.count}</span>
                         </div>
-                        <div className="bg-green-900/10 p-4 rounded-2xl border border-green-500/20">
-                            <p className="text-xs text-green-500/70 font-bold mb-1">تم التوصيل</p>
-                            <p className="text-3xl font-black text-green-400">{dailyStats.deliveredCount}</p>
+                        <div className="bg-green-500/5 p-3 rounded-xl border border-green-500/10 flex flex-col items-center">
+                            <span className="text-[10px] text-green-500/70 font-bold mb-1">توصيل</span>
+                            <span className="text-2xl font-black text-green-400">{dailyStats.deliveredCount}</span>
                         </div>
-                        <div className="bg-red-900/10 p-4 rounded-2xl border border-red-500/20">
-                            <p className="text-xs text-red-500/70 font-bold mb-1">ملغي / مرفوض</p>
-                            <p className="text-3xl font-black text-red-400">{dailyStats.cancelledCount}</p>
+                        <div className="bg-red-500/5 p-3 rounded-xl border border-red-500/10 flex flex-col items-center">
+                            <span className="text-[10px] text-red-500/70 font-bold mb-1">إلغاء</span>
+                            <span className="text-2xl font-black text-red-400">{dailyStats.cancelledCount}</span>
                         </div>
-                        <div className="bg-yellow-900/10 p-4 rounded-2xl border border-yellow-500/20">
-                            <p className="text-xs text-yellow-500/70 font-bold mb-1">قيد التنفيذ</p>
-                            <p className="text-3xl font-black text-yellow-400">{dailyStats.pendingCount}</p>
+                        <div className="bg-yellow-500/5 p-3 rounded-xl border border-yellow-500/10 flex flex-col items-center">
+                            <span className="text-[10px] text-yellow-500/70 font-bold mb-1">انتظار</span>
+                            <span className="text-2xl font-black text-yellow-400">{dailyStats.pendingCount}</span>
                         </div>
                     </div>
 
-                    {/* Financial Summary */}
-                    <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-6 border border-gray-700 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full -ml-10 -mt-10 pointer-events-none"></div>
-                        <h3 className="text-lg font-bold text-white mb-6 relative z-10 flex items-center gap-2">
-                            <DollarSignIcon className="w-5 h-5 text-green-400" />
-                            الملخص المالي
+                    {/* Detailed Financials */}
+                    <div className="bg-[#161f32] rounded-2xl p-5 border border-gray-800 relative overflow-hidden">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 relative z-10">
+                            <div className="flex justify-between items-center border-b border-gray-700/50 pb-2">
+                                <span className="text-xs text-gray-400">إجمالي المبيعات</span>
+                                <span className="text-lg font-bold text-white">{dailyStats.totalRevenue.toLocaleString()} <span className="text-[10px] text-gray-600">ج.م</span></span>
+                            </div>
+                            <div className="flex justify-between items-center border-b border-gray-700/50 pb-2">
+                                <span className="text-xs text-gray-400">رسوم التوصيل</span>
+                                <span className="text-lg font-bold text-blue-400">{dailyStats.totalDeliveryFees.toLocaleString()} <span className="text-[10px] text-gray-600">ج.م</span></span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-400">أرباح التطبيق (اليوميات)</span>
+                                <span className="text-xl font-black text-green-400">{dailyStats.totalCommission.toLocaleString()} <span className="text-[10px] text-gray-600">ج.م</span></span>
+                            </div>
+                            {/* Admin Share - Visible only in specific contexts if needed, usually Admin sees this modal */}
+                            <div className="flex justify-between items-center bg-orange-900/10 -m-1 p-1 px-3 rounded-lg border border-orange-500/10">
+                                <span className="text-xs text-orange-400 font-bold">نسبة الإدارة (15%)</span>
+                                <span className="text-lg font-black text-orange-400">{dailyStats.adminShare.toLocaleString()} <span className="text-[10px]">ج.م</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Top Drivers Compact */}
+                    <div>
+                        <h3 className="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
+                            <TruckIconV2 className="w-4 h-4" />
+                            النشاط الأعلى
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-                            <div>
-                                <p className="text-xs text-gray-400 mb-2">إجمالي قيمة المبيعات</p>
-                                <p className="text-2xl font-black text-white">{dailyStats.totalRevenue.toLocaleString('en-US')} <span className="text-sm font-normal text-gray-500">ج.م</span></p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400 mb-2">إجمالي رسوم التوصيل</p>
-                                <p className="text-2xl font-black text-blue-400">{dailyStats.totalDeliveryFees.toLocaleString('en-US')} <span className="text-sm font-normal text-gray-500">ج.م</span></p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400 mb-2">عمولة التطبيق (الصافي)</p>
-                                <p className="text-2xl font-black text-green-400">{dailyStats.totalCommission.toLocaleString('en-US')} <span className="text-sm font-normal text-gray-500">ج.م</span></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Top Drivers */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-gray-800 p-6 rounded-3xl border border-gray-700">
-                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <TruckIconV2 className="w-5 h-5 text-blue-400" />
-                                أفضل المناديب اليوم
-                            </h3>
-                            <div className="space-y-4">
-                                {dailyStats.topDrivers.length > 0 ? (
-                                    dailyStats.topDrivers.map((d, i) => (
-                                        <div key={i} className="flex items-center justify-between p-3 bg-gray-900/50 rounded-xl border border-gray-700/50">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${i === 0 ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300'}`}>
-                                                    {i + 1}
-                                                </div>
-                                                <span className="text-sm font-bold text-white">{d.name}</span>
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-sm font-black text-blue-400">{d.count} طلب</p>
-                                                <p className="text-[10px] text-gray-500">{d.total.toLocaleString()} ج.م توصيل</p>
-                                            </div>
+                        <div className="space-y-2">
+                            {dailyStats.topDrivers.length > 0 ? (
+                                dailyStats.topDrivers.slice(0, 3).map((d, i) => (
+                                    <div key={i} className="flex items-center justify-between p-2.5 bg-gray-800/40 rounded-lg border border-gray-700/30">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded bg-gray-700 flex items-center justify-center text-xs font-bold text-white">{i + 1}</div>
+                                            <span className="text-xs font-bold text-gray-300">{d.name}</span>
                                         </div>
-                                    ))
-                                ) : (
-                                    <p className="text-gray-500 text-center py-4 text-sm">لا توجد بيانات حتى الآن</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Status Distribution Bar */}
-                        <div className="bg-gray-800 p-6 rounded-3xl border border-gray-700 flex flex-col justify-center">
-                            <h3 className="text-lg font-bold text-white mb-6">توزيع حالات الطلب</h3>
-                            <div className="space-y-6">
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold text-gray-300 mb-2">
-                                        <span>نسبة التوصيل</span>
-                                        <span>{dailyStats.count > 0 ? Math.round((dailyStats.deliveredCount / dailyStats.count) * 100) : 0}%</span>
+                                        <span className="text-xs font-bold text-blue-400">{d.count} طلب</span>
                                     </div>
-                                    <div className="h-3 bg-gray-900 rounded-full overflow-hidden">
-                                        <div className="h-full bg-green-500" style={{ width: `${dailyStats.count > 0 ? (dailyStats.deliveredCount / dailyStats.count) * 100 : 0}%` }}></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold text-gray-300 mb-2">
-                                        <span>نسبة الإلغاء</span>
-                                        <span>{dailyStats.count > 0 ? Math.round((dailyStats.cancelledCount / dailyStats.count) * 100) : 0}%</span>
-                                    </div>
-                                    <div className="h-3 bg-gray-900 rounded-full overflow-hidden">
-                                        <div className="h-full bg-red-500" style={{ width: `${dailyStats.count > 0 ? (dailyStats.cancelledCount / dailyStats.count) * 100 : 0}%` }}></div>
-                                    </div>
-                                </div>
-                            </div>
+                                ))
+                            ) : (
+                                <p className="text-xs text-gray-600 text-center py-2">لا توجد بيانات</p>
+                            )}
                         </div>
                     </div>
 
@@ -499,27 +476,195 @@ const DailyReportModal: React.FC<{
 
 // --- Main Screen ---
 
-export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, users, payments, currentUser }) => {
+import { addData, batchSaveData, updateData, subscribeToCollection } from '../../services/firebase';
+import { MonthlyReport } from '../../types';
+
+// ... (Existing Imports)
+
+// --- Helper for formatting Money ---
+const formatMoney = (amount: number) => amount.toLocaleString('en-US', { maximumFractionDigits: 1 });
+
+export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders: allOrders, users, payments, currentUser }) => {
+    // 1. Filter out Archived Orders for Live View
+    const orders = useMemo(() => allOrders.filter((o: Order) => !o.isArchived), [allOrders]);
+
     const [criteriaModalOpen, setCriteriaModalOpen] = useState(false);
     const [reportType, setReportType] = useState<'driver' | 'merchant'>('driver');
     const [resultsModalOpen, setResultsModalOpen] = useState(false);
     const [generatedReport, setGeneratedReport] = useState<any>(null);
     const [dailyReportOpen, setDailyReportOpen] = useState(false);
 
+    // Archive State
+    const [isArchiving, setIsArchiving] = useState(false);
+    const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+    const [archiveHistory, setArchiveHistory] = useState<MonthlyReport[]>([]); // Need to fetch this
+    const [selectedRecord, setSelectedRecord] = useState<MonthlyReport | null>(null);
+
+    // Fetch History on specific user action or effect. Since we don't have a direct hook for this new collection yet, 
+    // we'll assume we might need to add it or fetch once. For now, fetch on open.
+
+    useEffect(() => {
+        if (showHistory) {
+            const unsub = subscribeToCollection('monthly_reports', (data) => {
+                const sorted = (data as MonthlyReport[]).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+                setArchiveHistory(sorted);
+            });
+            return () => unsub();
+        }
+    }, [showHistory]);
+
+    const handleArchiveMonth = async () => {
+        setIsArchiving(true);
+        try {
+            const now = new Date();
+            const monthNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+            const monthLabel = `${monthNames[now.getMonth()]} ${now.getFullYear()}`; // e.g., "فبراير 2024"
+
+            // Snapshot current (non-archived) orders
+            const snapshotOrders = [...orders];
+
+            if (snapshotOrders.length === 0) {
+                alert("لا توجد بيانات لتصفيرها.");
+                setIsArchiving(false);
+                setShowArchiveConfirm(false);
+                return;
+            }
+
+            // Find last order IDs before reset
+            const regularOrders = snapshotOrders.filter(o => o.id.startsWith('ORD-'));
+            const shoppingOrders = snapshotOrders.filter(o => o.id.startsWith('S-'));
+
+            const getMaxId = (ordersList: Order[], prefix: string) => {
+                const maxId = ordersList.reduce((max, o) => {
+                    const numStr = o.id.replace(prefix, '');
+                    const num = parseInt(numStr || '0');
+                    return Math.max(max, num);
+                }, 0);
+                return maxId > 0 ? `${prefix}${maxId}` : `${prefix}0`;
+            };
+
+            const lastRegularOrderId = getMaxId(regularOrders, 'ORD-');
+            const lastShoppingOrderId = getMaxId(shoppingOrders, 'S-');
+
+            // Calculate comprehensive metrics
+            const deliveredOrders = snapshotOrders.filter(o => o.status === OrderStatus.Delivered);
+            const cancelledOrders = snapshotOrders.filter(o => o.status === OrderStatus.Cancelled);
+
+            let totalRev = 0;
+            let totalFees = 0;
+            let totalProf = 0;
+            const walletSnapshots: Record<string, any> = {};
+
+            deliveredOrders.forEach(o => {
+                const driver = users.find(u => u.id === o.driverId);
+                totalRev += (o.totalPrice || 0);
+                totalFees += (o.deliveryFee || 0);
+
+                // Calculate commission (app profit)
+                let profit = 0;
+                if (driver) {
+                    if (driver.commissionType === 'fixed') {
+                        profit = (driver.commissionRate || 0);
+                    } else {
+                        profit = (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
+                    }
+                }
+                if (profit > 0) totalProf += profit;
+
+                // Build wallet snapshot
+                if (driver) {
+                    if (!walletSnapshots[driver.id]) {
+                        // Calculate actual unpaid balance for this driver
+                        const driverOrders = deliveredOrders.filter(ord => ord.driverId === driver.id && !ord.reconciled);
+                        const driverFees = driverOrders.reduce((sum, ord) => sum + (ord.deliveryFee || 0), 0);
+                        let driverCommission = 0;
+                        driverOrders.forEach(ord => {
+                            if (driver.commissionType === 'fixed') {
+                                driverCommission += (driver.commissionRate || 0);
+                            } else {
+                                driverCommission += (ord.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
+                            }
+                        });
+                        const driverBalance = driverFees - driverCommission;
+
+                        walletSnapshots[driver.id] = {
+                            name: driver.name,
+                            role: 'driver',
+                            balance: driverBalance,
+                            ordersCount: driverOrders.length
+                        };
+                    }
+                }
+            });
+
+            // Create comprehensive monthly report
+            const report: MonthlyReport = {
+                id: `ARCHIVE_${now.getTime()}`,
+                month: now.getMonth(),
+                year: now.getFullYear(),
+                monthLabel: monthLabel,
+                totalRevenue: totalRev,
+                totalDeliveryFees: totalFees,
+                totalAppProfit: totalProf,
+                adminShare: totalProf * 0.15, // 15% of app profit
+                totalDriverPayouts: totalFees - totalProf,
+                createdAt: now,
+                archivedOrdersCount: snapshotOrders.length,
+                deliveredOrdersCount: deliveredOrders.length,
+                cancelledOrdersCount: cancelledOrders.length,
+                lastRegularOrderId: lastRegularOrderId,
+                lastShoppingOrderId: lastShoppingOrderId,
+                walletSnapshots: walletSnapshots,
+                archivedBy: currentUser.id
+            };
+
+            // 1. Save monthly report
+            await addData('monthly_reports', report);
+
+            // 2. Archive all orders with month label (batch update)
+            const BATCH_SIZE = 400;
+            const chunks = [];
+            for (let i = 0; i < snapshotOrders.length; i += BATCH_SIZE) {
+                chunks.push(snapshotOrders.slice(i, i + BATCH_SIZE));
+            }
+
+            await Promise.all(chunks.map(async (chunk) => {
+                await batchSaveData('orders', chunk.map(o => ({
+                    id: o.id,
+                    isArchived: true,
+                    archiveMonth: monthLabel // Add month label to each order
+                })));
+            }));
+
+            setShowArchiveConfirm(false);
+            alert(`✅ تم تصفير الحسابات بنجاح!\n\n📊 تم أرشفة ${snapshotOrders.length} طلب\n📅 الشهر: ${monthLabel}\n💰 إجمالي الأرباح: ${formatMoney(totalProf)} ج.م\n\nالطلبات الجديدة ستبدأ من رقم 1`);
+
+        } catch (error) {
+            console.error('Archive error:', error);
+            alert("❌ حدث خطأ أثناء التصفير. يرجى المحاولة مرة أخرى.");
+        } finally {
+            setIsArchiving(false);
+        }
+    };
+
     const stats = useMemo(() => {
         const deliveredOrders = orders.filter(o => o.status === OrderStatus.Delivered);
         const totalRevenue = deliveredOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
         const totalDeliveryFees = deliveredOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
 
+        // Logic: App Profit = Sum(Paid Dailies)
         let totalCommission = 0;
         deliveredOrders.forEach(o => {
             const driver = users.find(u => u?.id === o.driverId);
             if (driver) {
+                let comm = 0;
                 if (driver.commissionType === 'fixed') {
-                    totalCommission += (driver.commissionRate || 0);
+                    comm = (driver.commissionRate || 0);
                 } else {
-                    totalCommission += (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
+                    comm = (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
                 }
+                if (comm > 0) totalCommission += comm;
             }
         });
 
@@ -534,16 +679,18 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
         });
 
         const monthlyRevenue = monthlyOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-        let monthlyCommission = 0;
 
+        let monthlyCommission = 0;
         monthlyOrders.forEach(o => {
             const driver = users.find(u => u?.id === o.driverId);
             if (driver) {
+                let comm = 0;
                 if (driver.commissionType === 'fixed') {
-                    monthlyCommission += (driver.commissionRate || 0);
+                    comm = (driver.commissionRate || 0);
                 } else {
-                    monthlyCommission += (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
+                    comm = (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
                 }
+                if (comm > 0) monthlyCommission += comm;
             }
         });
 
@@ -559,7 +706,9 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
             driversCount: users.filter(u => u?.role === 'driver').length,
             monthlyRevenue,
             monthlyCommission,
-            commission15Percent: monthlyCommission * 0.15
+            // Admin Profit is 15% of App Profit
+            commission15PercentTotal: totalCommission * 0.15,
+            commission15PercentMonthly: monthlyCommission * 0.15
         };
     }, [orders, users]);
 
@@ -599,9 +748,38 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
 
         if (user.role === 'driver') {
             if (user.commissionType === 'fixed') {
-                appCommission = delivered.length * (user.commissionRate || 0);
+                // For fixed commission, we count orders. 
+                // "Paid Dailies" logic: If the user meant Ignore orders with 0 fee? 
+                // Usually "Daily" implies the fee the Driver pays to the App.
+                // If the delivery fee is 0 (Free Delivery), does the driver still pay commission?
+                // The request says "profit of the app is the paid dailies and not the zero dailies".
+                // This likely means: Only count commission if (Commission > 0).
+                // Or if it refers to the Order's Delivery Fee?
+                // "The paid dailies" usually refers to the daily fee collected.
+                // Let's assume: Count commission only if the RESULTING commission > 0.
+
+                appCommission = delivered.reduce((sum, o) => {
+                    // Check if there is a "paid daily" involved.
+                    // If commission is fixed, it applies per order.
+                    // If the user specific "Zero Dailies", they might mean orders where the calculated commission came out to 0 (e.g. if percentage based on 0 fee).
+
+                    // However, for FIXED commission, it's always > 0 unless rate is 0.
+                    // For PERCENTAGE:
+                    let comm = 0;
+                    if (user.commissionType === 'fixed') {
+                        comm = (user.commissionRate || 0);
+                    } else {
+                        comm = (o.deliveryFee || 0) * ((user.commissionRate || 0) / 100);
+                    }
+                    return sum + comm;
+                }, 0);
+
             } else {
-                appCommission = totalDelivery * ((user.commissionRate || 0) / 100);
+                // Percentage Based
+                appCommission = delivered.reduce((sum, o) => {
+                    const comm = (o.deliveryFee || 0) * ((user.commissionRate || 0) / 100);
+                    return sum + comm;
+                }, 0);
             }
             driverEarnings = totalDelivery - appCommission;
         }
@@ -638,16 +816,31 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
                     </div>
                 </div>
 
-                {/* Quick Actions for Detailed Reports */}
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
                     {currentUser.role === 'admin' && (
-                        <button
-                            onClick={() => setDailyReportOpen(true)}
-                            className="flex-1 bg-gradient-to-r from-blue-900 to-blue-800 hover:from-blue-800 hover:to-blue-700 border border-blue-700 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group shadow-lg shadow-blue-900/30"
-                        >
-                            <div className="p-2 bg-blue-500/20 rounded-full group-hover:bg-blue-500/30"><ClipboardListIcon className="w-5 h-5 text-blue-200" /></div>
-                            <span className="text-sm font-bold text-white">التقرير اليومي الشامل</span>
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setShowArchiveConfirm(true)}
+                                className="flex-1 bg-red-900/40 hover:bg-red-900/60 border border-red-800 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group shadow-lg shadow-red-900/20"
+                            >
+                                <div className="p-2 bg-red-500/20 rounded-full group-hover:bg-red-500/30"><TrashIcon className="w-5 h-5 text-red-400" /></div>
+                                <span className="text-sm font-bold text-white">تصفير حسابات الشهر</span>
+                            </button>
+                            <button
+                                onClick={() => setShowHistory(true)}
+                                className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group"
+                            >
+                                <div className="p-2 bg-gray-700/50 rounded-full group-hover:bg-gray-600"><ClockIcon className="w-5 h-5 text-gray-300" /></div>
+                                <span className="text-sm font-bold text-gray-200">أرشيف الشهور</span>
+                            </button>
+                            <button
+                                onClick={() => setDailyReportOpen(true)}
+                                className="flex-1 bg-gradient-to-r from-blue-900 to-blue-800 hover:from-blue-800 hover:to-blue-700 border border-blue-700 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95 group shadow-lg shadow-blue-900/30"
+                            >
+                                <div className="p-2 bg-blue-500/20 rounded-full group-hover:bg-blue-500/30"><ClipboardListIcon className="w-5 h-5 text-blue-200" /></div>
+                                <span className="text-sm font-bold text-white">التقرير اليومي الشامل</span>
+                            </button>
+                        </>
                     )}
                     <button
                         onClick={() => handleOpenCriteria('driver')}
@@ -706,8 +899,8 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
                                 <CalendarIcon className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-xs text-purple-200 font-bold mb-1">صافي أرباح الشهر الحالي</p>
-                                <h3 className="text-2xl font-black text-white">{stats.monthlyCommission.toLocaleString('en-US')} <span className="text-sm font-normal text-purple-300">ج.م</span></h3>
+                                <p className="text-xs text-purple-200 font-bold mb-1">صافي أرباح الفترة الحالية</p>
+                                <h3 className="text-2xl font-black text-white">{stats.totalCommission.toLocaleString('en-US')} <span className="text-sm font-normal text-purple-300">ج.م</span></h3>
                             </div>
                         </div>
                     </div>
@@ -717,8 +910,8 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
                                 <CoinsIcon className="w-6 h-6" />
                             </div>
                             <div>
-                                <p className="text-xs text-orange-200 font-bold mb-1">أرباح الأدمن (حتى الآن)</p>
-                                <h3 className="text-2xl font-black text-white">{stats.commission15Percent.toLocaleString('en-US')} <span className="text-sm font-normal text-orange-300">ج.م</span></h3>
+                                <p className="text-xs text-orange-200 font-bold mb-1">أرباح الأدمن (الفترة الحالية)</p>
+                                <h3 className="text-2xl font-black text-white">{stats.commission15PercentTotal.toLocaleString('en-US')} <span className="text-sm font-normal text-orange-300">ج.م</span></h3>
                             </div>
                         </div>
                     </div>
@@ -809,6 +1002,126 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders, 
                 onClose={() => setResultsModalOpen(false)}
                 reportData={generatedReport}
             />
+
+            {/* Archive Confirmation Modal */}
+            {showArchiveConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isArchiving && setShowArchiveConfirm(false)} />
+                    <div className="bg-[#1a1a1a] rounded-3xl w-full max-w-md p-6 border border-red-500/30 relative z-10 animate-scaleIn shadow-2xl shadow-red-900/20">
+                        <div className="flex flex-col items-center text-center gap-4">
+                            <div className="p-4 bg-red-500/10 rounded-full animate-pulse">
+                                <ExclamationIcon className="w-12 h-12 text-red-500" />
+                            </div>
+                            <h3 className="text-2xl font-black text-white">هل أنت متأكد من تصفير الحسابات؟</h3>
+                            <p className="text-gray-400 font-medium leading-relaxed">
+                                سيقوم هذا الإجراء <span className="text-red-400 font-bold">بأرشفة جميع الحسابات الحالية</span> ونقلها إلى سجلات الشهر الماضي.
+                                <br />
+                                سيتم بدء شهر مالي جديد ولن تظهر البيانات القديمة في الواجهة الرئيسية.
+                            </p>
+
+                            <div className="w-full bg-red-900/20 border border-red-900/50 rounded-xl p-4 mt-2">
+                                <div className="flex justify-between items-center mb-2 text-red-200 text-sm font-bold">
+                                    <span>إجمالي العمولة المستحقة</span>
+                                    <span>{stats.totalCommission.toLocaleString('en-US')} ج.م</span>
+                                </div>
+                                <div className="flex justify-between items-center text-red-200 text-sm font-bold">
+                                    <span>حصة الأدمن (15%)</span>
+                                    <span>{stats.commission15PercentTotal.toLocaleString('en-US')} ج.م</span>
+                                </div>
+                            </div>
+
+                            <div className="flex w-full gap-3 mt-4">
+                                <button
+                                    onClick={handleArchiveMonth}
+                                    disabled={isArchiving}
+                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {isArchiving ? 'جاري التنفيذ...' : 'نعم، تصفير وبدء شهر جديد'}
+                                </button>
+                                <button
+                                    onClick={() => setShowArchiveConfirm(false)}
+                                    disabled={isArchiving}
+                                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-xl transition-all"
+                                >
+                                    إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* History Modal */}
+            {showHistory && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowHistory(false)} />
+                    <div className="bg-[#121212] rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col border border-gray-800 relative z-10 animate-scaleIn">
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#1a1a1a] rounded-t-3xl">
+                            <div>
+                                <h3 className="text-2xl font-black text-white flex items-center gap-3">
+                                    <ClockIcon className="w-8 h-8 text-blue-500" />
+                                    أرشيف الشهور السابقة
+                                </h3>
+                                <p className="text-gray-400 text-sm mt-1">سجل كامل بجميع الفترات المالية المغلقة</p>
+                            </div>
+                            <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                <XIcon className="w-6 h-6 text-gray-400" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+                            <div className="grid gap-4">
+                                {archiveHistory.length === 0 ? (
+                                    <div className="text-center py-20 text-gray-500">
+                                        <p>لا توجد سجلات مؤرشفة حتى الآن</p>
+                                    </div>
+                                ) : (
+                                    archiveHistory.map((report: MonthlyReport) => (
+                                        <div key={report.id} className="bg-[#1a1a1a] border border-gray-800 p-5 rounded-2xl hover:border-gray-600 transition-colors group">
+                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="p-3 bg-blue-500/10 rounded-xl">
+                                                        <CalendarIcon className="w-6 h-6 text-blue-400" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-lg font-bold text-white">تقرير شهر {report.month + 1} / {report.year}</h4>
+                                                        <p className="text-xs text-gray-500">تم الأرشفة في {new Date(report.createdAt).toLocaleDateString('ar-EG')}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+                                                    <span className="text-xs text-green-400 font-bold">مكتمل</span>
+                                                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                                                    <p className="text-xs text-gray-400 mb-1">إجمالي المبيعات</p>
+                                                    <p className="text-lg font-bold text-white">{formatMoney(report.totalRevenue)}</p>
+                                                </div>
+                                                <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                                                    <p className="text-xs text-gray-400 mb-1">رسوم التوصيل</p>
+                                                    <p className="text-lg font-bold text-blue-400">{formatMoney(report.totalDeliveryFees)}</p>
+                                                </div>
+                                                <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                                                    <p className="text-xs text-gray-400 mb-1">صافي ربح التطبيق</p>
+                                                    <p className="text-lg font-bold text-green-400">{formatMoney(report.totalAppProfit)}</p>
+                                                </div>
+                                                <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                                                    <p className="text-xs text-gray-400 mb-1">حصة الأدمن (15%)</p>
+                                                    <p className="text-lg font-bold text-orange-400">{formatMoney(report.totalAppProfit * 0.15)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <DailyReportModal
                 isOpen={dailyReportOpen}

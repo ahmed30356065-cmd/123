@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Order, User, OrderStatus, Customer, Role, SupervisorPermission, Message, Payment, SliderImage, SliderConfig, AppTheme, AuditLog, PromoCode, SupportChat, AppConfig } from '../../types';
 import AdminOrdersScreen from './AdminOrdersScreen';
@@ -12,7 +11,7 @@ import SystemSettings from './SystemSettings';
 import SliderSettings from './SliderSettings';
 import AddOrderModal from './AddOrderModal';
 import AdminBottomNav, { AdminView } from './AdminBottomNav';
-import { BellIcon, LogoutIconV2, RefreshCwIcon, UsersIcon, MessageSquareIcon, PaletteIcon, XIcon, ChevronLeftIcon, UserIcon, ShieldCheckIcon, TicketIcon, CoinsIcon, MoonIcon, SunIcon, StoreIcon, ImageIcon, SettingsIcon, ChartBarIcon, HeadsetIcon, VerifiedIcon, CrownIcon, StarIcon, RocketIcon, TruckIconV2, DollarSignIcon } from '../icons';
+import { BellIcon, LogoutIconV2, RefreshCwIcon, UsersIcon, MessageSquareIcon, PaletteIcon, XIcon, ChevronLeftIcon, UserIcon, ShieldCheckIcon, TicketIcon, CoinsIcon, MoonIcon, SunIcon, StoreIcon, ImageIcon, SettingsIcon, ChartBarIcon, HeadsetIcon, VerifiedIcon, CrownIcon, StarIcon, RocketIcon, TruckIconV2, DollarSignIcon, GamepadIcon } from '../icons';
 import EditUserModal from './EditUserModal';
 import UserDetailsModal from './UserDetailsModal';
 import ChangeStatusModal from './ChangeStatusModal';
@@ -22,8 +21,10 @@ import AppIconCustomizer from './AppIconCustomizer';
 import AuditLogsScreen from './AuditLogsScreen';
 import LoyaltyScreen from './LoyaltyScreen';
 import AdminSupportScreen from './AdminSupportScreen';
+import GamesManager from './GamesManager';
 import useAndroidBack from '../../hooks/useAndroidBack';
 import * as firebaseService from '../../services/firebase';
+import PullToRefresh from '../common/PullToRefresh';
 
 interface AdminPanelProps {
     user: User;
@@ -90,7 +91,7 @@ const SideMenuItem: React.FC<{ icon: React.ReactNode, label: string, onClick: ()
 );
 
 const AdminPanel: React.FC<AdminPanelProps> = (props) => {
-    const [view, setView] = useState<AdminView | 'add_order' | 'logs' | 'loyalty' | 'reports' | 'support'>('orders');
+    const [view, setView] = useState<AdminView | 'add_order' | 'logs' | 'loyalty' | 'reports' | 'support' | 'games'>('orders');
     const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [viewingUser, setViewingUser] = useState<User | null>(null);
@@ -98,6 +99,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const [assigningDriverOrder, setAssigningDriverOrder] = useState<Order | null>(null);
     const [transferOrder, setTransferOrder] = useState<Order | null>(null);
     const [statusConfirmation, setStatusConfirmation] = useState<{ order: Order; newStatus: OrderStatus } | null>(null);
+    const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'all' | 'single' | 'status', target?: any, message: string } | null>(null);
 
     useEffect(() => {
         const handleNav = (e: any) => {
@@ -146,6 +148,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     useAndroidBack(() => {
         // 1. Modals (Popups) - Close topmost first
         if (statusConfirmation) { setStatusConfirmation(null); return true; }
+        if (deleteConfirmation) { setDeleteConfirmation(null); return true; }
         if (assigningDriverOrder) { setAssigningDriverOrder(null); return true; }
         if (transferOrder) { setTransferOrder(null); return true; }
         if (statusChangeOrder) { setStatusChangeOrder(null); return true; }
@@ -160,7 +163,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
 
         // 4. Default - Exit App
         return false;
-    }, [isSideMenuOpen, editingUser, viewingUser, statusChangeOrder, assigningDriverOrder, transferOrder, statusConfirmation, view]);
+    }, [isSideMenuOpen, editingUser, viewingUser, statusChangeOrder, assigningDriverOrder, transferOrder, statusConfirmation, deleteConfirmation, view]);
 
     const realAdminData = useMemo(() => props.users.find(u => u.id === props.user.id) || props.user, [props.users, props.user]);
     const currentAdminMode = props.currentTheme?.admin?.mode || 'dark';
@@ -228,16 +231,77 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
 
     const handleBulkDelete = useCallback(async (status: OrderStatus | 'all') => {
         const ordersToDelete = status === 'all'
-            ? props.orders
-            : props.orders.filter(o => o.status === status);
+            ? props.orders.filter(o => !o.isArchived) // Only delete non-archived orders
+            : props.orders.filter(o => o.status === status && !o.isArchived);
 
-        if (ordersToDelete.length === 0) return;
-
-        for (const order of ordersToDelete) {
-            await props.deleteOrder(order.id);
+        if (ordersToDelete.length === 0) {
+            props.showNotification('لا توجد طلبات للحذف', 'info');
+            return;
         }
-        props.showNotification(`تم حذف ${ordersToDelete.length} طلب بنجاح`, 'success');
-    }, [props.orders, props.deleteOrder, props.showNotification]);
+
+        // Professional Confirmation Modal
+        const message = status === 'all'
+            ? `⚠️ سيتم حذف ${ordersToDelete.length} طلب نهائيًا من قاعدة البيانات!\n\nهذا الإجراء سيقوم بتنظيف جميع البيانات وإعادة تعيين العداد للطلب رقم 1.\n\nهل أنت متأكد؟`
+            : `سيتم حذف ${ordersToDelete.length} طلب (${status}) نهائيًا.\n\nهل أنت متأكد؟`;
+
+        setDeleteConfirmation({
+            type: status === 'all' ? 'all' : 'status',
+            target: status, // pass status to execute function
+            message: message
+        });
+
+    }, [props.orders, setDeleteConfirmation]);
+
+    const executeDelete = async () => {
+        if (!deleteConfirmation) return;
+
+        const { type, target } = deleteConfirmation;
+        let ordersToDelete: Order[] = [];
+
+        if (type === 'all') {
+            ordersToDelete = props.orders.filter(o => !o.isArchived);
+        } else if (type === 'status') {
+            ordersToDelete = props.orders.filter(o => o.status === target && !o.isArchived);
+        }
+
+        // Just in case
+        if (ordersToDelete.length === 0) {
+            setDeleteConfirmation(null);
+            return;
+        }
+
+        try {
+            // Batch delete for efficiency (Firestore limit: 500 per batch)
+            const BATCH_SIZE = 400;
+            const chunks = [];
+            for (let i = 0; i < ordersToDelete.length; i += BATCH_SIZE) {
+                chunks.push(ordersToDelete.slice(i, i + BATCH_SIZE));
+            }
+
+            // Delete in batches
+            for (const chunk of chunks) {
+                await Promise.all(chunk.map(order => props.deleteOrder(order.id)));
+            }
+
+            props.showNotification(
+                `✅ تم حذف ${ordersToDelete.length} طلب بنجاح من قاعدة البيانات\n\n${type === 'all' ? '🔄 جاري إعادة تحميل الصفحة...' : ''}`,
+                'success'
+            );
+
+            // Reload page after deletion to ensure clean state and ID reset
+            if (type === 'all') {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            }
+        } catch (error) {
+            console.error('Bulk delete error:', error);
+            props.showNotification('❌ حدث خطأ أثناء الحذف', 'error');
+        } finally {
+            setDeleteConfirmation(null);
+        }
+    };
+
 
     // Scroll Preservation
     const mainScrollRef = useRef<HTMLDivElement>(null);
@@ -296,6 +360,17 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const restTitleParts = appTitleParts.slice(1).join(' ');
     const fullAppName = props.appConfig?.appName || 'GOO NOW';
 
+    const handleRefresh = async () => {
+        // Since we are using Firestore real-time listeners (useAppData), 
+        // a "refresh" is mostly visual to reassure the user.
+        // However, we can use this to force check connection or just wait.
+        return new Promise<void>((resolve) => {
+            setTimeout(() => {
+                resolve();
+            }, 1500);
+        });
+    };
+
     const renderView = () => {
         switch (view) {
             case 'orders': return (
@@ -325,6 +400,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             case 'loyalty': return <LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} />;
             case 'support': return <AdminSupportScreen users={props.users} currentUser={props.user} onBack={() => setView('orders')} />;
             case 'settings': return <SystemSettings onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} />;
+            case 'games': return <GamesManager appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig!} />;
             default: return null;
         }
     };
@@ -432,6 +508,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                             <SideMenuItem icon={<ImageIcon className="w-5 h-5" />} label="إدارة العروض" onClick={() => { setView('slider'); setIsSideMenuOpen(false); }} isActive={view === 'slider'} />
                             <SideMenuItem icon={<PaletteIcon className="w-5 h-5" />} label="تخصيص المظهر" onClick={() => { setView('customizer'); setIsSideMenuOpen(false); }} isActive={view === 'customizer'} />
                             <SideMenuItem icon={<SettingsIcon className="w-5 h-5" />} label="الإعدادات السحابية" onClick={() => { setView('settings'); setIsSideMenuOpen(false); }} isActive={view === 'settings'} />
+                            <SideMenuItem icon={<GamepadIcon className="w-5 h-5" />} label="إدارة الألعاب" onClick={() => { setView('games'); setIsSideMenuOpen(false); }} isActive={view === 'games'} />
                         </div>
                         <div className="p-6 border-t border-white/5 bg-black/20 pb-safe">
                             <SideMenuItem icon={<LogoutIconV2 className="w-5 h-5" />} label="تسجيل الخروج" onClick={props.onLogout} danger />
@@ -475,70 +552,73 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 className={view === 'add_order' ? "flex-1 bg-[#111] h-full" : isFullScreenMode ? "flex-1 h-full relative" : "flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative"}
                 onScroll={!isFullScreenMode ? handleScroll : undefined}
             >
-                {/* 🔥 Performance Optimization: Keep Orders Screen Mounted! */}
-                {/* Removed transitions for instant toggle */}
-                <div className={view === 'orders' ? 'block' : 'hidden'}>
-                    <AdminOrdersScreen
-                        orders={props.orders} users={props.users}
-                        deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
-                        editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
-                        adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
-                        onNavigateToAdd={handleNavigateToAdd}
-                        onBulkAssign={handleBulkAssign}
-                        onBulkStatusUpdate={handleBulkStatusUpdate}
-                        onBulkDelete={handleBulkDelete}
-                        appName={fullAppName}
-                        currentUser={props.user}
-                        viewMode="default"
-                    />
-                </div>
+                <PullToRefresh onRefresh={handleRefresh} className="">
+                    {/* 🔥 Performance Optimization: Keep Orders Screen Mounted! */}
+                    {/* Removed transitions for instant toggle */}
+                    <div className={view === 'orders' ? 'block' : 'hidden'}>
+                        <AdminOrdersScreen
+                            orders={props.orders} users={props.users}
+                            deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
+                            editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
+                            adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                            onNavigateToAdd={handleNavigateToAdd}
+                            onBulkAssign={handleBulkAssign}
+                            onBulkStatusUpdate={handleBulkStatusUpdate}
+                            onBulkDelete={handleBulkDelete}
+                            appName={fullAppName}
+                            currentUser={props.user}
+                            viewMode="default"
+                        />
+                    </div>
 
-                <div className={view === 'shopping' ? 'block' : 'hidden'}>
-                    <AdminOrdersScreen
-                        orders={props.orders} users={props.users}
-                        deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
-                        editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
-                        adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
-                        onNavigateToAdd={handleNavigateToAdd}
-                        onBulkAssign={handleBulkAssign}
-                        onBulkStatusUpdate={handleBulkStatusUpdate}
-                        onBulkDelete={handleBulkDelete}
-                        appName={fullAppName}
-                        currentUser={props.user}
-                        viewMode="shopping"
-                    />
-                </div>
+                    <div className={view === 'shopping' ? 'block' : 'hidden'}>
+                        <AdminOrdersScreen
+                            orders={props.orders} users={props.users}
+                            deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
+                            editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
+                            adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                            onNavigateToAdd={handleNavigateToAdd}
+                            onBulkAssign={handleBulkAssign}
+                            onBulkStatusUpdate={handleBulkStatusUpdate}
+                            onBulkDelete={handleBulkDelete}
+                            appName={fullAppName}
+                            currentUser={props.user}
+                            viewMode="shopping"
+                        />
+                    </div>
 
-                <div className={view === 'special' ? 'block' : 'hidden'}>
-                    <AdminOrdersScreen
-                        orders={props.orders} users={props.users}
-                        deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
-                        editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
-                        adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
-                        onNavigateToAdd={handleNavigateToAdd}
-                        onBulkAssign={handleBulkAssign}
-                        onBulkStatusUpdate={handleBulkStatusUpdate}
-                        onBulkDelete={handleBulkDelete}
-                        appName={fullAppName}
-                        currentUser={props.user}
-                        viewMode="special"
-                    />
-                </div>
+                    <div className={view === 'special' ? 'block' : 'hidden'}>
+                        <AdminOrdersScreen
+                            orders={props.orders} users={props.users}
+                            deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
+                            editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
+                            adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                            onNavigateToAdd={handleNavigateToAdd}
+                            onBulkAssign={handleBulkAssign}
+                            onBulkStatusUpdate={handleBulkStatusUpdate}
+                            onBulkDelete={handleBulkDelete}
+                            appName={fullAppName}
+                            currentUser={props.user}
+                            viewMode="special"
+                        />
+                    </div>
 
-                {/* Other views can be conditional to save memory, or become hidden-but-mounted if they are also heavy */}
-                {view === 'reports' && <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} />}
-                {view === 'add_order' && <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={props.adminAddOrder} />}
-                {view === 'users' && <AdminUsersScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} onAdminAddUser={props.adminAddUser} setEditingUser={setEditingUser} onViewUser={setViewingUser} appName={fullAppName} currentUser={props.user} />}
-                {view === 'stores' && <AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} />}
-                {view === 'notifications' && <NotificationsScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} passwordResetRequests={props.passwordResetRequests} resolvePasswordResetRequest={props.resolvePasswordResetRequest} setEditingUser={setEditingUser} pendingOrders={props.orders.filter(o => o.status === OrderStatus.Pending && !o.driverId)} onNavigateToOrders={() => setView('orders')} unreadChats={unreadSupportChats} onNavigateToSupport={() => setView('support')} />}
-                {view === 'wallet' && <AdminWalletScreen orders={props.orders} users={props.users} payments={props.payments} updateUser={props.updateUser} handleDriverPayment={props.handleDriverPayment} onDeletePayment={(id) => firebaseService.deleteData('payments', id)} currentUser={props.user} />}
-                {view === 'messages' && <AdminMessagesScreen users={props.users} onSendMessage={props.sendMessage} messages={props.messages} deleteMessage={props.deleteMessage} />}
-                {view === 'slider' && <SliderSettings images={props.sliderImages} isEnabled={props.sliderConfig.isEnabled} onAddImage={props.onAddSliderImage} onDeleteImage={props.onDeleteSliderImage} onUpdateImage={props.onUpdateSliderImage} onToggleSlider={props.onToggleSlider} merchants={merchants} adminUser={props.user} />}
-                {view === 'customizer' && <AppIconCustomizer currentTheme={props.currentTheme} onUpdateTheme={props.onUpdateTheme} onClose={() => setView('orders')} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} users={props.users} onUpdateUser={props.updateUser} sendNotification={firebaseService.sendExternalNotification} currentUser={props.user} />}
-                {view === 'logs' && <AuditLogsScreen logs={props.auditLogs} onClearLogs={props.onClearLogs} />}
-                {view === 'loyalty' && <LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} />}
-                {view === 'support' && <AdminSupportScreen users={props.users} currentUser={props.user} onBack={() => setView('orders')} />}
-                {view === 'settings' && <SystemSettings onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} />}
+                    {/* Other views can be conditional to save memory, or become hidden-but-mounted if they are also heavy */}
+                    {view === 'reports' && <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} />}
+                    {view === 'add_order' && <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={props.adminAddOrder} />}
+                    {view === 'users' && <AdminUsersScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} onAdminAddUser={props.adminAddUser} setEditingUser={setEditingUser} onViewUser={setViewingUser} appName={fullAppName} currentUser={props.user} />}
+                    {view === 'stores' && <AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} />}
+                    {view === 'notifications' && <NotificationsScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} passwordResetRequests={props.passwordResetRequests} resolvePasswordResetRequest={props.resolvePasswordResetRequest} setEditingUser={setEditingUser} pendingOrders={props.orders.filter(o => o.status === OrderStatus.Pending && !o.driverId)} onNavigateToOrders={() => setView('orders')} unreadChats={unreadSupportChats} onNavigateToSupport={() => setView('support')} />}
+                    {view === 'wallet' && <AdminWalletScreen orders={props.orders} users={props.users} payments={props.payments} updateUser={props.updateUser} handleDriverPayment={props.handleDriverPayment} onDeletePayment={(id) => firebaseService.deleteData('payments', id)} currentUser={props.user} />}
+                    {view === 'messages' && <AdminMessagesScreen users={props.users} onSendMessage={props.sendMessage} messages={props.messages} deleteMessage={props.deleteMessage} />}
+                    {view === 'slider' && <SliderSettings images={props.sliderImages} isEnabled={props.sliderConfig.isEnabled} onAddImage={props.onAddSliderImage} onDeleteImage={props.onDeleteSliderImage} onUpdateImage={props.onUpdateSliderImage} onToggleSlider={props.onToggleSlider} merchants={merchants} adminUser={props.user} />}
+                    {view === 'customizer' && <AppIconCustomizer currentTheme={props.currentTheme} onUpdateTheme={props.onUpdateTheme} onClose={() => setView('orders')} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} users={props.users} onUpdateUser={props.updateUser} sendNotification={firebaseService.sendExternalNotification} currentUser={props.user} />}
+                    {view === 'logs' && <AuditLogsScreen logs={props.auditLogs} onClearLogs={props.onClearLogs} />}
+                    {view === 'loyalty' && <LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} />}
+                    {view === 'support' && <AdminSupportScreen users={props.users} currentUser={props.user} onBack={() => setView('orders')} />}
+                    {view === 'settings' && <SystemSettings onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} />}
+                    {view === 'games' && <GamesManager appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig!} />}
+                </PullToRefresh>
             </main>
 
             {/* Hide Bottom Nav in Full Screen Mode */}
@@ -550,6 +630,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             {assigningDriverOrder && <AssignDriverModal order={assigningDriverOrder} drivers={drivers} targetStatus={OrderStatus.InTransit} onClose={() => setAssigningDriverOrder(null)} onSave={(d, f) => { props.assignDriverAndSetStatus(assigningDriverOrder.id, d, f, OrderStatus.InTransit); setAssigningDriverOrder(null); }} />}
             {transferOrder && <AssignDriverModal order={transferOrder} drivers={drivers} targetStatus={OrderStatus.InTransit} onClose={() => setTransferOrder(null)} onSave={(d, f) => { props.assignDriverAndSetStatus(transferOrder.id, d, f, OrderStatus.InTransit); setTransferOrder(null); }} />}
             {statusConfirmation && <ConfirmationModal title={`تأكيد تغيير الحالة`} message={`هل تؤكد تغيير حالة الطلب؟`} onClose={() => setStatusConfirmation(null)} onConfirm={handleConfirmStatusChange} confirmVariant={statusConfirmation.newStatus === OrderStatus.Delivered ? 'success' : 'primary'} />}
+            {deleteConfirmation && <ConfirmationModal title={deleteConfirmation.type === 'all' ? "حذف الكل ⚠️" : "تأكيد الحذف"} message={deleteConfirmation.message} onClose={() => setDeleteConfirmation(null)} onConfirm={executeDelete} confirmVariant="danger" confirmButtonText="نعم، حذف نهائي" cancelButtonText="تراجع" />}
         </div>
     );
 };

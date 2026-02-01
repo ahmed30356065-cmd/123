@@ -1,0 +1,47 @@
+
+
+
+{
+  "short_name": "DeliNow",
+  "name": "GOO NOW Logistics & Delivery",
+  "description": "تطبيق التوصيل المتكامل للتجار والمناديب والعملاء",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#ef4444",
+  "background_color": "#0f172a",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "vite.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "vite.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "vite.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "الطلبات الجديدة",
+      "url": "/?target=orders",
+      "icons": [{ "src": "vite.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "الرسائل",
+      "url": "/?target=messages",
+      "icons": [{ "src": "vite.svg", "sizes": "192x192" }]
+    }
+  ]
+}

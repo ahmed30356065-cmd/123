@@ -98,29 +98,60 @@ export enum OrderStatus {
   Pending = 'قيد الانتظار',
   InTransit = 'قيد التوصيل',
   Delivered = 'تم التوصيل',
-  Cancelled = 'ملغي',
+  Cancelled = 'تم الإلغاء/الرفض',
 }
+
+export interface MonthlyReport {
+  id: string;
+  month: number; // 0-11
+  year: number;
+  monthLabel: string; // e.g., "فبراير 2024" - for display
+  totalRevenue: number;
+  totalDeliveryFees: number;
+  totalAppProfit: number;
+  adminShare: number; // 15% of app profit
+  totalDriverPayouts: number;
+  createdAt: Date;
+  archivedOrdersCount: number;
+  deliveredOrdersCount: number;
+  cancelledOrdersCount: number;
+  lastRegularOrderId: string; // Last ORD- ID before reset
+  lastShoppingOrderId: string; // Last S- ID before reset
+  walletSnapshots: Record<string, {
+    name: string;
+    role: Role;
+    balance: number;
+    ordersCount: number;
+  }>;
+  archivedBy: string; // Admin user ID who performed the archive
+}
+
 
 export interface Order {
   id: string;
-  customer: Customer;
-  createdAt: Date;
-  status: OrderStatus;
-  notes?: string;
-  driverId?: string;
+  userId: string;
+  userName: string;
   merchantId: string;
   merchantName: string;
+  items: CartItem[];
+  totalPrice: number;
+  status: OrderStatus;
   deliveryFee?: number;
-  deliveredAt?: Date;
-  reconciled?: boolean;
-  type?: 'delivery_request' | 'shopping_order';
-  items?: CartItem[];
-  totalPrice?: number;
-  discountAmount?: number;
-  finalPrice?: number;
-  promoCode?: string;
-  pointsUsed?: number;
-  pointsEarned?: number;
+  regionPrice?: number;
+  createdAt: Date;
+  deliveryLocation?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  };
+  driverId?: string; // Assigned Driver
+  driverName?: string;
+  notes?: string;
+  rating?: number;
+  customerPhone?: string;
+  deliveredAt?: Date; // For reporting
+  isArchived?: boolean; // For monthly reset
+  archiveMonth?: string; // e.g., "فبراير 2024" - displayed with order ID after archiving
 }
 
 export interface Message {
@@ -239,6 +270,8 @@ export interface AppConfig {
   appName: string;
   appVersion: string;
   customFont?: string; // Base64 encoded TTF
+  isGamesEnabled?: boolean; // Global Toggle for Games Feature
+  games?: Game[]; // List of active games
 }
 
 // --- Update Configuration ---
@@ -253,6 +286,17 @@ export interface UpdateConfig {
   forceUpdate?: boolean;
   releaseDate?: Date;
   target_roles?: string[];
+}
+
+// --- Games Feature ---
+export interface Game {
+  id: string;
+  name: string;
+  image: string;
+  url: string;
+  isActive: boolean;
+  createdAt?: Date;
+  playCount?: number;
 }
 
 export interface UpdateLog {

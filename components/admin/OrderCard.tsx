@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { Order, User, OrderStatus } from '../../types';
 import OrderStatusBadge from '../OrderStatusBadge';
+import OrderIdDisplay from '../OrderIdDisplay';
 import { PencilIcon, TrashIcon, PhoneIcon, UserIcon, MapPinIcon, StoreIcon, TruckIconV2, CalendarIcon, ClockIcon, DollarSignIcon, ShoppingCartIcon, WhatsAppIcon, CheckCircleIcon, RocketIcon } from '../icons';
 
 interface OrderCardProps {
@@ -71,7 +72,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
             <div className="p-4 border-b border-gray-700/50 flex justify-between items-start bg-gray-900/30">
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                        <span className="font-mono text-xl font-black text-red-500 tracking-tighter">{order.id}</span>
+                        <OrderIdDisplay order={order} className="font-mono text-xl font-black text-red-500 tracking-tighter" showHash={false} />
                         {isShoppingOrder && (
                             <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/20">
                                 <RocketIcon className="w-3 h-3" />
@@ -123,9 +124,11 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                     <WhatsAppIcon className="w-3.5 h-3.5" />
                                 </a>
                             )}
-                            <a href={`tel:${order.customer?.phone}`} className="p-1.5 flex-shrink-0 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all border border-blue-500/10 clickable" title="اتصال">
-                                <PhoneIcon className="w-3.5 h-3.5" />
-                            </a>
+                            {order.customer?.phone && (
+                                <a href={`tel:${order.customer.phone}`} className="p-1.5 flex-shrink-0 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all border border-blue-500/10 clickable" title="اتصال">
+                                    <PhoneIcon className="w-3.5 h-3.5" />
+                                </a>
+                            )}
                             <span className="text-xs text-gray-300 font-mono bg-black/20 px-2 py-1 rounded border border-gray-700 selectable font-bold tracking-wide">
                                 {order.customer?.phone || ''}
                             </span>
@@ -205,12 +208,16 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                     {order.merchantId !== 'delinow' && (merchantUser?.phone || order.merchantId) && (
                         <div className="flex justify-end pt-2 border-t border-orange-500/10 mt-1">
                             <div className="flex items-center gap-2" dir="ltr">
-                                <a href={`https://wa.me/2${merchantUser?.phone || order.merchantId}`} target="_blank" rel="noopener noreferrer" className="p-1.5 flex-shrink-0 bg-green-500/10 text-green-400 rounded-lg hover:bg-green-500/20 transition-all border border-green-500/10 clickable" title="واتساب">
-                                    <WhatsAppIcon className="w-3.5 h-3.5" />
-                                </a>
-                                <a href={`tel:${merchantUser?.phone || order.merchantId}`} className="p-1.5 flex-shrink-0 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all border border-blue-500/10 clickable" title="اتصال">
-                                    <PhoneIcon className="w-3.5 h-3.5" />
-                                </a>
+                                {merchantUser?.phone && (
+                                    <a href={`https://wa.me/2${merchantUser.phone}`} target="_blank" rel="noopener noreferrer" className="p-1.5 flex-shrink-0 bg-green-500/10 text-green-400 rounded-lg hover:bg-green-500/20 transition-all border border-green-500/10 clickable" title="واتساب">
+                                        <WhatsAppIcon className="w-3.5 h-3.5" />
+                                    </a>
+                                )}
+                                {merchantUser?.phone && (
+                                    <a href={`tel:${merchantUser.phone}`} className="p-1.5 flex-shrink-0 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all border border-blue-500/10 clickable" title="اتصال">
+                                        <PhoneIcon className="w-3.5 h-3.5" />
+                                    </a>
+                                )}
                                 <span className="text-xs text-gray-300 font-mono bg-black/20 px-2 py-1 rounded border border-gray-700 selectable font-bold tracking-wide">
                                     {merchantUser?.phone || order.merchantId}
                                 </span>

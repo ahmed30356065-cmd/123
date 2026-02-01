@@ -20,7 +20,8 @@ interface AdminOrdersScreenProps {
         driverId?: string | null,
         deliveryFee?: number | null,
         items?: CartItem[],
-        totalPrice?: number
+        totalPrice?: number,
+        status?: OrderStatus // Added status
     }) => void;
     assignDriverAndSetStatus: (orderId: string, driverId: string, deliveryFee: number, status: OrderStatus.InTransit | OrderStatus.Delivered) => void;
     adminAddOrder: (newOrder: { customer: Customer; notes?: string; merchantId: string; } | { customer: Customer; notes?: string; merchantId: string; }[]) => void;
@@ -421,7 +422,29 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
                 </div>
             )}
 
-            {editingOrder && <EditOrderModal order={editingOrder} merchants={merchants} drivers={drivers} onClose={() => setEditingOrder(null)} onSave={(data) => { editOrder(editingOrder.id, data); setEditingOrder(null); }} currentUserRole={currentUser?.role} />}
+            {editingOrder && <EditOrderModal order={editingOrder} merchants={merchants} drivers={drivers} onClose={() => setEditingOrder(null)} onSave={(data) => {
+                const currentOrder = editingOrder;
+                let newStatus = currentOrder.status;
+
+                // Smart Status Logic
+                if (data.driverId && data.deliveryFee !== null && data.deliveryFee !== undefined) {
+                    if (currentOrder.status === OrderStatus.Pending) {
+                        newStatus = OrderStatus.InTransit;
+                    }
+                } else if (!data.driverId) {
+                    if (currentOrder.status === OrderStatus.InTransit) {
+                        newStatus = OrderStatus.Pending;
+                    }
+                }
+
+                const finalData = { ...data };
+                if (newStatus !== currentOrder.status) {
+                    (finalData as any).status = newStatus;
+                }
+
+                editOrder(editingOrder.id, finalData);
+                setEditingOrder(null);
+            }} currentUserRole={currentUser?.role} />}
 
             {deletingOrder && (
                 <ConfirmationModal
