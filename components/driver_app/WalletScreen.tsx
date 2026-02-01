@@ -55,10 +55,13 @@ const WalletScreen: React.FC<WalletScreenProps> = ({ driver, orders, users }) =>
         companyShare = totalFees * (commissionRate / 100);
     }
 
+    // Add Opening Balance (Carried over from previous months)
+    const openingBalance = safeParseFloat(driver.walletOpeningBalance);
+
     // Apply rounding to final figures to match Ledger/Admin Panel
     const finalTotalFees = toCurrency(totalFees);
     const finalCompanyShare = toCurrency(companyShare);
-    const finalDriverShare = toCurrency(finalTotalFees - finalCompanyShare);
+    const finalDriverShare = toCurrency(finalTotalFees - finalCompanyShare + openingBalance); // Add Opening Balance here
 
     const commissionLabel = driver.commissionType === 'fixed'
         ? `${commissionRate} ج.م/طلب`
@@ -81,6 +84,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({ driver, orders, users }) =>
                     <h4 className="text-sm font-semibold text-gray-400 mb-2">
                         ملخص المستحقات ({unpaidOrders.length} {unpaidOrders.length === 1 ? 'طلب' : 'طلبات'})
                     </h4>
+                    {safeParseFloat(driver.walletOpeningBalance) !== 0 && (
+                        <FinancialRow label="رصيد مرحل (سابق)" value={safeParseFloat(driver.walletOpeningBalance)} colorClass="text-yellow-400" />
+                    )}
                     <FinancialRow label="إجمالي التحصيل (توصيل)" value={finalTotalFees} colorClass="text-blue-400" />
                     <FinancialRow label={`مستحقات التطبيق (${commissionLabel})`} value={finalCompanyShare} colorClass="text-red-400" />
                     <FinancialRow label="صافي ربحك" value={finalDriverShare} colorClass="text-green-400" />

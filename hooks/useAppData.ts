@@ -150,7 +150,8 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 const newAppConfig = {
                     appName: aConf.appName || 'GOO NOW',
                     appVersion: aConf.appVersion || 'VERSION 1.0.5',
-                    customFont: aConf.customFont
+                    customFont: aConf.customFont,
+                    games: aConf.games || [] // Fix: Load games from config
                 };
                 setAppConfig(newAppConfig);
                 localStorage.setItem('app_config_cache', JSON.stringify(newAppConfig));

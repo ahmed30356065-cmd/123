@@ -271,8 +271,7 @@ const App: React.FC = () => {
                     adminAddOrder={async (d) => {
                         const dataArray = Array.isArray(d) ? d : [d];
                         const newOrders: any[] = [];
-                        const dataArray = Array.isArray(d) ? d : [d];
-                        const newOrders: any[] = [];
+
                         // REMOVED: Inline obsolete calculation. We now calculate inside loop.
                         // let currentMax = orders.filter(o => o.id.startsWith('ORD-')).reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
 
@@ -400,8 +399,7 @@ const App: React.FC = () => {
                     adminAddOrder={(d) => {
                         const dataArray = Array.isArray(d) ? d : [d];
                         const newOrders: any[] = [];
-                        const dataArray = Array.isArray(d) ? d : [d];
-                        const newOrders: any[] = [];
+
                         // REMOVED: Inline obsolete calculation
                         // let currentMax = orders.filter(o => o.id.startsWith('ORD-')).reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
                         dataArray.forEach(orderData => {

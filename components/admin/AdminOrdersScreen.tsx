@@ -260,15 +260,9 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
         }
 
         // 4. Sort (Latest First)
-        // Using safe sort logic similar to AdminReportsScreen
-        return result.sort((a, b) => {
-            const getTime = (date: any) => {
-                if (!date) return 0;
-                if (date.seconds) return date.seconds * 1000; // Firestore
-                return new Date(date).getTime();
-            };
-            return getTime(b.createdAt) - getTime(a.createdAt);
-        });
+        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        return result;
     }, [orders, filterType, statusFilter, searchTerm]);
 
     // Restoring other missing derived state

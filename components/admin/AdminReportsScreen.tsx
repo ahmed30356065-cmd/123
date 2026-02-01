@@ -625,24 +625,40 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders: 
             // 2. Archive all orders with month label (batch update)
             const BATCH_SIZE = 400;
             const chunks = [];
-            for (let i = 0; i < snapshotOrders.length; i += BATCH_SIZE) {
-                chunks.push(snapshotOrders.slice(i, i + BATCH_SIZE));
+            await addData('monthly_reports', newReport);
+
+            // 4. Update Drivers (Batch)
+            // We set walletOpeningBalance.
+            for (const update of userUpdates) {
+                await updateData('users', update.id, { walletOpeningBalance: update.walletOpeningBalance });
             }
 
-            await Promise.all(chunks.map(async (chunk) => {
-                await batchSaveData('orders', chunk.map(o => ({
-                    id: o.id,
-                    isArchived: true,
-                    archiveMonth: monthLabel // Add month label to each order
-                })));
+            // 5. Mark Orders as Archived (Batch)
+            // We use batchSaveData for efficiency
+            const orderUpdates = archivedOrders.map(o => ({
+                id: o.id,
+                isArchived: true,
+                archiveMonth: newReport.monthLabel
             }));
 
+            await batchSaveData('orders', orderUpdates);
+
+            // 6. Archive Payments (Optional but recommended to keep math sane)
+            // We mark them as reconciled/archived
+            const allPayments = payments.filter(p => !p.reconciledOrderIds?.includes('ARCHIVED'));
+            const paymentUpdates = allPayments.map(p => ({
+                id: p.id,
+                reconciledOrderIds: ['ARCHIVED'] // Mark as archived
+            }));
+            await batchSaveData('payments', paymentUpdates);
+
             setShowArchiveConfirm(false);
-            alert(`✅ تم تصفير الحسابات بنجاح!\n\n📊 تم أرشفة ${snapshotOrders.length} طلب\n📅 الشهر: ${monthLabel}\n💰 إجمالي الأرباح: ${formatMoney(totalProf)} ج.م\n\nالطلبات الجديدة ستبدأ من رقم 1`);
+            // Reload to reflect changes (reset IDs, clean view)
+            window.location.reload();
 
         } catch (error) {
-            console.error('Archive error:', error);
-            alert("❌ حدث خطأ أثناء التصفير. يرجى المحاولة مرة أخرى.");
+            console.error("Archive Failed:", error);
+            alert("حدث خطأ أثناء الأرشفة");
         } finally {
             setIsArchiving(false);
         }
