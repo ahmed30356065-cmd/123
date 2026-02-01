@@ -260,7 +260,21 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
         }
 
         // 4. Sort (Latest First)
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        // 4. Sort (Latest First) with Fallback to ID
+        result.sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+            // Primary: Date
+            if (timeA && timeB && timeA !== timeB) {
+                return timeB - timeA;
+            }
+
+            // Secondary: ID Number (descending)
+            const idA = parseInt(a.id.replace(/\D/g, '') || '0');
+            const idB = parseInt(b.id.replace(/\D/g, '') || '0');
+            return idB - idA;
+        });
 
         return result;
     }, [orders, filterType, statusFilter, searchTerm]);

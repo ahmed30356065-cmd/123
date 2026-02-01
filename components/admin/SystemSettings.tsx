@@ -7,13 +7,16 @@ import {
 } from '../icons';
 import {
     updateData, uploadFile, subscribeToCollection,
-    deleteData, addData, sendExternalNotification
+    deleteData, addData, sendExternalNotification,
+    db // Import db for direct access if needed
 } from '../../services/firebase';
+import firebase from 'firebase/compat/app'; // For batch operations types
 import { AppConfig, UpdateLog } from '../../types';
 
 // --- Types ---
 interface SystemSettingsProps {
     currentUser?: any;
+    // Add props for deletion if needed, but we can import firebase services directly
 }
 
 // Custom Modal Component
@@ -229,6 +232,50 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
         });
     };
 
+    // --- NEW: Force Delete All Orders (Maintenance) ---
+    const handleForceDeleteOrders = async () => {
+        openConfirmModal('⚠️ مسح جميع الطلبات (إعادة ضبط المصنع)',
+            'سيتم حذف سجل الطلبات بالكامل وسيتم تصفير عداد الطلبات ليبدأ من 1.\n\nلن تتأثر أرصدة المحفظة (الرصيد الافتتاحي) ولكن سيتم حذف المعاملات القديمة.\n\nهل أنت متأكد تماماً؟',
+            async () => {
+                showToast('جاري الحذف... يرجى الانتظار وعدم إغلاق الصفحة', 'info');
+                try {
+                    // Fetch all orders directly to ensure we get everything
+                    const snapshot = await firebase.firestore().collection('orders').get(); // Direct SDK usage
+                    const batchSize = 400;
+                    let batch = firebase.firestore().batch();
+                    let count = 0;
+                    let totalDeleted = 0;
+
+                    for (const doc of snapshot.docs) {
+                        batch.delete(doc.ref);
+                        count++;
+                        if (count >= batchSize) {
+                            await batch.commit();
+                            batch = firebase.firestore().batch();
+                            totalDeleted += count;
+                            count = 0;
+                        }
+                    }
+                    if (count > 0) {
+                        await batch.commit();
+                        totalDeleted += count;
+                    }
+
+                    // Also clear Payments if requested? No, keeping payments for history mostly. 
+                    // But user complained about wallet transactions. Wallet uses ORDERS.
+                    // So deleting orders cleans wallet.
+
+                    showToast(`تم حذف ${totalDeleted} طلب وإعادة تعيين العداد.`, 'success');
+                    setTimeout(() => window.location.reload(), 2000);
+
+                } catch (error) {
+                    console.error(error);
+                    showToast('حدث خطأ أثناء الحذف', 'error');
+                }
+            }, 'danger'
+        );
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-[#0f172a] text-white font-sans selection:bg-blue-500/30">
 
@@ -284,6 +331,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                                 </div>
                                 <div className="flex gap-3">
                                     <ActionButton label="مسح التحديث" variant="danger" icon={TrashIcon} onClick={handleClearUpdate} />
+                                    <ActionButton label="حذف جميع الطلبات (Reset)" variant="danger" icon={AlertTriangleIcon} onClick={handleForceDeleteOrders} />
                                     <ActionButton label="إعادة تحميل" variant="secondary" icon={RefreshCwIcon} onClick={() => window.location.reload()} />
                                 </div>
                             </div>
