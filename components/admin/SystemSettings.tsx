@@ -232,15 +232,34 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
         });
     };
 
-    // --- NEW: Force Delete All Orders (Maintenance) ---
-    const handleForceDeleteOrders = async () => {
-        openConfirmModal('⚠️ مسح جميع الطلبات (إعادة ضبط المصنع)',
-            'سيتم حذف سجل الطلبات بالكامل وسيتم تصفير عداد الطلبات ليبدأ من 1.\n\nلن تتأثر أرصدة المحفظة (الرصيد الافتتاحي) ولكن سيتم حذف المعاملات القديمة.\n\nهل أنت متأكد تماماً؟',
+    // --- NEW: Conditional Delete (Safety) ---
+    const handleConditionalDelete = async () => {
+        // Default to first day of current month to save current month's work
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+
+        const dateStr = prompt('أدخل تاريخ (YYYY-MM-DD). سيتم حذف جميع الطلبات التي تم إنشاؤها *قبل* هذا التاريخ:', firstDayOfMonth);
+        if (!dateStr) return;
+
+        const cutoffDate = new Date(dateStr);
+        if (isNaN(cutoffDate.getTime())) return showToast('تاريخ غير صالح', 'error');
+
+        openConfirmModal('⚠️ تنظيف البيانات القديمة',
+            `سيتم حذف جميع الطلبات التي تم إنشاؤها قبل يوم ${dateStr}.\n\nالطلبات الجديدة (منذ هذا التاريخ) ستبقى آمنة.\n\nهل أنت متأكد؟`,
             async () => {
-                showToast('جاري الحذف... يرجى الانتظار وعدم إغلاق الصفحة', 'info');
+                showToast('جاري التنظيف...', 'info');
                 try {
-                    // Fetch all orders directly to ensure we get everything
-                    const snapshot = await firebase.firestore().collection('orders').get(); // Direct SDK usage
+                    const cutoffTimestamp = firebase.firestore.Timestamp.fromDate(cutoffDate);
+
+                    // Direct query for older orders
+                    const snapshot = await firebase.firestore().collection('orders')
+                        .where('createdAt', '<', cutoffTimestamp)
+                        .get();
+
+                    if (snapshot.empty) {
+                        return showToast('لا توجد طلبات قديمة بهذا التاريخ', 'info');
+                    }
+
                     const batchSize = 400;
                     let batch = firebase.firestore().batch();
                     let count = 0;
@@ -261,16 +280,12 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                         totalDeleted += count;
                     }
 
-                    // Also clear Payments if requested? No, keeping payments for history mostly. 
-                    // But user complained about wallet transactions. Wallet uses ORDERS.
-                    // So deleting orders cleans wallet.
-
-                    showToast(`تم حذف ${totalDeleted} طلب وإعادة تعيين العداد.`, 'success');
+                    showToast(`تم تنظيف ${totalDeleted} طلب قديم بنجاح.`, 'success');
                     setTimeout(() => window.location.reload(), 2000);
 
                 } catch (error) {
                     console.error(error);
-                    showToast('حدث خطأ أثناء الحذف', 'error');
+                    showToast('حدث خطأ أثناء التنظيف', 'error');
                 }
             }, 'danger'
         );
@@ -331,7 +346,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                                 </div>
                                 <div className="flex gap-3">
                                     <ActionButton label="مسح التحديث" variant="danger" icon={TrashIcon} onClick={handleClearUpdate} />
-                                    <ActionButton label="حذف جميع الطلبات (Reset)" variant="danger" icon={AlertTriangleIcon} onClick={handleForceDeleteOrders} />
+                                    <ActionButton label="تنظيف البيانات القديمة (قبل تاريخ)" variant="danger" icon={AlertTriangleIcon} onClick={handleConditionalDelete} />
                                     <ActionButton label="إعادة تحميل" variant="secondary" icon={RefreshCwIcon} onClick={() => window.location.reload()} />
                                 </div>
                             </div>
