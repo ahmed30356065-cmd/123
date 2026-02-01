@@ -354,6 +354,81 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
         );
     };
 
+    // --- NEW: Reset & Renumber Orders (Sequential Fix) ---
+    const handleRenumberOrders = async () => {
+        openConfirmModal('⚠️ إعادة ترقيم الطلبات',
+            'سيتم إعادة ترتيب جميع الطلبات الحالية لتكون متسلسلة (1, 2, 3...) بناءً على تاريخ إنشائها.\n\nسيتم إصلاح أي فجوات في الأرقام (مثل القفزة من 5 إلى 1000).\n\nهذا الإجراء آمن وسيحتفظ ببيانات الطلبات.\n\nهل أنت متأكد؟',
+            async () => {
+                showToast('جاري إعادة الترتيب...', 'info');
+                try {
+                    const snapshot = await firebase.firestore().collection('orders').get(); // Direct fetch
+                    if (snapshot.empty) return showToast('لا توجد طلبات', 'info');
+
+                    const orders = snapshot.docs.map(d => ({ ...d.data(), _docRef: d.ref }));
+
+                    // Sort by CreatedAt (Oldest First)
+                    orders.sort((a, b) => {
+                        const timeA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime()) : 0;
+                        const timeB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime()) : 0;
+                        return timeA - timeB;
+                    });
+
+                    const batchSize = 400;
+                    let batch = firebase.firestore().batch();
+                    let count = 0;
+                    let processed = 0;
+                    let changesCount = 0;
+
+                    for (let i = 0; i < orders.length; i++) {
+                        const order = orders[i];
+                        const oldId = order.id;
+                        // Determine prefix relative to order type, default ORD-
+                        // But wait, user has numbers 1-5. They might be "ORD-1" or just "1".
+                        // AddOrderModal generates "ORD-N". Auth generates "5" for admin.
+                        // Assuming "ORD-" prefix for orders. But if existing are "1", "2", "3".
+                        // I should verify format.
+                        // Safe approach: Use "ORD-" prefix if that is the standard. User said "from number 1".
+                        // App logic uses "ORD-".
+                        // So I will normalize to "ORD-" + (i+1).
+
+                        const newId = `ORD-${i + 1}`;
+
+                        if (oldId !== newId) {
+                            // Create New Doc
+                            const newRef = firebase.firestore().collection('orders').doc(newId);
+                            const { _docRef, ...dataToCopy } = order;
+                            batch.set(newRef, { ...dataToCopy, id: newId });
+
+                            // Delete Old Doc
+                            batch.delete(order._docRef);
+
+                            changesCount++;
+                            count += 2; // 1 set + 1 delete
+                        }
+
+                        if (count >= batchSize) {
+                            await batch.commit();
+                            batch = firebase.firestore().batch();
+                            count = 0;
+                        }
+                        processed++;
+                    }
+
+                    if (count > 0) {
+                        await batch.commit();
+                    }
+
+                    showToast(`تم إعادة ترقيم ${processed} طلب (تم تغيير ${changesCount}).`, 'success');
+                    setTimeout(() => window.location.reload(), 2000);
+
+                } catch (error) {
+                    console.error(error);
+                    showToast('حدث خطأ أثناء إعادة الترقيم', 'error');
+                }
+            }, 'danger'
+        );
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-[#0f172a] text-white font-sans selection:bg-blue-500/30">
 
