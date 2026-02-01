@@ -109,7 +109,7 @@ const ToastNotification = ({ message, type, onClose }: { message: string, type: 
 // --- Main Component ---
 
 const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
-    const [activeTab, setActiveTab] = useState<'general' | 'updates' | 'database'>('updates'); // Default to updates for quick access
+    const [activeTab, setActiveTab] = useState<'general' | 'updates' | 'maintenance' | 'database'>('updates'); // Default to updates
     const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{ msg: string, type: any } | null>(null);
 
@@ -310,6 +310,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                         <TabButton active={activeTab === 'updates'} onClick={() => setActiveTab('updates')} label="مركز التحديثات" icon={RocketIcon} />
                         <TabButton active={activeTab === 'general'} onClick={() => setActiveTab('general')} label="عام" icon={MobileIcon} />
+                        <TabButton active={activeTab === 'maintenance'} onClick={() => setActiveTab('maintenance')} label="صيانة النظام" icon={AlertTriangleIcon} />
                         <TabButton active={activeTab === 'database'} onClick={() => setActiveTab('database')} label="قواعد البيانات" icon={ServerIcon} />
                     </div>
                 </div>
@@ -339,15 +340,55 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                                 </div>
                             </div>
 
-                            <div className="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-xl flex items-center justify-between">
-                                <div>
-                                    <h3 className="font-bold text-lg">أدوات الصيانة</h3>
-                                    <p className="text-gray-400 text-xs mt-1">إجراءات سريعة لاختبار وإصلاح المشاكل</p>
-                                </div>
+                            <div className="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-xl">
+                                <h3 className="font-bold text-lg mb-4 text-gray-300">أدوات إضافية</h3>
                                 <div className="flex gap-3">
                                     <ActionButton label="مسح التحديث" variant="danger" icon={TrashIcon} onClick={handleClearUpdate} />
-                                    <ActionButton label="تنظيف البيانات القديمة (قبل تاريخ)" variant="danger" icon={AlertTriangleIcon} onClick={handleConditionalDelete} />
                                     <ActionButton label="إعادة تحميل" variant="secondary" icon={RefreshCwIcon} onClick={() => window.location.reload()} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Maintenance Tab (New Dedicated Tab) */}
+                    {activeTab === 'maintenance' && (
+                        <div className="space-y-6 animate-fadeIn">
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 text-center">
+                                <h2 className="text-xl font-bold text-red-500 mb-2">منطقة الخطر / الصيانة</h2>
+                                <p className="text-gray-400 text-sm">هذه الأدوات تقوم بتعديل أو حذف البيانات. يرجى استخدامها بحذر.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Safe Clean Card */}
+                                <div className="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-xl hover:border-blue-500/30 transition-all group">
+                                    <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                        <TrashIcon className="w-6 h-6 text-blue-400" />
+                                    </div>
+                                    <h3 className="font-bold text-lg text-white mb-2">تنظيف البيانات القديمة</h3>
+                                    <p className="text-sm text-gray-400 leading-relaxed mb-6">
+                                        حذف الطلبات والمعاملات التي تسبق تاريخاً معيناً. هذا الخيار <strong>آمن</strong> لأنه لا يحذف بيانات الشهر الحالي إذا اخترت التاريخ الصحيح.
+                                    </p>
+                                    <ActionButton
+                                        label="بدء التنظيف الآمن..."
+                                        variant="primary"
+                                        icon={CheckCircleIcon}
+                                        onClick={handleConditionalDelete}
+                                        className="w-full justify-center py-3 bg-blue-600 hover:bg-blue-500"
+                                    />
+                                </div>
+
+                                {/* Reset Card (Future Use) */}
+                                <div className="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-xl opacity-60">
+                                    <div className="w-12 h-12 rounded-full bg-gray-700/30 flex items-center justify-center mb-4">
+                                        <AlertTriangleIcon className="w-6 h-6 text-gray-400" />
+                                    </div>
+                                    <h3 className="font-bold text-lg text-gray-300 mb-2">إعادة ضبط المصنع</h3>
+                                    <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                                        حذف جميع البيانات وإعادة التطبيق لحالته الأولية. (معطل حالياً للأمان)
+                                    </p>
+                                    <button disabled className="w-full py-3 rounded-lg border border-gray-700 text-gray-600 font-bold text-xs cursor-not-allowed">
+                                        غير متاح
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -478,7 +519,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                 onConfirm={modalConfig.onConfirm}
                 type={modalConfig.type}
             />
-        </div>
+        </div >
     );
 };
 
