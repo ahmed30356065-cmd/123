@@ -108,13 +108,29 @@ const GamesManager: React.FC<GamesManagerProps> = ({ appConfig, onUpdateAppConfi
                     <h2 className="text-2xl font-black">إدارة الألعاب</h2>
                     <p className="text-sm text-gray-500">إضافة وتعديل روابط الألعاب</p>
                 </div>
-                <button
-                    onClick={() => { setEditingGame(null); setFormData({ isActive: true }); setIsAddModalOpen(true); }}
-                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl transition-colors font-bold"
-                >
-                    <PlusIcon className="w-5 h-5" />
-                    <span>إضافة لعبة</span>
-                </button>
+
+                <div className="flex items-center gap-4">
+                    {/* Master Switch */}
+                    <div className="flex items-center gap-3 bg-[#252525] px-4 py-2 rounded-xl border border-white/5">
+                        <span className={`text-xs font-bold ${appConfig?.isGamesEnabled !== false ? 'text-green-400' : 'text-gray-500'}`}>
+                            {appConfig?.isGamesEnabled !== false ? 'مفعل' : 'معطل'}
+                        </span>
+                        <button
+                            onClick={() => onUpdateAppConfig({ ...appConfig, appName: appConfig?.appName || '', appVersion: appConfig?.appVersion || '', isGamesEnabled: !(appConfig?.isGamesEnabled ?? true) })}
+                            className={`w-12 h-6 rounded-full p-1 transition-colors ${appConfig?.isGamesEnabled !== false ? 'bg-green-600' : 'bg-gray-700'}`}
+                        >
+                            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${appConfig?.isGamesEnabled !== false ? 'translate-x-[-24px]' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={() => { setEditingGame(null); setFormData({ isActive: true }); setIsAddModalOpen(true); }}
+                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl transition-colors font-bold"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        <span>إضافة لعبة</span>
+                    </button>
+                </div>
             </div>
 
             {/* List */}

@@ -352,6 +352,14 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                     <BottomNav activePage={currentView} onNavigate={(v) => setCurrentView(v as View)} messageCount={unseenMessagesCount} theme={props.appTheme} appConfig={props.appConfig} />
                 </>
             )}
+
+            {/* Game Player Overlay */}
+            {activeGameUrl && (
+                <GamePlayer
+                    url={activeGameUrl}
+                    onClose={() => setActiveGameUrl(null)}
+                />
+            )}
         </div>
     );
 };
