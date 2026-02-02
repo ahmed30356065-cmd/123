@@ -103,11 +103,11 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
                             <button
                                 key={game.id}
                                 onClick={() => onPlayGame(game.url)}
-                                className="group relative aspect-[4/5] rounded-2xl overflow-hidden bg-[#202020] border border-white/5 shadow-lg active:scale-[0.98] transition-all duration-300 animate-fade-in-up hardware-accelerated"
+                                className="group relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/5 shadow-lg active:scale-[0.98] transition-all duration-300 animate-fade-in-up hardware-accelerated"
                                 style={{ animationDelay: `${idx * 100}ms` }}
                             >
                                 {/* Image Layer - Full Height */}
-                                <div className="absolute inset-0 z-0 bg-gray-800">
+                                <div className="absolute inset-0 z-0">
                                     <GameImage
                                         src={game.image}
                                         alt={game.name}
