@@ -86,7 +86,7 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
             </div>
 
             {/* Content */}
-            <div className="px-3 py-4 flex-1">
+            <div className="flex-1">
                 {games.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center animate-slideUp">
                         <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-gray-800 to-black border border-white/5 flex items-center justify-center mb-6 shadow-2xl shadow-black/50">
