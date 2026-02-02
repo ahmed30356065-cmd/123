@@ -39,7 +39,8 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ url, onClose }) => {
                 ref={iframeRef}
                 src={url}
                 className="flex-1 w-full h-full border-none bg-transparent"
-                allow="autoplay; fullscreen; vibration; gyroscope; accelerometer"
+                allow="autoplay; fullscreen; vibration; gyroscope; accelerometer; clipboard-write; encrypted-media"
+                sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-storage-access-by-user-activation"
                 onLoad={() => setIsLoading(false)}
             />
         </div>
