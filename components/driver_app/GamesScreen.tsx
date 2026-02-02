@@ -62,16 +62,16 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
     const games = appConfig?.games?.filter(g => g.isActive) || [];
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#111] text-white pb-24 animate-fade-in-up">
+        <div className="flex flex-col h-full bg-[#111] text-white animate-fade-in-up pb-24">
             {/* Premium Header */}
-            <div className="relative z-50 overflow-hidden bg-[#1a1a1a] shadow-xl border-b border-white/5 pt-safe sticky top-0">
+            <div className="relative z-50 overflow-hidden bg-[#1a1a1a] shadow-md border-b border-white/5 sticky top-0">
                 <div className="absolute inset-0 bg-gradient-to-b from-red-600/10 to-transparent" />
-                <div className="relative z-10 flex items-center justify-between p-3">
+                <div className="relative z-10 flex items-center justify-between py-2 px-3">
                     <button
                         onClick={onBack}
-                        className="p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 active:scale-90 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50 flex items-center justify-center cursor-pointer"
+                        className="p-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 active:scale-90 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50 flex items-center justify-center cursor-pointer"
                         aria-label="Back"
-                        style={{ minWidth: '36px', minHeight: '36px' }}
+                        style={{ minWidth: '32px', minHeight: '32px' }}
                     >
                         <ChevronRightIcon className="w-5 h-5 text-gray-100 rotate-180" />
                     </button>

@@ -85,9 +85,19 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Ref to track activeGameUrl for Back Handler (avoids stale closures)
+    const activeGameUrlRef = useRef<string | null>(null);
+    useEffect(() => { activeGameUrlRef.current = activeGameUrl; }, [activeGameUrl]);
+
     useAndroidBack(() => {
         if (isNotifDropdownOpen) { setIsNotifDropdownOpen(false); return true; }
-        if (activeGameUrl) { setActiveGameUrl(null); return true; } // Closes GamePlayer, reveals GamesScreen
+
+        // Use Ref to ensure we have the absolute latest state
+        if (activeGameUrlRef.current) {
+            setActiveGameUrl(null);
+            return true;
+        }
+
         if (isProfileModalOpen) { setIsProfileModalOpen(false); return true; }
         if (showLimitModal) { setShowLimitModal(false); return true; }
         if (selectedOrder) { setSelectedOrder(null); return true; }
@@ -98,7 +108,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
         if (activeHomeTab !== 'home') { setActiveHomeTab('home'); return true; }
 
         return false;
-    }, [isProfileModalOpen, showLimitModal, selectedOrder, currentView, activeHomeTab, isNotifDropdownOpen, activeGameUrl]);
+    }, [isProfileModalOpen, showLimitModal, selectedOrder, currentView, activeHomeTab, isNotifDropdownOpen]); // activeGameUrl removed from deps as we use Ref
 
     // High-performance filtering and sorting
     const { standardNewOrders, delinowNewOrders, inTransitOrders } = useMemo(() => {
