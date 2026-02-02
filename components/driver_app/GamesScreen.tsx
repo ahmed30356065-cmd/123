@@ -113,8 +113,8 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
                                         alt={game.name}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100"
                                     />
-                                    {/* Gradient Overlay for Text Readability */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90" />
+                                    {/* Gradient Overlay for Text Readability - Lighter */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-100" />
                                 </div>
 
                                 {/* Content Layer */}
