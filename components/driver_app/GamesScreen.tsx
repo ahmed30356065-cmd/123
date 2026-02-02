@@ -62,7 +62,7 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
     const games = appConfig?.games?.filter(g => g.isActive) || [];
 
     return (
-        <div className="flex flex-col h-full bg-gradient-to-b from-[#1a1a1a] via-[#111] to-black text-white animate-fade-in-up pb-24">
+        <div className="flex flex-col h-full bg-[#111] text-white animate-fade-in-up pb-24">
             {/* Premium Header */}
             <div className="relative z-50 overflow-hidden bg-[#1a1a1a] shadow-md border-b border-white/5 sticky top-0">
                 <div className="absolute inset-0 bg-gradient-to-b from-red-600/10 to-transparent" />
@@ -113,8 +113,8 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
                                         alt={game.name}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100"
                                     />
-                                    {/* Gradient Overlay for Text Readability - Lighter */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-100" />
+                                    {/* Gradient Overlay - BOTTOM ONLY (No black part covering image) */}
+                                    <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/90 to-transparent" />
                                 </div>
 
                                 {/* Content Layer */}
