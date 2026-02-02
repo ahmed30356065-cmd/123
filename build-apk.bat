@@ -4,6 +4,15 @@ echo Building GOO NOW APK
 echo ========================================
 echo.
 
+
+REM Build Web Assets first
+echo [1/3] Building Web Assets...
+call npm run build
+
+REM Sync with Capacitor
+echo [2/3] Syncing with Android...
+call npx cap sync android
+
 REM Navigate to android directory
 cd /d "%~dp0android"
 
