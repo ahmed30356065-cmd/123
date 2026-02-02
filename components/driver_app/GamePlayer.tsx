@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { XIcon } from '../icons';
 
 interface GamePlayerProps {
@@ -9,6 +9,22 @@ interface GamePlayerProps {
 const GamePlayer: React.FC<GamePlayerProps> = ({ url, onClose }) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Handle Android back button
+    useEffect(() => {
+        const handleBackButton = (e: PopStateEvent) => {
+            e.preventDefault();
+            onClose();
+        };
+
+        // Push a new state to enable back button handling
+        window.history.pushState({ gamePlayer: true }, '');
+        window.addEventListener('popstate', handleBackButton);
+
+        return () => {
+            window.removeEventListener('popstate', handleBackButton);
+        };
+    }, [onClose]);
 
     return (
         <div className="fixed inset-0 z-50 bg-[#111] flex flex-col animate-fadeIn">
