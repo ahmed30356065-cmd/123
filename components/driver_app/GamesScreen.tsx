@@ -64,8 +64,7 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
     return (
         <div className="flex flex-col h-full bg-black text-white animate-fade-in-up pb-24">
             {/* Premium Header */}
-            <div className="relative z-50 overflow-hidden bg-[#1a1a1a] shadow-md border-b border-white/5 sticky top-0">
-                <div className="absolute inset-0 bg-gradient-to-b from-red-600/10 to-transparent" />
+            <div className="relative z-50 overflow-hidden shadow-md border-b border-white/5 sticky top-0">
                 <div className="relative z-10 flex items-center justify-between py-2 px-3">
                     <button
                         onClick={onBack}
