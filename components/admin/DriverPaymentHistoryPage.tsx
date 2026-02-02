@@ -194,12 +194,12 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                         <div className="p-4 md:p-5 flex flex-col md:flex-row gap-4 md:items-center justify-between">
 
                                             {/* Left: ID & Date */}
-                                            <div className="flex items-start gap-4">
+                                            <div className="flex items-center gap-3 w-full md:w-auto">
                                                 <div className="w-12 h-12 rounded-xl bg-blue-900/20 flex items-center justify-center border border-blue-500/20 text-blue-400 shrink-0">
                                                     <CalendarIcon className="w-6 h-6" />
                                                 </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-1">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center justify-between md:justify-start gap-2 mb-1">
                                                         <span className="text-white font-bold text-lg">
                                                             {date.toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short' })}
                                                         </span>
@@ -213,40 +213,49 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                                 </div>
                                             </div>
 
-                                            {/* Middle: Stats */}
-                                            <div className="flex items-center gap-2 md:gap-6 bg-black/20 p-3 rounded-xl border border-white/5 flex-wrap">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] text-gray-500">الطلبات</span>
-                                                    <span className="text-sm font-bold text-white">{payment.verifiedCount}</span>
-                                                </div>
-                                                <div className="w-px h-8 bg-gray-700"></div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] text-green-500/70">للمندوب</span>
-                                                    <span className="text-sm font-bold text-green-400">{Math.round(payment.driverShare)}</span>
-                                                </div>
-                                                <div className="w-px h-8 bg-gray-700"></div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] text-red-500/70">للشركة</span>
-                                                    <span className="text-sm font-bold text-red-400">{Math.round(payment.companyShare)}</span>
+                                            {/* Middle: Stats (Mobile Grid / Desktop Flex) */}
+                                            <div className="bg-black/20 rounded-xl border border-white/5 w-full md:w-auto">
+                                                <div className="grid grid-cols-3 md:flex md:items-center divide-x divide-x-reverse divide-gray-700/50 md:divide-x-0 md:gap-6 p-3">
+
+                                                    {/* Orders */}
+                                                    <div className="flex flex-col items-center md:items-start px-2 md:px-0">
+                                                        <span className="text-[10px] text-gray-500 mb-0.5">الطلبات</span>
+                                                        <span className="text-sm font-bold text-white">{payment.verifiedCount}</span>
+                                                    </div>
+
+                                                    {/* Driver Share */}
+                                                    <div className="flex flex-col items-center md:items-start px-2 md:px-0 md:border-r md:border-gray-700 md:pr-6">
+                                                        <span className="text-[10px] text-green-500/70 mb-0.5">للمندوب</span>
+                                                        <span className="text-sm font-bold text-green-400">{Math.round(payment.driverShare)}</span>
+                                                    </div>
+
+                                                    {/* Company Share */}
+                                                    <div className="flex flex-col items-center md:items-start px-2 md:px-0 md:border-r md:border-gray-700 md:pr-6">
+                                                        <span className="text-[10px] text-red-500/70 mb-0.5">للشركة</span>
+                                                        <span className="text-sm font-bold text-red-400">{Math.round(payment.companyShare)}</span>
+                                                    </div>
+
                                                 </div>
                                             </div>
 
                                             {/* Right: Total & Delete */}
-                                            <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-gray-800">
-                                                <div className="text-right">
-                                                    <span className="text-[10px] text-gray-500 block">المبلغ المسدد</span>
-                                                    <span className="text-xl font-black text-white">{payment.amount.toLocaleString('en-US')} <span className="text-xs font-medium text-gray-500">ج.م</span></span>
-                                                </div>
+                                            <div className="flex items-center justify-between gap-4 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-gray-800/50">
+                                                {/* Mobile Label only */}
+                                                <span className="md:hidden text-xs text-gray-500">المبلغ المسدد</span>
 
-                                                {currentUser?.role === 'admin' && (
-                                                    <button
-                                                        onClick={() => setDeleteId(payment.id)}
-                                                        className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all ml-2"
-                                                        title="حذف السجل"
-                                                    >
-                                                        <XIcon className="w-5 h-5" />
-                                                    </button>
-                                                )}
+                                                <div className="flex items-center gap-4 flex-1 md:flex-none justify-end">
+                                                    <span className="text-xl font-black text-white">{payment.amount.toLocaleString('en-US')} <span className="text-xs font-medium text-gray-500">ج.م</span></span>
+
+                                                    {currentUser?.role === 'admin' && (
+                                                        <button
+                                                            onClick={() => setDeleteId(payment.id)}
+                                                            className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition-all border border-red-500/20"
+                                                            title="حذف السجل"
+                                                        >
+                                                            <XIcon className="w-5 h-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

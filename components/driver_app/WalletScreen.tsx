@@ -102,7 +102,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({ driver, orders, users }) =>
                 <h3 className="text-lg font-bold text-white mb-4">طلبات لم يتم تسويتها</h3>
                 {unpaidOrders.length > 0 ? (
                     <div className="space-y-4">
-                        {unpaidOrders.map(order => {
+                        {unpaidOrders.map((order, index) => {
                             const merchant = users.find(u => u.id === order.merchantId);
                             const formattedTime = (() => {
                                 try {
@@ -116,7 +116,11 @@ const WalletScreen: React.FC<WalletScreenProps> = ({ driver, orders, users }) =>
                             })();
 
                             return (
-                                <div key={order.id} className="bg-[#2A2A2A] p-4 rounded-lg shadow-md border border-gray-700 flex flex-col space-y-4">
+                                <div
+                                    key={order.id}
+                                    className="bg-[#2A2A2A] p-4 rounded-lg shadow-md border border-gray-700 flex flex-col space-y-4 animate-fade-in-up hardware-accelerated"
+                                    style={{ animationDelay: `${Math.min(index * 50, 500)}ms` }}
+                                >
                                     {/* Card Header */}
                                     <div className="flex justify-between items-center pb-3 border-b border-gray-700">
                                         <span className="font-mono text-sm text-gray-400">{order.id}</span>

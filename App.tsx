@@ -114,7 +114,7 @@ const App: React.FC = () => {
         if (!isLoading && (currentUser || !currentUser)) {
             setTimeout(() => {
                 NativeBridge.hideSplashScreen();
-            }, 4000);
+            }, 500);
         }
 
         // Notification Subscription Logic

@@ -24,10 +24,75 @@
     background-color: #111827;
     color: #ffffff;
     font-family: 'NumFont', 'ArabicAdd', system-ui, sans-serif !important;
-    -webkit-tap-highlight-color: transparent; /* Remove blue tap box */
-    -webkit-touch-callout: none; /* Disable long-press callouts */
-    user-select: none; /* Prevent text selection */
+    -webkit-tap-highlight-color: transparent;
+    /* Remove blue tap box */
+    -webkit-touch-callout: none;
+    /* Disable long-press callouts */
+    user-select: none;
+    /* Prevent text selection */
   }
+}
+
+/* Custom Animations */
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+    transform: translateY(10px);
+    will-change: transform, opacity;
+  }
+
+  .hardware-accelerated {
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  /* Staggered delays helper - limited set for performance */
+  .delay-50 {
+    animation-delay: 50ms;
+  }
+
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .delay-150 {
+    animation-delay: 150ms;
+  }
+
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-bottom {
+  animation: slideInFromBottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 /* Custom Scrollbar for Webkit */

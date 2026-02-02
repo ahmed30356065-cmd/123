@@ -87,8 +87,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
 
     useAndroidBack(() => {
         if (isNotifDropdownOpen) { setIsNotifDropdownOpen(false); return true; }
-        if (activeGameUrl) { setActiveGameUrl(null); return true; }
-        if (activeGameUrl) { setActiveGameUrl(null); return true; }
+        if (activeGameUrl) { setActiveGameUrl(null); return true; } // Closes GamePlayer, reveals GamesScreen
         if (isProfileModalOpen) { setIsProfileModalOpen(false); return true; }
         if (showLimitModal) { setShowLimitModal(false); return true; }
         if (selectedOrder) { setSelectedOrder(null); return true; }
@@ -98,7 +97,6 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
         }
         if (activeHomeTab !== 'home') { setActiveHomeTab('home'); return true; }
 
-        return false;
         return false;
     }, [isProfileModalOpen, showLimitModal, selectedOrder, currentView, activeHomeTab, isNotifDropdownOpen, activeGameUrl]);
 
@@ -217,7 +215,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
             {showLimitModal && <OrderLimitModal onClose={() => setShowLimitModal(false)} currentCount={inTransitOrders.length} maxLimit={props.driver.maxConcurrentOrders || 0} />}
 
             {selectedOrder ? (
-                <div className="fixed inset-0 bg-[#1A1A1A] z-50 flex flex-col animate-fadeIn">
+                <div className="fixed inset-0 bg-[#1A1A1A] z-50 flex flex-col animate-slide-in-bottom">
                     <header className="flex-none flex bg-[#1A1A1A] border-b border-gray-800 h-14 items-center px-4 pt-safe box-content">
                         <button onClick={() => setSelectedOrder(null)} className="text-white flex items-center p-2"><span className="text-2xl ml-2 rotate-180">&#10140;</span><span className="font-bold">رجوع</span></button>
                         <div className="flex-1 text-center font-bold">تفاصيل الطلب</div>

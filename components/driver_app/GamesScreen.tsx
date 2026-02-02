@@ -10,26 +10,34 @@ interface GamesScreenProps {
     onPlayGame: (url: string) => void;
 }
 
+// Simple global cache for Firestore URLs to avoid re-fetching
+const imageCache: Record<string, string> = {};
+
 const GameImage: React.FC<{ src: string; alt?: string; className?: string }> = ({ src, alt, className }) => {
-    const [imgUrl, setImgUrl] = React.useState<string>('');
+    const [imgUrl, setImgUrl] = React.useState<string>(src && !src.startsWith('FIRESTORE_FILE:') ? src : (imageCache[src] || ''));
     const [error, setError] = React.useState(false);
 
     React.useEffect(() => {
         let isMounted = true;
-        if (src && src.startsWith('FIRESTORE_FILE:')) {
+        if (src && src.startsWith('FIRESTORE_FILE:') && !imageCache[src]) {
             const fileId = src.replace('FIRESTORE_FILE:', '');
             if (fileId) {
                 downloadFileFromFirestore(fileId)
-                    .then(url => { if (isMounted && url) setImgUrl(url); })
+                    .then(url => {
+                        if (isMounted && url) {
+                            imageCache[src] = url; // Cache it
+                            setImgUrl(url);
+                        }
+                    })
                     .catch(() => { if (isMounted) setError(true); });
             }
-        } else if (src) {
+        } else if (src && !imgUrl) {
             setImgUrl(src);
-        } else {
+        } else if (!src) {
             setError(true);
         }
         return () => { isMounted = false; };
-    }, [src]);
+    }, [src, imgUrl]);
 
     if (error || !imgUrl) {
         return (
@@ -39,7 +47,8 @@ const GameImage: React.FC<{ src: string; alt?: string; className?: string }> = (
         );
     }
 
-    return <img src={imgUrl} alt={alt} className={className} onError={() => setError(true)} />;
+    // Ensure image is loaded properly
+    return <img src={imgUrl} alt={alt} className={className} onError={() => setError(true)} loading="eager" />;
 };
 
 const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame }) => {
@@ -53,7 +62,7 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
     const games = appConfig?.games?.filter(g => g.isActive) || [];
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#111] text-white pb-24 animate-fadeIn">
+        <div className="flex flex-col min-h-screen bg-[#111] text-white pb-24 animate-fade-in-up">
             {/* Premium Header */}
             <div className="relative z-50 overflow-hidden bg-[#1a1a1a] shadow-xl border-b border-white/5 pt-safe sticky top-0">
                 <div className="absolute inset-0 bg-gradient-to-b from-red-600/10 to-transparent" />
@@ -94,7 +103,7 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
                             <button
                                 key={game.id}
                                 onClick={() => onPlayGame(game.url)}
-                                className="group relative aspect-square rounded-xl overflow-hidden bg-[#202020] border border-white/5 shadow-lg active:scale-[0.98] transition-all duration-300 animate-slideUp"
+                                className="group relative aspect-square rounded-xl overflow-hidden bg-[#202020] border border-white/5 shadow-lg active:scale-[0.98] transition-all duration-300 animate-fade-in-up hardware-accelerated"
                                 style={{ animationDelay: `${idx * 100}ms` }}
                             >
                                 {/* Image Layer */}
