@@ -115,29 +115,6 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
                                     />
                                 </div>
 
-                                {/* Content Layer */}
-                                <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col items-start z-10 w-full">
-                                    <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center mb-2 shadow-lg shadow-red-600/40 group-hover:scale-110 transition-transform duration-300">
-                                        <PlayIcon className="w-4 h-4 text-white ml-0.5" />
-                                    </div>
-
-                                    <h3 className="font-bold text-white text-base leading-snug drop-shadow-md text-right w-full line-clamp-1 mb-1">
-                                        {game.name}
-                                    </h3>
-
-                                    <div className="flex flex-wrap gap-1 w-full">
-                                        <span className="text-[10px] font-bold text-black bg-white/95 px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap">
-                                            العب الآن
-                                        </span>
-                                        {idx < 2 && (
-                                            <span className="text-[10px] text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
-                                                <StarIcon className="w-3 h-3" />
-                                                <span className="truncate">جديد</span>
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
                                 {/* Shine Effect */}
                                 <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                             </button>
