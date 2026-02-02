@@ -123,9 +123,15 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
             return true;
         }
 
+        // Fix: Reset Status Filter on Back
+        if (statusFilter !== 'all') {
+            setStatusFilter('all');
+            return true;
+        }
+
         if (currentPage > 1) { setCurrentPage(currentPage - 1); return true; }
         return false;
-    }, [editingOrder, deletingOrder, isBulkAssignOpen, isDeleteToolsOpen, deleteTargetStatus, isDriverSelectorOpen, isBulkStatusToolsOpen, bulkStatusTarget, currentPage, filterType, viewMode]);
+    }, [editingOrder, deletingOrder, isBulkAssignOpen, isDeleteToolsOpen, deleteTargetStatus, isDriverSelectorOpen, isBulkStatusToolsOpen, bulkStatusTarget, currentPage, filterType, viewMode, statusFilter]);
 
     // ... (URL Logic Omitted for brevity, kept same) ...
 

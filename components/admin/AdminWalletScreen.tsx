@@ -189,7 +189,7 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
             )}
 
             {/* Added pb-32 to ensure bottom cards are fully visible above the fixed nav */}
-            <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-32 ${showHistoryPage ? 'hidden' : ''}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-32`}>
                 {drivers.map((driver) => {
                     // Updated Logic: Include ALL orders that are Delivered AND Not Reconciled
                     // Removed 'isToday' check to ensure total debt is calculated correctly
