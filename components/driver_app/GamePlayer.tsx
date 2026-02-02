@@ -11,7 +11,7 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ url, onClose }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     return (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-[#111] flex flex-col animate-fadeIn">
             {/* Header/Controls */}
             <div className="absolute top-0 right-0 left-0 flex items-center justify-between p-3 pt-safe z-[60] pointer-events-none">
                 <button
@@ -22,14 +22,14 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ url, onClose }) => {
                 >
                     <XIcon className="w-5 h-5" />
                 </button>
-                <div className="pointer-events-auto px-4 py-2 rounded-full bg-black/80 backdrop-blur-md border border-white/10 shadow-lg">
+                <div className="pointer-events-auto px-4 py-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-lg">
                     <span className="text-[10px] font-bold text-gray-200 uppercase tracking-widest">Game Mode</span>
                 </div>
             </div>
 
             {/* Loading Indicator */}
             {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a1a]">
+                <div className="absolute inset-0 flex items-center justify-center bg-[#111] z-40">
                     <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
                 </div>
             )}
@@ -38,7 +38,7 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ url, onClose }) => {
             <iframe
                 ref={iframeRef}
                 src={url}
-                className="flex-1 w-full h-full border-none bg-black"
+                className="flex-1 w-full h-full border-none bg-white"
                 allow="autoplay; fullscreen; vibration; gyroscope; accelerometer"
                 onLoad={() => setIsLoading(false)}
             />

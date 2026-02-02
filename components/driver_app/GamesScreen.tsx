@@ -98,40 +98,43 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3 pb-safe">
                         {games.map((game, idx) => (
                             <button
                                 key={game.id}
                                 onClick={() => onPlayGame(game.url)}
-                                className="group relative aspect-square rounded-xl overflow-hidden bg-[#202020] border border-white/5 shadow-lg active:scale-[0.98] transition-all duration-300 animate-fade-in-up hardware-accelerated"
+                                className="group relative aspect-[4/5] rounded-2xl overflow-hidden bg-[#202020] border border-white/5 shadow-lg active:scale-[0.98] transition-all duration-300 animate-fade-in-up hardware-accelerated"
                                 style={{ animationDelay: `${idx * 100}ms` }}
                             >
-                                {/* Image Layer */}
+                                {/* Image Layer - Full Height */}
                                 <div className="absolute inset-0 z-0 bg-gray-800">
                                     <GameImage
                                         src={game.image}
                                         alt={game.name}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100"
+                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                                    {/* Gradient Overlay for Text Readability */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90" />
                                 </div>
 
                                 {/* Content Layer */}
-                                <div className="absolute inset-x-0 bottom-0 p-4 flex flex-col items-start z-10">
-                                    <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center mb-3 shadow-lg shadow-red-600/40 group-hover:scale-110 transition-transform duration-300">
-                                        <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+                                <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col items-start z-10 w-full">
+                                    <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center mb-2 shadow-lg shadow-red-600/40 group-hover:scale-110 transition-transform duration-300">
+                                        <PlayIcon className="w-4 h-4 text-white ml-0.5" />
                                     </div>
-                                    <h3 className="font-bold text-white text-lg leading-tight drop-shadow-md text-right w-full line-clamp-2">
+
+                                    <h3 className="font-bold text-white text-base leading-snug drop-shadow-md text-right w-full line-clamp-1 mb-1">
                                         {game.name}
                                     </h3>
-                                    <div className="mt-2 flex items-center gap-2">
-                                        <span className="text-[10px] font-bold text-black bg-white/90 px-2 py-0.5 rounded-full shadow-sm">
+
+                                    <div className="flex flex-wrap gap-1 w-full">
+                                        <span className="text-[10px] font-bold text-black bg-white/95 px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap">
                                             العب الآن
                                         </span>
                                         {idx < 2 && (
-                                            <span className="text-[10px] text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
+                                            <span className="text-[10px] text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
                                                 <StarIcon className="w-3 h-3" />
-                                                جديد
+                                                <span className="truncate">جديد</span>
                                             </span>
                                         )}
                                     </div>

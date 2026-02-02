@@ -51,7 +51,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ orders, users, onViewOrder,
         <div
           key={order.id}
           className="animate-fade-in-up hardware-accelerated"
-          style={{ animationDelay: `${Math.min(index * 50, 500)}ms` }}
+          style={{ animationDelay: `${Math.min(index * 25, 300)}ms` }}
         >
           <DriverOrderCard
             order={order}
