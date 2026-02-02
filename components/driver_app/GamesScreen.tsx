@@ -113,8 +113,6 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
                                         alt={game.name}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100"
                                     />
-                                    {/* Gradient Overlay - BOTTOM ONLY (No black part covering image) */}
-                                    <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/90 to-transparent" />
                                 </div>
 
                                 {/* Content Layer */}
