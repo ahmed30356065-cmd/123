@@ -8,12 +8,10 @@ interface GamePlayerProps {
 
 const GamePlayer: React.FC<GamePlayerProps> = ({ url, onClose }) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    const [isLoading, setIsLoading] = useState(true);
 
     // Handle Android back button
     useEffect(() => {
-        const handleBackButton = (e: PopStateEvent) => {
-            e.preventDefault();
+        const handleBackButton = () => {
             onClose();
         };
 
@@ -43,20 +41,12 @@ const GamePlayer: React.FC<GamePlayerProps> = ({ url, onClose }) => {
                 </div>
             </div>
 
-            {/* Loading Indicator */}
-            {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#111] z-40">
-                    <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-            )}
-
             {/* Game Frame */}
             <iframe
                 ref={iframeRef}
                 src={url}
                 className="flex-1 w-full h-full border-none bg-transparent"
                 allow="autoplay; fullscreen; vibration; gyroscope; accelerometer; clipboard-write; encrypted-media"
-                onLoad={() => setIsLoading(false)}
             />
         </div>
     );
