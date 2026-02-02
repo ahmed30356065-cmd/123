@@ -62,7 +62,7 @@ const GamesScreen: React.FC<GamesScreenProps> = ({ appConfig, onBack, onPlayGame
     const games = appConfig?.games?.filter(g => g.isActive) || [];
 
     return (
-        <div className="flex flex-col h-full bg-[#111] text-white animate-fade-in-up pb-24">
+        <div className="flex flex-col h-full bg-[#1A1A1A] text-white animate-fade-in-up pb-24">
             {/* Premium Header */}
             <div className="relative z-50 overflow-hidden shadow-md border-b border-white/5 sticky top-0">
                 <div className="relative z-10 flex items-center justify-between py-2 px-3">
