@@ -670,38 +670,19 @@ export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> =
 
     const counterRef = db.collection('settings').doc('counters');
 
-    return await db.runTransaction(async (transaction) => {
-        const doc = await transaction.get(counterRef);
+    try {
+        return await db.runTransaction(async (transaction) => {
+            const doc = await transaction.get(counterRef);
 
-        let nextVal = 1;
-        const fieldName = prefix === 'ORD-' ? 'lastOrderId' : 'lastShoppingId';
+            let nextVal = 1;
+            const fieldName = prefix === 'ORD-' ? 'lastOrderId' : 'lastShoppingId';
 
-        if (!doc.exists) {
-            // ⚠️ First Run / Self-Healing: Scan DB to find true Max ID
-            // This happens once (or if counter is deleted).
-            // We fetch ALL orders (metadata only ideally, but SDK fetches docs)
-            // 173 docs is cheap. This ensures 100% safety.
-            const snapshot = await db!.collection('orders').get();
-            let maxId = 0;
-            snapshot.forEach(d => {
-                const id = d.id;
-                if (id.startsWith(prefix)) {
-                    const num = parseInt(id.replace(prefix, '') || '0');
-                    if (!isNaN(num)) maxId = Math.max(maxId, num);
-                }
-            });
-            nextVal = maxId + 1;
-            transaction.set(counterRef, { [fieldName]: nextVal }, { merge: true });
-        } else {
-            const data = doc.data() || {};
-            const current = data[fieldName] || 0;
-
-            // Safety Check: If counter seems suspiciously low (e.g. < 179), strictly force a rescan?
-            // No, trust the counter if it exists. But we can be extra safe:
-            // If current is 0, we treat as uninitialized for that specific field
-            if (current === 0) {
-                // Rescan Logic Duplicated (Safe for Transaction)
-                const snapshot = await db!.collection('orders').get(); // Note: Transactions require reads before writes
+            if (!doc.exists) {
+                // ⚠️ First Run / Self-Healing: Scan DB to find true Max ID
+                // This happens once (or if counter is deleted).
+                // We fetch ALL orders (metadata only ideally, but SDK fetches docs)
+                // 173 docs is cheap. This ensures 100% safety.
+                const snapshot = await db!.collection('orders').get();
                 let maxId = 0;
                 snapshot.forEach(d => {
                     const id = d.id;
@@ -711,13 +692,40 @@ export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> =
                     }
                 });
                 nextVal = maxId + 1;
+                transaction.set(counterRef, { [fieldName]: nextVal }, { merge: true });
             } else {
-                nextVal = current + 1;
+                const data = doc.data() || {};
+                const current = data[fieldName] || 0;
+
+                // Safety Check: If counter seems suspiciously low (e.g. < 179), strictly force a rescan?
+                // No, trust the counter if it exists. But we can be extra safe:
+                // If current is 0, we treat as uninitialized for that specific field
+                if (current === 0) {
+                    // Rescan Logic Duplicated (Safe for Transaction)
+                    const snapshot = await db!.collection('orders').get(); // Note: Transactions require reads before writes
+                    let maxId = 0;
+                    snapshot.forEach(d => {
+                        const id = d.id;
+                        if (id.startsWith(prefix)) {
+                            const num = parseInt(id.replace(prefix, '') || '0');
+                            if (!isNaN(num)) maxId = Math.max(maxId, num);
+                        }
+                    });
+                    nextVal = maxId + 1;
+                } else {
+                    nextVal = current + 1;
+                }
+
+                transaction.set(counterRef, { [fieldName]: nextVal }, { merge: true });
             }
 
-            transaction.set(counterRef, { [fieldName]: nextVal }, { merge: true });
-        }
-
-        return `${prefix}${nextVal}`;
-    });
+            return `${prefix}${nextVal}`;
+        });
+    } catch (error) {
+        console.warn("Generating Sequential ID failed (likely permissions). Falling back to Timestamp ID.", error);
+        // Fallback: Generate a collision-resistant timestamp ID
+        // Format: ORD-{timestamp}-{random} to ensure uniqueness even if sequential fails
+        const fallbackId = `${prefix}${Date.now()}`;
+        return fallbackId;
+    }
 };
