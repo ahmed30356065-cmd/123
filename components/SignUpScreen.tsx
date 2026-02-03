@@ -35,11 +35,23 @@ const InputField = ({ icon: Icon, iconColor, colSpan = "col-span-1", ...props }:
 );
 
 const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUp, onBackToLogin }) => {
-    const [step, setStep] = useState<'role-selection' | 'form'>('role-selection');
+    const [step, setStep] = useState<'role-selection' | 'form' | 'otp'>('role-selection');
+    const [confirmationResult, setConfirmationResult] = useState<any>(null);
+    const [otp, setOtp] = useState('');
+    const [resendTimer, setResendTimer] = useState(60);
+    const recaptchaVerifierRef = useRef<any>(null);
 
     useEffect(() => {
         NativeBridge.reportContext('signup');
     }, []);
+
+    useEffect(() => {
+        let timer: any;
+        if (step === 'otp' && resendTimer > 0) {
+            timer = setInterval(() => setResendTimer(prev => prev - 1), 1000);
+        }
+        return () => clearInterval(timer);
+    }, [step, resendTimer]);
 
     // Back Logic
     useAndroidBack(() => {
@@ -155,6 +167,85 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUp, onBackToLogin }) 
         }
     };
 
+    const handleSendOTP = async () => {
+        setError('');
+        setIsLoading(true);
+        try {
+            if (!recaptchaVerifierRef.current) {
+                // We'll add this div in the return
+                const { setupRecaptcha } = await import('../services/firebase');
+                recaptchaVerifierRef.current = setupRecaptcha('recaptcha-container');
+            }
+
+            const { signInWithPhone } = await import('../services/firebase');
+            const result = await signInWithPhone(phone, recaptchaVerifierRef.current);
+
+            if (result.success) {
+                setConfirmationResult(result.confirmationResult);
+                setStep('otp');
+                setResendTimer(60);
+            } else {
+                setError(result.error || "فشل إرسال رمز التحقق.");
+                // Reset recaptcha if error
+                if (recaptchaVerifierRef.current) {
+                    recaptchaVerifierRef.current.clear();
+                    recaptchaVerifierRef.current = null;
+                }
+            }
+        } catch (e: any) {
+            console.error("SignUp Error:", e);
+            // Display the ACTUAL error from Native Bridge or Firebase
+            const actualError = e.error || e.message || JSON.stringify(e);
+            setError(`خطأ: ${actualError}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleVerifyAndSubmit = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        setError('');
+
+        if (!otp || otp.length < 6) {
+            setError('يرجى إدخال رمز التحقق المكون من 6 أرقام.');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await confirmationResult.confirm(otp);
+            // If success, proceed to actual sign up
+            const userData: any = {
+                name,
+                phone,
+                password,
+                role,
+                storeImage: image,
+                email: email || undefined,
+                address: address || undefined,
+            };
+
+            if (role === 'merchant') {
+                userData.storeCategory = storeCategory === 'other' ? customCategory.trim() : storeCategory;
+                userData.storeName = name;
+                userData.workingHours = { start: openTime, end: closeTime };
+            }
+
+            const result = await onSignUp(userData);
+            if (!result.success) {
+                setError(result.message);
+            } else {
+                setShowSuccessModal(true);
+                setTimeout(() => onBackToLogin(), 4000);
+            }
+        } catch (err: any) {
+            console.error("OTP Error:", err);
+            setError("رمز التحقق غير صحيح أو منتهي الصلاحية.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -200,34 +291,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUp, onBackToLogin }) 
         }
 
         setIsLoading(true);
-
-        const userData: any = {
-            name,
-            phone,
-            password,
-            role,
-            storeImage: image,
-            email: email || undefined,
-            address: address || undefined,
-        };
-
-        if (role === 'merchant') {
-            userData.storeCategory = finalCategory;
-            userData.storeName = name;
-            userData.workingHours = { start: openTime, end: closeTime };
-        }
-
-        const result = await onSignUp(userData);
-        setIsLoading(false);
-
-        if (!result.success) {
-            setError(result.message);
-        } else {
-            setShowSuccessModal(true);
-            setTimeout(() => {
-                onBackToLogin();
-            }, 4000); // Increased timeout to let user read the message
-        }
+        // Instead of immediate sign up, send OTP
+        await handleSendOTP();
     };
 
     const selectedCategoryObj = MERCHANT_CATEGORIES.find(c => c.id === storeCategory) || MERCHANT_CATEGORIES[0];
@@ -367,7 +432,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUp, onBackToLogin }) 
             {/* Header - Added pt-safe to respect status bar */}
             <div className="px-5 pt-safe pb-2 flex-none relative">
                 <button
-                    onClick={() => setStep('role-selection')}
+                    onClick={() => setStep(step === 'otp' ? 'form' : 'role-selection')}
                     className="absolute top-safe-offset right-5 p-1 bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors z-20"
                     style={{ top: 'calc(var(--safe-area-top) + 1.25rem)' }}
                 >
@@ -375,185 +440,247 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUp, onBackToLogin }) 
                 </button>
                 <div className="text-center">
                     <h1 className="text-2xl font-black text-white tracking-tight">
-                        {role === 'driver' ? 'حساب مندوب' : role === 'merchant' ? 'حساب تاجر' : 'حساب مستخدم'}
+                        {step === 'otp' ? 'تأكيد الرقم' : (role === 'driver' ? 'حساب مندوب' : role === 'merchant' ? 'حساب تاجر' : 'حساب مستخدم')}
                         <span className="text-red-500">.</span>
                     </h1>
                 </div>
             </div>
 
             <div className="flex-1 px-5 flex flex-col relative z-10 min-h-0 pt-2">
-                <form onSubmit={handleSubmit} className="flex-1 flex flex-col h-full">
-                    <div className="flex-1 overflow-y-auto scrollbar-hide">
-                        <div className="flex justify-center mb-6 mt-4">
-                            {role === 'merchant' ? (
-                                <div
-                                    onClick={() => !isImageProcessing && fileInputRef.current?.click()}
-                                    className={`relative w-full h-36 rounded-2xl border border-dashed cursor-pointer overflow-hidden group flex items-center justify-center shadow-lg transition-all ${image ? 'border-transparent' : 'border-gray-600 bg-[#1e293b] hover:border-red-500'}`}
-                                >
-                                    {/* Water Ripple Effect - Fixed Alignment */}
-                                    {isImageProcessing && (
-                                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                                            <div className="grid place-items-center">
-                                                <div className="col-start-1 row-start-1 w-20 h-20 border-4 border-blue-400/30 rounded-full animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
-                                                <div className="col-start-1 row-start-1 w-12 h-12 bg-blue-500 rounded-full opacity-75 animate-ping"></div>
-                                                <div className="col-start-1 row-start-1 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center z-10 shadow-lg shadow-blue-500/50">
-                                                    <UploadIcon className="w-6 h-6 text-white animate-bounce" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {image ? (
-                                        <>
-                                            <img src={image} alt="Store" className="w-full h-full object-cover opacity-70" />
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                                <CameraIcon className="w-8 h-8 text-white p-1.5 bg-black/50 rounded-full" />
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="flex flex-col items-center text-gray-400 group-hover:text-white transition-colors">
-                                            <CameraIcon className="w-8 h-8 mb-2" />
-                                            <span className="text-xs font-bold">إضافة صورة المتجر</span>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div
-                                    onClick={() => !isImageProcessing && fileInputRef.current?.click()}
-                                    className={`w-28 h-28 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden relative shadow-lg group hover:border-red-500 transition-all ${image ? 'border-red-500' : 'border-gray-600 bg-[#1e293b]'}`}
-                                >
-                                    {/* Water Ripple Effect - Fixed Alignment */}
-                                    {isImageProcessing && (
-                                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                                            <div className="grid place-items-center">
-                                                <div className="col-start-1 row-start-1 w-14 h-14 border-4 border-blue-400/30 rounded-full animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
-                                                <div className="col-start-1 row-start-1 w-8 h-8 bg-blue-500 rounded-full opacity-75 animate-ping"></div>
-                                                <div className="col-start-1 row-start-1 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center z-10 shadow-lg shadow-blue-500/50">
-                                                    <UploadIcon className="w-4 h-4 text-white animate-bounce" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {image ? (
-                                        <img src={image} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="flex flex-col items-center text-gray-400 group-hover:text-white">
-                                            <CameraIcon className="w-8 h-8 mb-1" />
-                                            <span className="text-[10px]">صورة شخصية</span>
-                                        </div>
-                                    )}
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <CameraIcon className="w-6 h-6 text-white" />
-                                    </div>
-                                </div>
-                            )}
-                            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                {step === 'otp' ? (
+                    <div className="flex-1 flex flex-col justify-center animate-fadeIn">
+                        <div className="text-center mb-8 space-y-3">
+                            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
+                                <PhoneIcon className="w-10 h-10 text-emerald-500" />
+                            </div>
+                            <h2 className="text-xl font-bold text-white">التحقق من الهاتف</h2>
+                            <p className="text-gray-400 text-sm leading-relaxed">
+                                أرسلنا رمز المكون من 6 أرقام إلى الرقم <br />
+                                <span className="text-white font-mono dir-ltr">{phone}</span>
+                            </p>
                         </div>
 
-                        <div className="flex flex-col gap-4">
-                            <InputField
-                                icon={UserIcon}
-                                iconColor="text-cyan-500"
-                                type="text"
-                                value={name}
-                                onChange={(e: any) => setName(e.target.value)}
-                                placeholder={role === 'merchant' ? "اسم المتجر" : "الاسم الكامل"}
-                            />
-                            <InputField
-                                icon={PhoneIcon}
-                                iconColor="text-emerald-500"
-                                type="tel"
-                                value={phone}
-                                onChange={(e: any) => setPhone(e.target.value)}
-                                placeholder="رقم الهاتف (11 رقم)"
-                                maxLength={11}
-                                className="text-right placeholder:text-right"
-                                dir="rtl"
-                            />
-
-                            {role !== 'driver' && (
-                                <>
-                                    <InputField icon={MapPinIcon} iconColor="text-rose-500" type="text" value={address} onChange={(e: any) => setAddress(e.target.value)} placeholder="العنوان بالتفصيل" />
-                                    <InputField icon={MailIcon} iconColor="text-purple-500" type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="البريد الإلكتروني (اختياري)" />
-                                </>
-                            )}
-
-                            {role === 'driver' && (
-                                <InputField icon={MailIcon} iconColor="text-purple-500" type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="البريد الإلكتروني (اختياري)" />
-                            )}
-
-                            {role === 'merchant' && (
-                                <div className="flex flex-col gap-3 bg-[#1e293b]/50 p-3 rounded-xl border border-gray-700/50">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsCategoryModalOpen(true)}
-                                        className="bg-[#0f172a] border border-gray-700 rounded-xl py-3.5 px-4 text-white flex justify-between items-center text-sm hover:border-gray-500 transition-colors w-full"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <selectedCategoryObj.icon className={`w-4 h-4 ${selectedCategoryObj.color}`} />
-                                            <span>{selectedCategoryObj.label}</span>
-                                        </div>
-                                        <ChevronDownIcon className="w-4 h-4 text-gray-500" />
-                                    </button>
-
-                                    {storeCategory === 'other' && (
-                                        <input type="text" value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} placeholder="اكتب نوع النشاط..." className="bg-[#0f172a] border border-gray-700 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-red-500 w-full" />
-                                    )}
-
-                                    <div className="flex items-center gap-2 bg-[#0f172a] border border-gray-700 rounded-xl px-3 py-2">
-                                        <ClockIcon className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                                        <span className="text-xs text-gray-400">ساعات العمل:</span>
-                                        <input type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} className="bg-transparent text-white text-xs flex-1 text-center outline-none" />
-                                        <span className="text-gray-500">-</span>
-                                        <input type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} className="bg-transparent text-white text-xs flex-1 text-center outline-none" />
-                                    </div>
-                                </div>
-                            )}
-
+                        <div className="space-y-6">
                             <div className="relative group">
-                                <div className="absolute top-1/2 -translate-y-1/2 left-3 z-20 text-gray-500">
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)}>
-                                        {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                                    </button>
+                                <div className="absolute top-1/2 -translate-y-1/2 left-3 text-emerald-500">
+                                    <CheckCircleIcon className="w-5 h-5" />
                                 </div>
-                                <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="الرقم السري (6 أحرف على الأقل)" className="w-full bg-[#1F2937]/50 border border-gray-700 rounded-xl py-3.5 pl-4 pr-4 text-sm text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all" />
-                            </div>
-
-                            <div className="relative group">
-                                <div className="absolute top-1/2 -translate-y-1/2 left-3 z-20 text-gray-500">
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)}>
-                                        {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                                    </button>
-                                </div>
-                                <input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="تأكيد الرقم السري" className="w-full bg-[#1F2937]/50 border border-gray-700 rounded-xl py-3.5 pl-4 pr-4 text-sm text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all" />
+                                <input
+                                    type="tel"
+                                    value={otp}
+                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    placeholder="000000"
+                                    className="w-full bg-[#1F2937]/50 border border-gray-700 rounded-xl py-4 pl-10 pr-4 text-center text-2xl font-black text-white tracking-[0.5em] placeholder-gray-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                                    maxLength={6}
+                                />
                             </div>
 
                             {error && (
-                                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-center mt-1">
+                                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-center">
                                     <p className="text-red-400 text-xs font-bold">{error}</p>
                                 </div>
                             )}
-                        </div>
 
-                        <div className="pt-8 pb-10">
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-base"
-                            >
-                                {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'إنشاء الحساب'}
-                            </button>
-
-                            <div className="text-center mt-4">
-                                <button type="button" onClick={onBackToLogin} className="text-xs text-gray-500 hover:text-white transition-colors">
-                                    لديك حساب بالفعل؟ <span className="text-red-500 font-bold hover:underline">تسجيل الدخول</span>
+                            <div className="space-y-4">
+                                <button
+                                    onClick={() => handleVerifyAndSubmit()}
+                                    disabled={isLoading || otp.length < 6}
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:opacity-50 flex items-center justify-center text-lg"
+                                >
+                                    {isLoading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'تأكيد الرمز'}
                                 </button>
+
+                                <div className="text-center">
+                                    {resendTimer > 0 ? (
+                                        <p className="text-xs text-gray-500">إعادة إرسال الرمز خلال <span className="text-emerald-500 font-bold">{resendTimer}</span> ثانية</p>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={handleSendOTP}
+                                            className="text-xs text-emerald-500 font-bold hover:underline"
+                                        >
+                                            إعادة إرسال الرمز الآن
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </form>
+                ) : (
+                    <form onSubmit={handleSubmit} className="flex-1 flex flex-col h-full">
+                        <div className="flex-1 overflow-y-auto scrollbar-hide">
+                            <div className="flex justify-center mb-6 mt-4">
+                                {role === 'merchant' ? (
+                                    <div
+                                        onClick={() => !isImageProcessing && fileInputRef.current?.click()}
+                                        className={`relative w-full h-36 rounded-2xl border border-dashed cursor-pointer overflow-hidden group flex items-center justify-center shadow-lg transition-all ${image ? 'border-transparent' : 'border-gray-600 bg-[#1e293b] hover:border-red-500'}`}
+                                    >
+                                        {/* Water Ripple Effect - Fixed Alignment */}
+                                        {isImageProcessing && (
+                                            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                                                <div className="grid place-items-center">
+                                                    <div className="col-start-1 row-start-1 w-20 h-20 border-4 border-blue-400/30 rounded-full animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+                                                    <div className="col-start-1 row-start-1 w-12 h-12 bg-blue-500 rounded-full opacity-75 animate-ping"></div>
+                                                    <div className="col-start-1 row-start-1 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center z-10 shadow-lg shadow-blue-500/50">
+                                                        <UploadIcon className="w-6 h-6 text-white animate-bounce" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {image ? (
+                                            <>
+                                                <img src={image} alt="Store" className="w-full h-full object-cover opacity-70" />
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                    <CameraIcon className="w-8 h-8 text-white p-1.5 bg-black/50 rounded-full" />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center text-gray-400 group-hover:text-white transition-colors">
+                                                <CameraIcon className="w-8 h-8 mb-2" />
+                                                <span className="text-xs font-bold">إضافة صورة المتجر</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div
+                                        onClick={() => !isImageProcessing && fileInputRef.current?.click()}
+                                        className={`w-28 h-28 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden relative shadow-lg group hover:border-red-500 transition-all ${image ? 'border-red-500' : 'border-gray-600 bg-[#1e293b]'}`}
+                                    >
+                                        {/* Water Ripple Effect - Fixed Alignment */}
+                                        {isImageProcessing && (
+                                            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                                                <div className="grid place-items-center">
+                                                    <div className="col-start-1 row-start-1 w-14 h-14 border-4 border-blue-400/30 rounded-full animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+                                                    <div className="col-start-1 row-start-1 w-8 h-8 bg-blue-500 rounded-full opacity-75 animate-ping"></div>
+                                                    <div className="col-start-1 row-start-1 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center z-10 shadow-lg shadow-blue-500/50">
+                                                        <UploadIcon className="w-4 h-4 text-white animate-bounce" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {image ? (
+                                            <img src={image} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="flex flex-col items-center text-gray-400 group-hover:text-white">
+                                                <CameraIcon className="w-8 h-8 mb-1" />
+                                                <span className="text-[10px]">صورة شخصية</span>
+                                            </div>
+                                        )}
+                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <CameraIcon className="w-6 h-6 text-white" />
+                                        </div>
+                                    </div>
+                                )}
+                                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                            </div>
+
+                            <div className="flex flex-col gap-4">
+                                <InputField
+                                    icon={UserIcon}
+                                    iconColor="text-cyan-500"
+                                    type="text"
+                                    value={name}
+                                    onChange={(e: any) => setName(e.target.value)}
+                                    placeholder={role === 'merchant' ? "اسم المتجر" : "الاسم الكامل"}
+                                />
+                                <InputField
+                                    icon={PhoneIcon}
+                                    iconColor="text-emerald-500"
+                                    type="tel"
+                                    value={phone}
+                                    onChange={(e: any) => setPhone(e.target.value)}
+                                    placeholder="رقم الهاتف (11 رقم)"
+                                    maxLength={11}
+                                    className="text-right placeholder:text-right"
+                                    dir="rtl"
+                                />
+
+                                {role !== 'driver' && (
+                                    <>
+                                        <InputField icon={MapPinIcon} iconColor="text-rose-500" type="text" value={address} onChange={(e: any) => setAddress(e.target.value)} placeholder="العنوان بالتفصيل" />
+                                        <InputField icon={MailIcon} iconColor="text-purple-500" type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="البريد الإلكتروني (اختياري)" />
+                                    </>
+                                )}
+
+                                {role === 'driver' && (
+                                    <InputField icon={MailIcon} iconColor="text-purple-500" type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="البريد الإلكتروني (اختياري)" />
+                                )}
+
+                                {role === 'merchant' && (
+                                    <div className="flex flex-col gap-3 bg-[#1e293b]/50 p-3 rounded-xl border border-gray-700/50">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCategoryModalOpen(true)}
+                                            className="bg-[#0f172a] border border-gray-700 rounded-xl py-3.5 px-4 text-white flex justify-between items-center text-sm hover:border-gray-500 transition-colors w-full"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <selectedCategoryObj.icon className={`w-4 h-4 ${selectedCategoryObj.color}`} />
+                                                <span>{selectedCategoryObj.label}</span>
+                                            </div>
+                                            <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                                        </button>
+
+                                        {storeCategory === 'other' && (
+                                            <input type="text" value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} placeholder="اكتب نوع النشاط..." className="bg-[#0f172a] border border-gray-700 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-red-500 w-full" />
+                                        )}
+
+                                        <div className="flex items-center gap-2 bg-[#0f172a] border border-gray-700 rounded-xl px-3 py-2">
+                                            <ClockIcon className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                                            <span className="text-xs text-gray-400">ساعات العمل:</span>
+                                            <input type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} className="bg-transparent text-white text-xs flex-1 text-center outline-none" />
+                                            <span className="text-gray-500">-</span>
+                                            <input type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} className="bg-transparent text-white text-xs flex-1 text-center outline-none" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="relative group">
+                                    <div className="absolute top-1/2 -translate-y-1/2 left-3 z-20 text-gray-500">
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)}>
+                                            {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                                        </button>
+                                    </div>
+                                    <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="الرقم السري (6 أحرف على الأقل)" className="w-full bg-[#1F2937]/50 border border-gray-700 rounded-xl py-3.5 pl-4 pr-4 text-sm text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all" />
+                                </div>
+
+                                <div className="relative group">
+                                    <div className="absolute top-1/2 -translate-y-1/2 left-3 z-20 text-gray-500">
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)}>
+                                            {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                                        </button>
+                                    </div>
+                                    <input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="تأكيد الرقم السري" className="w-full bg-[#1F2937]/50 border border-gray-700 rounded-xl py-3.5 pl-4 pr-4 text-sm text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all" />
+                                </div>
+
+                                {error && (
+                                    <div className="mt-2 text-center">
+                                        <p className="text-red-500 text-xs font-bold">{error}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-8 pb-10">
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-base"
+                                >
+                                    {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'إنشاء الحساب'}
+                                </button>
+
+                                <div className="text-center mt-4">
+                                    <button type="button" onClick={onBackToLogin} className="text-xs text-gray-500 hover:text-white transition-colors">
+                                        لديك حساب بالفعل؟ <span className="text-red-500 font-bold hover:underline">تسجيل الدخول</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                )}
             </div>
+            <div id="recaptcha-container"></div>
         </div>
     );
 };

@@ -42,7 +42,10 @@ export const safeStringify = (obj: any): string => {
 const backHandlers: Array<() => boolean> = [];
 
 export const NativeBridge = {
-    isAndroid: (): boolean => typeof window !== 'undefined' && !!window.Android,
+    isAndroid: (): boolean => {
+        if (typeof window === 'undefined') return false;
+        return !!window.Android || navigator.userAgent.includes('GOO_NATIVE_APP');
+    },
 
     // Improved Subscription logic for Back Button (LIFO)
     subscribeBackHandler: (handler: () => boolean) => {

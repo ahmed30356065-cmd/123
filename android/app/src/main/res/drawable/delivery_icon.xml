@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- Motorcycle/Delivery Icon Representation -->
+    <!-- Using simple shapes to create a delivery vehicle silhouette -->
+    
+    <!-- Body (main rectangle) -->
+    <item android:left="8dp" android:top="2dp">
+        <shape android:shape="rectangle">
+            <size android:width="16dp" android:height="8dp" />
+            <corners android:radius="2dp" />
+            <solid android:color="#DC2626" />
+        </shape>
+    </item>
+    
+    <!-- Front wheel -->
+    <item android:left="4dp" android:top="8dp">
+        <shape android:shape="oval">
+            <size android:width="6dp" android:height="6dp" />
+            <solid android:color="#DC2626" />
+        </shape>
+    </item>
+    
+    <!-- Back wheel -->
+    <item android:left="20dp" android:top="8dp">
+        <shape android:shape="oval">
+            <size android:width="6dp" android:height="6dp" />
+            <solid android:color="#DC2626" />
+        </shape>
+    </item>
+    
+</layer-list>

@@ -15,6 +15,7 @@ interface HomeScreenProps {
   activeTab: 'home' | 'in-transit' | 'delinow';
   customStartShift?: () => void;
   theme?: AppTheme;
+  isLoading?: boolean;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = (props) => {
@@ -22,9 +23,9 @@ const HomeScreen: React.FC<HomeScreenProps> = (props) => {
 
   const handleStartShift = () => {
     if (props.customStartShift) {
-        props.customStartShift();
+      props.customStartShift();
     } else {
-        props.onUpdateUser(props.driver.id, { dailyLogStatus: 'active', dailyLogStartedAt: new Date() });
+      props.onUpdateUser(props.driver.id, { dailyLogStatus: 'active', dailyLogStartedAt: new Date() });
     }
   }
 
@@ -32,7 +33,7 @@ const HomeScreen: React.FC<HomeScreenProps> = (props) => {
   if (props.driver.dailyLogMode === '12_hour' && props.driver.dailyLogStatus !== 'active') {
     return <InactiveDriverScreen onStartShift={handleStartShift} />;
   }
-  
+
   return (
     <div className="bg-[#1A1A1A] min-h-full">
       {activeTab === 'home' && (
@@ -42,9 +43,10 @@ const HomeScreen: React.FC<HomeScreenProps> = (props) => {
           listType="new"
           onViewOrder={props.onViewOrder}
           theme={props.theme}
+          isLoading={props.isLoading}
         />
       )}
-      
+
       {activeTab === 'in-transit' && (
         <OrdersScreen
           orders={props.inTransitOrders}
@@ -52,6 +54,9 @@ const HomeScreen: React.FC<HomeScreenProps> = (props) => {
           listType="in-transit"
           onViewOrder={props.onViewOrder}
           theme={props.theme}
+          // Intentionally not passing isLoading to in-transit, as they are local.
+          // But consistency is good.
+          isLoading={props.isLoading}
         />
       )}
 
@@ -62,6 +67,7 @@ const HomeScreen: React.FC<HomeScreenProps> = (props) => {
           listType="new"
           onViewOrder={props.onViewOrder}
           theme={props.theme}
+          isLoading={props.isLoading}
         />
       )}
     </div>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="32dp"
+    android:viewportWidth="64"
+    android:viewportHeight="32">
+    
+    <!-- Simple motorcycle/scooter silhouette -->
+    
+    <!-- Main body (seat area) -->
+    <path
+        android:fillColor="#DC2626"
+        android:pathData="M24,10 Q28,8 32,10 L32,16 L24,16 Z" />
+    
+    <!-- Front section -->
+    <path
+        android:fillColor="#DC2626"
+        android:pathData="M32,12 L38,12 L38,16 L32,16 Z" />
+    
+    <!-- Rear wheel -->
+    <path
+        android:fillColor="#DC2626"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:pathData="M20,20 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    
+    <!-- Front wheel -->
+    <path
+        android:fillColor="#DC2626"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:pathData="M40,20 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    
+    <!-- Connecting frame -->
+    <path
+        android:fillColor="#DC2626"
+        android:pathData="M20,16 L20,18 M40,16 L40,18" />
+    
+    <!-- Exhaust smoke (3 fading circles) -->
+    <path
+        android:fillColor="#80999999"
+        android:pathData="M12,14 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0" />
+    <path
+        android:fillColor="#50999999"
+        android:pathData="M8,12 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
+    <path
+        android:fillColor="#30999999"
+        android:pathData="M5,10 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0" />
+        
+</vector>

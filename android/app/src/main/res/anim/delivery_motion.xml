@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="false">
+    
+    <!-- Move from left to right across screen -->
+    <translate
+        android:fromXDelta="-120%"
+        android:toXDelta="120%"
+        android:duration="4000"
+        android:interpolator="@android:anim/accelerate_decelerate_interpolator" />
+    
+    <!-- Slight bounce effect (simulating road bumps) -->
+    <translate
+        android:fromYDelta="0"
+        android:toYDelta="2dp"
+        android:duration="200"
+        android:repeatMode="reverse"
+        android:repeatCount="19" />
+        
+</set>

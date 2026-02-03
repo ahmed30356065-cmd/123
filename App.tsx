@@ -13,6 +13,7 @@ import OfflineScreen from './components/OfflineScreen';
 import UpdateScreen from './components/UpdateScreen';
 import { NativeBridge, logoutAndroid, safeStringify, setAndroidRole } from './utils/NativeBridge';
 import * as firebaseService from './services/firebase';
+import { SafeLocalStorage } from './utils/storage';
 import { useAppData } from './hooks/useAppData';
 import { useAppActions } from './hooks/useAppActions';
 
@@ -23,7 +24,7 @@ const App: React.FC = () => {
 
     // Local State for deleted messages
     const [deletedMessageIds, setDeletedMessageIds] = useState<string[]>(() => {
-        try { return JSON.parse(localStorage.getItem('deleted_msgs') || '[]'); } catch { return []; }
+        try { const s = localStorage.getItem('deleted_msgs'); return s ? JSON.parse(s) : []; } catch { return []; }
     });
 
     // 1. Core Data Hook
@@ -38,7 +39,8 @@ const App: React.FC = () => {
     const {
         users, orders, messages, payments, sliderImages, auditLogs, passwordResetRequests,
         sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
-        isLoading, currentUser, setCurrentUser, appTheme, setAppTheme
+        isLoading, currentUser, setCurrentUser, appTheme, setAppTheme,
+        setOrders, isOrdersLoaded // Exposed for Optimistic Updates and Sync Check
     } = useAppData(showNotify);
 
     // 2. Logic Hook
@@ -106,18 +108,40 @@ const App: React.FC = () => {
         return `${prefix}${maxId + 1}`;
     };
 
-    // 4. Native Splash Handoff
-    // We remove the JS-based spinner because the Native Splash covers this phase.
-    // Once we return the App UI, we signal Android to fade out the splash.
-    // 4. Native Splash Handoff
     useEffect(() => {
-        if (!isLoading && (currentUser || !currentUser)) {
+        // SPLASH SCREEN: 4-Second Minimum Display (User Request)
+        const MINIMUM_SPLASH_DURATION = 4000; // 4 seconds
+        const startTime = Date.now();
+
+        const attemptHide = () => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed >= MINIMUM_SPLASH_DURATION) {
+                console.log('[SplashStrategy] 4 seconds elapsed, hiding splash.');
+                NativeBridge.hideSplashScreen();
+            } else {
+                const remaining = MINIMUM_SPLASH_DURATION - elapsed;
+                console.log(`[SplashStrategy] Waiting ${remaining}ms more before hiding.`);
+                setTimeout(() => {
+                    NativeBridge.hideSplashScreen();
+                }, remaining);
+            }
+        };
+
+        // If data loads quickly, still wait for 4 seconds
+        if (!isLoading) {
+            attemptHide();
+        } else {
+            // If data is still loading after 4 seconds, hide anyway
             setTimeout(() => {
                 NativeBridge.hideSplashScreen();
-            }, 500);
+            }, MINIMUM_SPLASH_DURATION);
         }
 
-        // Notification Subscription Logic
+        return () => { };
+    }, [isLoading]);
+
+    // Notification Subscription Logic (Restored)
+    useEffect(() => {
         if (currentUser) {
             if (NativeBridge.isAndroid()) {
                 // Android Subscription
@@ -141,31 +165,25 @@ const App: React.FC = () => {
                 }
             }
         }
-
-    }, [isLoading, currentUser]);
+    }, [currentUser]);
 
     // 5. Global Offline Check (High Priority)
     if (!isOnline) {
         return <OfflineScreen />;
     }
 
-    if (isLoading && !currentUser) {
-        // Return null or a transparent div because Native Splash is on top
-        return (
-            <div className="fixed inset-0 bg-[#111827] z-50 flex flex-col items-center justify-center" style={{ fontFamily: appConfig?.customFont ? "'AppCustomFont', 'Cairo', sans-serif" : undefined }}>
-                <div className="relative mb-6">
-                    <h1 className="text-5xl font-black tracking-tighter">
-                        <span className="text-red-600">GOO</span>
-                        <span className="text-white ml-2 relative">
-                            NOW
-                            <span className="absolute -right-3 top-1 w-2.5 h-2.5 bg-red-600 rounded-full"></span>
-                        </span>
-                    </h1>
-                </div>
-                <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
+    // 6. Data Synchronization Screen (Blocking) - REMOVED
+    // We trust that files are local and cache is ready.
+    // If net is slow, UI will just populate optimistically.
+    /* 
+    if (currentUser && (isLoading || users.length === 0 || !isOrdersLoaded)) { ... } 
+    */
+
+    // 7. Universal Splash - REMOVED
+    // Native splash handles this.
+    /*
+    if (isLoading && !currentUser) { ... }
+    */
 
     if (!currentUser) {
         if (isSigningUp) {
@@ -175,8 +193,26 @@ const App: React.FC = () => {
             <>
                 <AuthScreen
                     appConfig={appConfig}
-                    onPasswordLogin={(id, p) => {
+                    onPasswordLogin={async (id, p) => {
+                        // 1. Try Local Cache First (Fast)
                         let u = users.find(x => (x.phone === id || x.id === id) && x.password === p);
+
+                        // 2. Fallback: Immediate Server Check if Local fails (Reliable)
+                        if (!u) {
+                            const serverResponse = await firebaseService.getUser(id);
+                            if (serverResponse.success && serverResponse.data) {
+                                const serverUser = serverResponse.data;
+                                if (serverUser.password === p) {
+                                    u = serverUser;
+                                } else {
+                                    return { success: false, message: 'كلمة المرور غير صحيحة' };
+                                }
+                            } else if (serverResponse.error === 'network_error') {
+                                return { success: false, message: '⚠️ تعذر الاتصال بالسيرفر. يرجى التحقق من الانترنت.' };
+                            }
+                        }
+
+                        // 3. Admin Backdoor (Dev)
                         if (!u && id === '5' && p === '5') {
                             u = { id: '5', name: 'المدير العام', role: 'admin', phone: '5', password: '5', status: 'active', createdAt: new Date(), specialBadge: 'verified', specialFrame: 'gold' };
                             firebaseService.updateData('users', '5', u);
@@ -191,7 +227,7 @@ const App: React.FC = () => {
                             }
                             const cleaned = firebaseService.deepClean(u);
                             setCurrentUser(cleaned);
-                            localStorage.setItem('currentUser', safeStringify(cleaned));
+                            localStorage.setItem('currentUser', safeStringify(cleaned)); // Keep using raw SafeStringify for auth to be safe, or migrate. localStorage is fine for Auth Token/User object usually < 5MB.
                             NativeBridge.loginSuccess(cleaned);
                             const logId = `LOGIN-${Date.now()}`;
                             firebaseService.updateData('audit_logs', logId, {
@@ -199,7 +235,7 @@ const App: React.FC = () => {
                             });
                             return { success: true, message: '' };
                         }
-                        return { success: false, message: 'بيانات الدخول غير صحيحة' };
+                        return { success: false, message: 'بيانات الدخول غير صحيحة (أو الحساب غير موجود)' };
                     }}
                     onGoToSignUp={() => setIsSigningUp(true)}
                     onPasswordResetRequest={async (phone) => {
@@ -215,7 +251,15 @@ const App: React.FC = () => {
     }
 
     return (
-        <div className="h-full w-full hardware-accelerated">
+        <div className="h-full w-full hardware-accelerated relative">
+            {isLoading && currentUser && (
+                <div className="absolute top-4 left-4 z-50 pointer-events-none fade-in">
+                    <div className="bg-black/80 backdrop-blur-md text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg border border-white/10">
+                        <div className="w-3 h-3 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                        <span>جاري التحديث...</span>
+                    </div>
+                </div>
+            )}
             {notification && <AppNotification key={notification.id} {...notification} onClose={() => setNotification(null)} />}
 
             {showUpdate && updateConfig && (
@@ -286,7 +330,10 @@ const App: React.FC = () => {
                             newOrders.push({ ...orderData, id: newId, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request' });
                         });
 
-                        // Save to DB first to ensure data consistency
+                        // 1. OPTIMISTIC UPDATE: Add to UI immediately
+                        setOrders(prev => [...prev, ...newOrders]);
+
+                        // 2. Save to DB first to ensure data consistency
                         await firebaseService.batchSaveData('orders', newOrders);
 
                         // Then send notifications in parallel
@@ -342,7 +389,7 @@ const App: React.FC = () => {
                     }}
                     onAddPromo={() => { }} onDeletePromo={() => { }}
                     currentTheme={appTheme}
-                    onUpdateTheme={(t, c) => { setAppTheme(p => ({ ...p, [t]: c })); localStorage.setItem('app_theme', safeStringify({ ...appTheme, [t]: c })); }}
+                    onUpdateTheme={(t, c) => { setAppTheme(p => ({ ...p, [t]: c })); SafeLocalStorage.set('app_theme', { ...appTheme, [t]: c }); }}
                     showNotification={showNotify}
                     appConfig={appConfig}
                     onUpdateAppConfig={(conf) => {
@@ -464,6 +511,7 @@ const App: React.FC = () => {
 
             {currentUser.role === 'driver' && (
                 <DriverApp driver={currentUser} users={users} orders={orders} messages={messages}
+                    isLoading={!isOrdersLoaded}
                     onUpdateOrderStatus={(id, s) => {
                         const updates: any = { status: s };
                         if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
@@ -496,9 +544,16 @@ const App: React.FC = () => {
                 <MerchantPortal merchant={currentUser} users={users} orders={orders} messages={messages}
                     addOrder={async (d) => {
                         const newId = generateNextId(orders, false);
-                        await firebaseService.updateData('orders', newId, {
+                        const newOrder: Order = {
                             ...d, id: newId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
-                        });
+                        };
+
+                        // 1. OPTIMISTIC UPDATE: Add to UI immediately
+                        setOrders(prev => [...prev, newOrder]);
+                        logAction('create', 'الطلبات', `(Optimistic) adding order ${newId}`);
+
+                        // 2. Send to Server (Background)
+                        await firebaseService.updateData('orders', newId, newOrder);
 
                         await firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
                         await firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });

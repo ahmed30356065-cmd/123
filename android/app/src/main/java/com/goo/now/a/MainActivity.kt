@@ -17,13 +17,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.PhoneAuthCredential
+import com.google.firebase.auth.PhoneAuthOptions
+import com.google.firebase.auth.PhoneAuthProvider
+import com.google.firebase.FirebaseException
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
-    private lateinit var splashContainer: android.widget.LinearLayout
-    private lateinit var textGoo: android.widget.TextView
-    private lateinit var textNow: android.widget.TextView
+    // Splash removed - now handled by SplashActivity
     
     // Network Monitoring
     private lateinit var connectivityManager: ConnectivityManager
@@ -82,15 +86,28 @@ class MainActivity : AppCompatActivity() {
         
         // 3. Bind Views
         webView = findViewById(com.goo.now.a.R.id.webview)
-        splashContainer = findViewById(com.goo.now.a.R.id.splashContainer)
-        textGoo = findViewById(com.goo.now.a.R.id.textGoo)
-        textNow = findViewById(com.goo.now.a.R.id.textNow)
         
         // 4. Create Notification Channel (CRITICAL for Android 8+)
         createNotificationChannel()
 
-        // 5. Start Entrance Animation
-        startSplashAnimation()
+        // 5. Start Entrance Animation (Native Splash Overlay)
+        val splashOverlay = findViewById<android.widget.LinearLayout>(com.goo.now.a.R.id.splashOverlay)
+        val textGoo = findViewById<android.widget.TextView>(com.goo.now.a.R.id.textGoo)
+        val textNow = findViewById<android.widget.TextView>(com.goo.now.a.R.id.textNow)
+
+        // Initial State
+        splashOverlay.visibility = android.view.View.VISIBLE
+        textGoo.translationX = -50f
+        textGoo.alpha = 0f
+        textNow.translationX = 50f
+        textNow.alpha = 0f
+
+        // Animate text
+        textGoo.animate().translationX(0f).alpha(1f).setDuration(800)
+            .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+            
+        textNow.animate().translationX(0f).alpha(1f).setDuration(800)
+            .setStartDelay(100).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
 
         setupWebView()
         setupBackNavigation() 
@@ -149,8 +166,8 @@ class MainActivity : AppCompatActivity() {
     
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelId = "high_importance_channel" // Must Match Web App
-            val channelName = "Order Notifications"
+            val channelId = "high_importance_channel_v2" // Versioned to force update
+            val channelName = "Order Notifications v2"
             val channelDescription = "Important updates about your orders"
             val importance = android.app.NotificationManager.IMPORTANCE_HIGH
             
@@ -165,15 +182,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startSplashAnimation() {
-        // Animate GOO
-        textGoo.translationX = -50f
-        textGoo.animate().translationX(0f).alpha(1f).setDuration(800).start()
-
-        // Animate NOW
-        textNow.translationX = 50f
-        textNow.animate().translationX(0f).alpha(1f).setDuration(800).start()
-    }
 
     private fun setupWebView() {
         webView.settings.apply {
@@ -189,6 +197,9 @@ class MainActivity : AppCompatActivity() {
             allowUniversalAccessFromFileURLs = true
             
             textZoom = 100
+            
+            // Append Custom Tag to User Agent for immediate detection by Web App
+            userAgentString = "$userAgentString GOO_NATIVE_APP"
         }
         
         
@@ -196,9 +207,10 @@ class MainActivity : AppCompatActivity() {
         webView.clearCache(true)
         
         // Javascript Interface to allow Web to close Splash
-        webView.addJavascriptInterface(WebAppInterface(this), "AndroidSplash")
         // Main Bridge for Notifications
         webView.addJavascriptInterface(AndroidInterface(this), "Android")
+        // Splash Control Bridge
+        webView.addJavascriptInterface(AndroidSplashInterface(), "AndroidSplash")
         
         // Performance
         webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
@@ -259,38 +271,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Inner class for JS Interface (Splash Control)
-    inner class WebAppInterface(private val activity: MainActivity) {
-        @android.webkit.JavascriptInterface
-        fun hideSplash() {
-            activity.runOnUiThread {
-                // Professional Scale & Fade Out Animation
-                splashContainer.animate()
-                    .alpha(0f)
-                    .scaleX(1.15f) // Subtle zoom out
-                    .scaleY(1.15f)
-                    .setDuration(600)
-                    .setInterpolator(android.view.animation.AccelerateInterpolator())
-                    .withEndAction { 
-                        splashContainer.visibility = android.view.View.GONE 
-                        // Reset scale for next show
-                        splashContainer.scaleX = 1f
-                        splashContainer.scaleY = 1f
-                    }
-                    .start()
-            }
-        }
-
-        @android.webkit.JavascriptInterface
-        fun showSplash() {
-            activity.runOnUiThread {
-                splashContainer.visibility = android.view.View.VISIBLE
-                splashContainer.alpha = 1f
-                // Restart Animation
-                activity.startSplashAnimation()
-            }
-        }
-    }
 
     // Inner class for Main Bridge (Notifications & Logic)
     inner class AndroidInterface(private val activity: MainActivity) {
@@ -437,6 +417,78 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        @android.webkit.JavascriptInterface
+        fun verifyPhoneNumber(phoneNumber: String) {
+            activity.runOnUiThread {
+                try {
+                     val auth = FirebaseAuth.getInstance()
+                     // Force language to Arabic for SMS
+                     auth.useAppLanguage() 
+                     
+                     val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                        override fun onVerificationCompleted(credential: PhoneAuthCredential) {
+                            // Auto-retrieval or instant verification
+                            val code = credential.smsCode
+                            if (code != null) {
+                                activity.webView.evaluateJavascript("window.onPhoneAuthAutoRetrieval && window.onPhoneAuthAutoRetrieval('$code')", null)
+                            } else {
+                                signInWithPhoneAuthCredential(credential)
+                            }
+                        }
+
+                        override fun onVerificationFailed(e: FirebaseException) {
+                            android.util.Log.e("PhoneAuth", "Verification Failed", e)
+                            activity.webView.evaluateJavascript("window.onPhoneAuthError && window.onPhoneAuthError('${e.message}')", null)
+                        }
+
+                        override fun onCodeSent(verificationId: String, token: PhoneAuthProvider.ForceResendingToken) {
+                            android.util.Log.d("PhoneAuth", "Code Sent: $verificationId")
+                            activity.webView.evaluateJavascript("window.onPhoneAuthCodeSent && window.onPhoneAuthCodeSent('$verificationId')", null)
+                        }
+                    }
+
+                    val options = PhoneAuthOptions.newBuilder(auth)
+                        .setPhoneNumber(phoneNumber)       
+                        .setTimeout(60L, TimeUnit.SECONDS) 
+                        .setActivity(activity)             
+                        .setCallbacks(callbacks)          
+                        .build()
+                    PhoneAuthProvider.verifyPhoneNumber(options)
+
+                } catch (e: Exception) {
+                    android.util.Log.e("PhoneAuth", "Error starting verification", e)
+                    activity.webView.evaluateJavascript("window.onPhoneAuthError && window.onPhoneAuthError('Error: ${e.message}')", null)
+                }
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun submitOtp(verificationId: String, code: String) {
+            activity.runOnUiThread {
+                try {
+                    val credential = PhoneAuthProvider.getCredential(verificationId, code)
+                    signInWithPhoneAuthCredential(credential)
+                } catch (e: Exception) {
+                     activity.webView.evaluateJavascript("window.onPhoneAuthError && window.onPhoneAuthError('${e.message}')", null)
+                }
+            }
+        }
+
+        private fun signInWithPhoneAuthCredential(credential: PhoneAuthCredential) {
+             val auth = FirebaseAuth.getInstance()
+             auth.signInWithCredential(credential)
+                .addOnCompleteListener(activity) { task ->
+                    if (task.isSuccessful) {
+                        val user = task.result?.user
+                        val userJson = "{\"uid\": \"${user?.uid}\", \"phoneNumber\": \"${user?.phoneNumber}\"}"
+                        activity.webView.evaluateJavascript("window.onPhoneAuthSuccess && window.onPhoneAuthSuccess('$userJson')", null)
+                    } else {
+                        val msg = task.exception?.message ?: "Sign In Failed"
+                        activity.webView.evaluateJavascript("window.onPhoneAuthError && window.onPhoneAuthError('$msg')", null)
+                    }
+                }
+        }
     }
 
     // Double Back to Exit Logic
@@ -554,6 +606,25 @@ class MainActivity : AppCompatActivity() {
         // Unregister network callback
         networkCallback?.let {
             connectivityManager.unregisterNetworkCallback(it)
+        }
+    }
+
+    // Splash Interface - Added to allow JS to control splash visibility
+    inner class AndroidSplashInterface {
+        @android.webkit.JavascriptInterface
+        fun hideSplash() {
+            runOnUiThread {
+                val splashOverlay = findViewById<android.widget.LinearLayout>(com.goo.now.a.R.id.splashOverlay)
+                if (splashOverlay.visibility == android.view.View.VISIBLE) {
+                    splashOverlay.animate()
+                        .alpha(0f)
+                        .setDuration(500)
+                        .withEndAction { 
+                            splashOverlay.visibility = android.view.View.GONE 
+                        }
+                        .start()
+                }
+            }
         }
     }
 }

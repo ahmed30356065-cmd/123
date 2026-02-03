@@ -26,10 +26,6 @@ const ForgotPasswordModal: React.FC<{
             return;
         }
 
-        if (!/^\d{11}$/.test(phone)) {
-            setError('رقم الهاتف يجب أن يتكون من 11 رقم.');
-            return;
-        }
 
         setIsLoading(true);
         const result = await onRequestReset(phone);
@@ -89,7 +85,6 @@ const ForgotPasswordModal: React.FC<{
                                         placeholder="01xxxxxxxxx"
                                         className="w-full bg-[#0f172a] border border-gray-600 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500/50 outline-none transition-all text-right font-mono text-lg shadow-inner"
                                         required
-                                        maxLength={11}
                                         dir="rtl"
                                         disabled={isLoading}
                                     />
@@ -183,7 +178,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onPasswordLogin, onGoToSignUp, 
         // Simulate a tiny delay for UX feedback (optional)
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        const result = onPasswordLogin(identifier, password);
+        const result = await onPasswordLogin(identifier, password);
         setIsSubmitting(false);
 
         if (!result.success) {
@@ -236,6 +231,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onPasswordLogin, onGoToSignUp, 
                                     placeholder="01xxxxxxxxx"
                                     className="w-full bg-[#1e293b]/80 border border-gray-700 rounded-2xl py-4 pl-12 pr-5 text-white placeholder-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500/50 focus:bg-[#1e293b] outline-none transition-all duration-300 shadow-sm text-right font-mono text-lg tracking-wide"
                                     required
+                                    maxLength={11}
                                     dir="rtl"
                                     disabled={isSubmitting}
                                 />
@@ -260,9 +256,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onPasswordLogin, onGoToSignUp, 
                                     type={showPassword ? "text" : "password"}
                                     id="password"
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    onChange={(e) => setPassword(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
                                     className="w-full bg-[#1e293b]/80 border border-gray-700 rounded-2xl py-4 pl-12 pr-5 text-white placeholder-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500/50 focus:bg-[#1e293b] outline-none transition-all duration-300 shadow-sm text-lg"
                                     required
+                                    minLength={6}
                                     placeholder="••••••••"
                                     disabled={isSubmitting}
                                 />

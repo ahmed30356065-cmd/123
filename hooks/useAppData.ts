@@ -1,8 +1,9 @@
 
-import { useState, useEffect } from 'react';
-import { User, Order, Message, SliderImage, SliderConfig, AuditLog, AppConfig, UpdateConfig, AppTheme, Payment } from '../types';
+import { useState, useEffect, useRef } from 'react';
+import { User, Order, OrderStatus, Message, SliderImage, SliderConfig, AuditLog, AppConfig, UpdateConfig, AppTheme, Payment } from '../types';
 import * as firebaseService from '../services/firebase';
 import { setAndroidRole, safeStringify, NativeBridge, logoutAndroid } from '../utils/NativeBridge';
+import { AppStorage, SafeLocalStorage } from '../utils/storage';
 
 export const DEFAULT_FIREBASE_CONFIG = {
     apiKey: "AIzaSyC4bv_RLpS-jxunMs7nWjux806bYk6XnVY",
@@ -29,15 +30,32 @@ const getActiveFirebaseConfig = () => {
     return DEFAULT_FIREBASE_CONFIG;
 };
 
+// Force Firestore to be aggressive on visibility change
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            const now = new Date().toISOString();
+            console.log(`[InstantSync] App Resumed at ${now} - Forcing Sync...`);
+            // We can 'poke' firestore by enabling/disabling network if really needed, 
+            // but just logging often wakes up the thread.
+            // firebase.firestore().enableNetwork(); 
+        }
+    });
+}
+
 // Initialize Firebase once
 firebaseService.initFirebase(getActiveFirebaseConfig());
 
 export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' | 'info') => void) => {
+
+    // Initial states are empty (Async Load)
     const [users, setUsers] = useState<User[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
-    const [passwordResetRequests, setPasswordResetRequests] = useState<{ phone: string; requestedAt: Date }[]>([]);
     const [sliderImages, setSliderImages] = useState<SliderImage[]>([]);
+
+    // Other states remain default or light
+    const [passwordResetRequests, setPasswordResetRequests] = useState<{ phone: string; requestedAt: Date }[]>([]);
     const [payments, setPayments] = useState<Payment[]>([]);
     const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
@@ -49,26 +67,57 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         isPointsEnabled: true
     });
 
-    const [appConfig, setAppConfig] = useState<AppConfig>(() => {
-        try {
-            const saved = localStorage.getItem('app_config_cache');
-            if (saved) return JSON.parse(saved);
-        } catch { }
-        return { appName: 'GOO NOW', appVersion: 'VERSION 1.0.5' };
-    });
+    const [appConfig, setAppConfig] = useState<AppConfig>(() => SafeLocalStorage.get('app_config_cache', { appName: 'GOO NOW', appVersion: 'VERSION 1.0.5' }));
 
     const [updateConfig, setUpdateConfig] = useState<UpdateConfig | null>(null);
     const [showUpdate, setShowUpdate] = useState(false);
+
+    // LOADING IS TRUE INITIALLY
     const [isLoading, setIsLoading] = useState(true);
 
-    const [currentUser, setCurrentUser] = useState<User | null>(() => {
-        try { const saved = localStorage.getItem('currentUser'); return saved ? JSON.parse(saved) : null; } catch { return null; }
-    });
+    // Track previous orders to detect NEW ones
+    const prevOrdersRef = useRef<number>(0);
 
-    const [appTheme, setAppTheme] = useState<AppTheme>(() => {
-        try { const saved = localStorage.getItem('app_theme'); if (saved) return JSON.parse(saved); } catch { }
-        return { driver: { icons: {} }, merchant: { icons: {} }, admin: { mode: 'dark' }, customer: { icons: {}, mode: 'dark' } };
-    });
+    const [currentUser, setCurrentUser] = useState<User | null>(() => SafeLocalStorage.get('currentUser', null));
+
+    const [appTheme, setAppTheme] = useState<AppTheme>(() => SafeLocalStorage.get('app_theme', { driver: { icons: {} }, merchant: { icons: {} }, admin: { mode: 'dark' }, customer: { icons: {}, mode: 'dark' } }));
+
+    // Granular Loading States to ensure we don't show "All 0s"
+    const [isOrdersLoaded, setIsOrdersLoaded] = useState(false);
+
+    // Async Restoration Logic (The Fix for Quota/Crash)
+    useEffect(() => {
+        const loadCache = async () => {
+            const [cUsers, cOrders, cMsgs, cSlider] = await Promise.all([
+                AppStorage.get<User[]>('cache_users', []),
+                AppStorage.get<Order[]>('cache_orders', []),
+                AppStorage.get<Message[]>('cache_messages', []),
+                AppStorage.get<SliderImage[]>('cache_slider', [])
+            ]);
+
+            // Only update if we have data to avoid unnecessary renders of empty arrays
+            if (cUsers.length) setUsers(cUsers);
+
+            // Load cached orders for EVERYONE initially
+            // This gives admin/supervisors instant data
+            // For drivers, we'll clear this cache and rely on Firebase subscription only
+            if (cOrders.length) {
+                setOrders(cOrders);
+                setIsOrdersLoaded(true);
+            }
+
+            if (cMsgs.length) setMessages(cMsgs);
+            if (cSlider.length) setSliderImages(cSlider);
+
+            // LOGIC CHANGE: We DO NOT set isLoading(false) unconditionally here.
+            // If cache is empty, we MUST wait for the network to prevent "Zero State" scare.
+            // However, to support "Weak Network" replay, if we HAVE critical data (Users), we open.
+            if (cUsers.length > 0) {
+                setIsLoading(false);
+            }
+        };
+        loadCache();
+    }, []);
 
     // Font Injection Effect
     useEffect(() => {
@@ -104,14 +153,15 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
     useEffect(() => {
         const unsubUsers = firebaseService.subscribeToCollection('users', (data) => {
             setUsers(data as User[]);
-            setIsLoading(false);
+            AppStorage.set('cache_users', data); // ASYNC STORAGE
+            setIsLoading(false); // Network returned users, we can enter.
 
             if (currentUser) {
                 const updatedMe = data.find((u: User) => u.id === currentUser.id);
 
                 if (updatedMe && updatedMe.status === 'blocked') {
                     setCurrentUser(null);
-                    localStorage.removeItem('currentUser');
+                    SafeLocalStorage.remove('currentUser');
                     logoutAndroid();
                     showNotify('⛔ تم حظر حسابك من قبل الإدارة. يرجى عدم إنشاء حساب جديد.', 'error');
                     return;
@@ -119,16 +169,118 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
 
                 if (updatedMe && safeStringify(updatedMe) !== safeStringify(currentUser)) {
                     setCurrentUser(updatedMe);
-                    localStorage.setItem('currentUser', safeStringify(firebaseService.deepClean(updatedMe)));
+                    SafeLocalStorage.set('currentUser', firebaseService.deepClean(updatedMe));
                 }
             }
         });
 
-        const unsubOrders = firebaseService.subscribeToCollection('orders', (data) => setOrders(data as Order[]));
-        const unsubMsgs = firebaseService.subscribeToCollection('messages', (data) => setMessages(data as Message[]));
+        // SMART DATA SUBSCRIPTION FOR ORDERS
+        let unsubOrders = () => { };
+
+        if (!currentUser) {
+            // Not logged in yet? Load ALL orders preemptively
+            // This ensures admin/supervisor sees data immediately after login
+            // For other roles, this will be filtered/refined after login
+            unsubOrders = firebaseService.subscribeToCollection('orders', (data) => {
+                setOrders(data as Order[]);
+                AppStorage.set('cache_orders', data);
+                setIsOrdersLoaded(true);
+            });
+        } else if (currentUser.role === 'admin' || currentUser.role === 'supervisor') {
+            // 👑 Admin/Supervisor: See EVERYTHING (Firehose)
+            unsubOrders = firebaseService.subscribeToCollection('orders', (data) => {
+                setOrders(data as Order[]);
+                AppStorage.set('cache_orders', data);
+                setIsOrdersLoaded(true);
+            });
+        } else if (currentUser.role === 'merchant') {
+            // 🏪 Merchant: See only orders from MY store
+            unsubOrders = firebaseService.subscribeToQuery('orders', [
+                { field: 'merchantId', op: '==', value: currentUser.id }
+            ], (data) => {
+                setOrders(data as Order[]);
+                AppStorage.set('cache_orders', data);
+                setIsOrdersLoaded(true);
+            });
+        } else if (currentUser.role === 'user' || currentUser.role === 'customer') {
+            // 👤 Customer: See only MY orders
+            // Note: Storing phone in 'customer.phone' in order object
+            unsubOrders = firebaseService.subscribeToQuery('orders', [
+                { field: 'customer.phone', op: '==', value: currentUser.phone }
+            ], (data) => {
+                setOrders(data as Order[]);
+                AppStorage.set('cache_orders', data);
+                setIsOrdersLoaded(true);
+            });
+        } else if (currentUser.role === 'driver') {
+            // 🛵 Driver: Hybrid View (Pending + Mine)
+            // CRITICAL: Clear cached orders first to prevent flash of stale data
+            setOrders([]);
+            AppStorage.set('cache_orders', []);
+
+            // We need two subscriptions and merge them unique by ID.
+
+            const pendingOrdersMap = new Map<string, Order>();
+            const myOrdersMap = new Map<string, Order>();
+
+            const updateDriverOrders = () => {
+                const merged = [...Array.from(pendingOrdersMap.values()), ...Array.from(myOrdersMap.values())];
+                // Deduplicate just in case an order is both (rare race condition)
+                const unique = Array.from(new Map(merged.map(item => [item.id, item])).values());
+
+                // Sort by date (Newest first for UI usually, but DriverApp sorts manually)
+                setOrders(unique);
+                AppStorage.set('cache_orders', unique);
+                setIsOrdersLoaded(true);
+
+                // DETECT NEW ORDERS - LIGHTNING SPEED
+                if (unique.length > prevOrdersRef.current && prevOrdersRef.current !== 0) {
+                    console.log("[InstantSync] 🔔 New Order Detected!");
+                }
+                prevOrdersRef.current = unique.length;
+            };
+
+            // 1. Subscribe to ALL Pending orders (The Pool)
+            const unsubPending = firebaseService.subscribeToQuery('orders', [
+                { field: 'status', op: '==', value: OrderStatus.Pending }
+            ], (data) => {
+                pendingOrdersMap.clear();
+                data.forEach(o => pendingOrdersMap.set(o.id, o as Order));
+                updateDriverOrders();
+            });
+
+            // 2. Subscribe to MY orders (The Work)
+            const unsubMyWork = firebaseService.subscribeToQuery('orders', [
+                { field: 'driverId', op: '==', value: currentUser.id }
+            ], (data) => {
+                myOrdersMap.clear();
+                data.forEach(o => myOrdersMap.set(o.id, o as Order));
+                updateDriverOrders();
+            });
+
+            unsubOrders = () => {
+                unsubPending();
+                unsubMyWork();
+            };
+        } else {
+            // Fallback for unknown roles (e.g. initial state)
+            setOrders([]);
+            setIsOrdersLoaded(true);
+        }
+
+        const unsubMsgs = firebaseService.subscribeToCollection('messages', (data) => {
+            setMessages(data as Message[]);
+            AppStorage.set('cache_messages', data); // ASYNC STORAGE
+        });
+
         const unsubPayments = firebaseService.subscribeToCollection('payments', (data) => setPayments(data as Payment[]));
         const unsubReset = firebaseService.subscribeToCollection('reset_requests', (data) => setPasswordResetRequests(data as any));
-        const unsubSlider = firebaseService.subscribeToCollection('slider_images', (data) => setSliderImages(data as SliderImage[]));
+
+        const unsubSlider = firebaseService.subscribeToCollection('slider_images', (data) => {
+            setSliderImages(data as SliderImage[]);
+            AppStorage.set('cache_slider', data); // ASYNC STORAGE
+        });
+
         const unsubAudit = firebaseService.subscribeToCollection('audit_logs', (data) => setAuditLogs(data as AuditLog[]));
 
         const unsubSettings = firebaseService.subscribeToCollection('settings', (data) => {
@@ -155,7 +307,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                     isGamesEnabled: aConf.isGamesEnabled // Fix: Load games toggle state
                 };
                 setAppConfig(newAppConfig);
-                localStorage.setItem('app_config_cache', JSON.stringify(newAppConfig));
+                SafeLocalStorage.set('app_config_cache', newAppConfig);
             }
 
             const updateData = data.find(s => s.id === 'app_update');
@@ -253,8 +405,9 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
     return {
         users, orders, messages, payments, sliderImages, auditLogs, passwordResetRequests,
         sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
-        isLoading, setIsLoading,
+        isLoading, setIsLoading, isOrdersLoaded,
         currentUser, setCurrentUser,
-        appTheme, setAppTheme
+        appTheme, setAppTheme,
+        setOrders, setUsers // Exposed for Optimistic Updates
     };
 };

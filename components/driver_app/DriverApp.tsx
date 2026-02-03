@@ -32,6 +32,7 @@ interface DriverAppProps {
     deletedMessageIds: string[];
     markMessageAsSeen: (id: string) => void;
     hideMessage: (id: string) => void;
+    isLoading?: boolean;
 }
 
 const DriverApp: React.FC<DriverAppProps> = (props) => {
@@ -352,7 +353,7 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
 
                     <main className="flex-1 overflow-hidden relative">
                         <PullToRefresh onRefresh={handleRefresh} className="pb-36">
-                            {currentView === 'home' && <HomeScreen driver={props.driver} users={props.users} standardNewOrders={standardNewOrders} delinowNewOrders={delinowNewOrders} inTransitOrders={inTransitOrders} onViewOrder={setSelectedOrder} onUpdateUser={props.onUpdateUser} activeTab={activeHomeTab} theme={props.appTheme} />}
+                            {currentView === 'home' && <HomeScreen driver={props.driver} users={props.users} standardNewOrders={standardNewOrders} delinowNewOrders={delinowNewOrders} inTransitOrders={inTransitOrders} onViewOrder={setSelectedOrder} onUpdateUser={props.onUpdateUser} activeTab={activeHomeTab} theme={props.appTheme} isLoading={props.isLoading} />}
                             {currentView === 'wallet' && <WalletScreen driver={props.driver} orders={props.orders} users={props.users} />}
                             {currentView === 'games' && <GamesScreen driver={props.driver} appConfig={props.appConfig} onBack={() => setCurrentView('home')} onPlayGame={(url) => setActiveGameUrl(url)} />}
                         </PullToRefresh>

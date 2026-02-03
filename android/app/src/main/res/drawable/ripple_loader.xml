@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    
+    <!-- Circular ripple design -->
+    
+    <!-- Outer circle -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#DC2626"
+        android:strokeWidth="2.5"
+        android:pathData="M20,20 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
+    
+    <!-- Middle circle -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#DC2626"
+        android:strokeWidth="2"
+        android:pathData="M20,20 m-11,0 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0" />
+    
+    <!-- Inner circle -->
+    <path
+        android:fillColor="#DC2626"
+        android:pathData="M20,20 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+        
+</vector>

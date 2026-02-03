@@ -7,7 +7,128 @@ import 'firebase/compat/storage';
 import { getFcmV1AccessToken, SERVICE_ACCOUNT } from '../utils/FirebaseServiceAccount';
 
 let db: firebase.firestore.Firestore | undefined;
+let auth: firebase.auth.Auth | undefined;
 let isSettingsApplied = false;
+
+export const setupRecaptcha = (containerId: string) => {
+    if (!auth) auth = firebase.auth();
+    return new firebase.auth.RecaptchaVerifier(containerId, {
+        'size': 'invisible',
+        'callback': () => {
+            console.log("Recaptcha resolved");
+        }
+    });
+};
+
+
+// Native Bridge Types
+interface NativeBridge {
+    verifyPhoneNumber: (phone: string) => void;
+    submitOtp: (verificationId: string, code: string) => void;
+}
+
+declare global {
+    interface Window {
+        Android?: NativeBridge;
+        onPhoneAuthCodeSent?: (verificationId: string) => void;
+        onPhoneAuthAutoRetrieval?: (code: string) => void;
+        onPhoneAuthSuccess?: (userJson: string) => void;
+        onPhoneAuthError?: (error: string) => void;
+    }
+}
+
+export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: firebase.auth.RecaptchaVerifier) => {
+    console.log(`[PhoneAuth] Initiating for ${phoneNumber}...`);
+
+    // --- SIMULATION MODE (FREE TIER BYPASS) ---
+    // Since Firebase Billing is not enabled, we default to this robust simulation.
+    // This allows the app to have a "Verification" step without paying for SMS.
+    const enableSimulation = true;
+
+    if (enableSimulation) {
+        console.log("[PhoneAuth] Using Simulation Mode (Bypassing Billing/SMS)");
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve({
+                    success: true,
+                    confirmationResult: {
+                        verificationId: "simulated-verification-id-" + Date.now(),
+                        confirm: async (code: string) => {
+                            // The Unified OTP for Simulation
+                            if (code === '123456') {
+                                console.log("[PhoneAuth] Simulation Code Valid. Signing in anonymously...");
+                                // We use Anonymous Auth to get a real Firebase User ID and Token
+                                if (!auth) auth = firebase.auth();
+                                const credential = await auth.signInAnonymously();
+                                return {
+                                    user: {
+                                        ...credential.user,
+                                        phoneNumber: phoneNumber, // Mock the phone number on var
+                                        uid: credential.user?.uid // Real UID
+                                    }
+                                };
+                            } else {
+                                throw new Error("رمز التحقق غير صحيح (جرب 123456)");
+                            }
+                        }
+                    }
+                });
+            }, 1500); // Simulate network delay
+        });
+    }
+
+    // 1. NATIVE BRIDGE PATH (Robust, bypasses Billing/SafetyNet blockers on WebView)
+    if (window.Android && window.Android.verifyPhoneNumber) {
+        console.log("Using Native Phone Auth Bridge");
+
+        return new Promise<any>((resolve, reject) => {
+            const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+20${phoneNumber.replace(/^0+/, '')}`;
+
+            // Setup Listeners
+            window.onPhoneAuthCodeSent = (verificationId: string) => {
+                console.log("Native Code Sent:", verificationId);
+                resolve({
+                    success: true,
+                    confirmationResult: {
+                        verificationId: verificationId,
+                        confirm: async (code: string) => {
+                            return new Promise((res, rej) => {
+                                window.onPhoneAuthSuccess = (userJson: string) => {
+                                    const user = JSON.parse(userJson);
+                                    res({ user }); // Mimic Firebase UserCredential
+                                };
+                                window.onPhoneAuthError = (err: string) => {
+                                    rej(new Error(err));
+                                };
+                                window.Android!.submitOtp(verificationId, code);
+                            });
+                        }
+                    }
+                });
+            };
+
+            window.onPhoneAuthError = (err: string) => {
+                console.error("Native Auth Error:", err);
+                reject({ success: false, error: `[Native] ${err}` });
+            };
+
+            // Trigger Native Call
+            window.Android.verifyPhoneNumber(formattedPhone);
+        });
+    }
+
+    // 2. WEB FALLBACK (Legacy)
+    if (!auth) auth = firebase.auth();
+    try {
+        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+20${phoneNumber.replace(/^0+/, '')}`;
+        const confirmationResult = await auth.signInWithPhoneNumber(formattedPhone, recaptchaVerifier);
+        return { success: true, confirmationResult };
+    } catch (error: any) {
+        console.error("Firebase Phone Auth Error:", error);
+        return { success: false, error: error.message };
+    }
+};
+
 
 // Direct FCM Integration replacing Google Script
 // This ensures notifications work without external backend dependencies
@@ -46,6 +167,7 @@ export const initFirebase = (config: any) => {
         try {
             const app = firebase.initializeApp(config);
             db = app.firestore();
+            auth = app.auth();
 
             if (!isSettingsApplied) {
                 try {
@@ -132,6 +254,57 @@ export const subscribeToCollection = (collectionName: string, callback: (data: a
     }, (error) => console.error(`Subscription error [${collectionName}]:`, error));
 };
 
+// --- SMART SUBSCRIPTION LOGIC (Phase 1) ---
+
+export const subscribeToQuery = (
+    collectionName: string,
+    constraints: { field: string; op: firebase.firestore.WhereFilterOp; value: any }[],
+    callback: (data: any[]) => void
+) => {
+    if (!db) return () => { };
+
+    let query: firebase.firestore.Query = db.collection(collectionName);
+
+    // Apply filters
+    constraints.forEach(c => {
+        query = query.where(c.field, c.op, c.value);
+    });
+
+    const cache = new Map<string, any>();
+    let initialLoadComplete = false;
+
+    return query.onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+        let hasChanges = false;
+
+        // OPTIMIZATION: Ignore initial empty snapshot if it comes from cache.
+        // This prevents the UI from flashing "No Orders" while waiting for the server.
+        // We only want to emit if:
+        // 1. It's NOT from cache (real server data).
+        // 2. OR it IS from cache but HAS data (offline mode support).
+        if (!initialLoadComplete && snapshot.metadata.fromCache && snapshot.empty) {
+            console.log(`[QuerySubscription] Ignoring empty cache snapshot for ${collectionName}`);
+            return;
+        }
+
+        snapshot.docChanges().forEach((change) => {
+            hasChanges = true;
+            if (change.type === 'removed') {
+                cache.delete(change.doc.id);
+            } else {
+                const rawData = change.doc.data();
+                const cleanedData = deepClean(rawData);
+                cache.set(change.doc.id, { id: change.doc.id, ...cleanedData });
+            }
+        });
+
+        if (hasChanges || !initialLoadComplete) {
+            initialLoadComplete = true;
+            const data = Array.from(cache.values());
+            callback(data);
+        }
+    }, (error) => console.error(`Query Subscription error [${collectionName}]:`, error));
+};
+
 export const batchSaveData = async (collectionName: string, items: any[]) => {
     if (!db || items.length === 0) return;
     const BATCH_SIZE = 400;
@@ -183,6 +356,28 @@ export const addData = async (collectionName: string, data: any) => {
         ...cleanPayload,
         serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+};
+
+export const getUser = async (id: string): Promise<{ success: boolean, data?: any, error?: string }> => {
+    if (!db) return { success: false, error: "Firebase DB not not initialized" };
+    try {
+        // Fast ID check
+        const doc = await db.collection('users').doc(id).get();
+        if (doc.exists) {
+            return { success: true, data: { id: doc.id, ...doc.data() } };
+        }
+
+        // Fallback Phone check
+        const query = await db.collection('users').where('phone', '==', id).limit(1).get();
+        if (!query.empty) {
+            const d = query.docs[0];
+            return { success: true, data: { id: d.id, ...d.data() } };
+        }
+        return { success: false, error: "not_found" };
+    } catch (e: any) {
+        console.error("Error fetching user:", e);
+        return { success: false, error: "network_error" }; // Assume exceptions are network/permission related
+    }
 };
 
 // --- FIRESTORE CHUNK UPLOAD LOGIC (Alternative to Storage) ---
@@ -382,7 +577,7 @@ export const sendExternalNotification = async (targetType: string, data: { title
                     priority: "HIGH", // Forces wake-up
                     ttl: "2419200s", // 28 Days (Keeps trying if device is off)
                     notification: {
-                        channel_id: "high_importance_channel", // Must match Android Manifest
+                        channel_id: "high_importance_channel_v2", // Must match Android Native
                         sound: "default",
                         default_sound: true,
                         default_vibrate_timings: true,

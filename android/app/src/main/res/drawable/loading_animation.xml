@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:oneshot="false">
+    
+    <!-- Frame 1: First dot bright -->
+    <item android:duration="300">
+        <layer-list>
+            <item android:width="8dp" android:height="8dp" android:left="0dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#DC2626" />
+                </shape>
+            </item>
+            <item android:width="8dp" android:height="8dp" android:left="14dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#4D1F1F" />
+                </shape>
+            </item>
+            <item android:width="8dp" android:height="8dp" android:left="28dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#4D1F1F" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    
+    <!-- Frame 2: Second dot bright -->
+    <item android:duration="300">
+        <layer-list>
+            <item android:width="8dp" android:height="8dp" android:left="0dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#4D1F1F" />
+                </shape>
+            </item>
+            <item android:width="8dp" android:height="8dp" android:left="14dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#DC2626" />
+                </shape>
+            </item>
+            <item android:width="8dp" android:height="8dp" android:left="28dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#4D1F1F" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    
+    <!-- Frame 3: Third dot bright -->
+    <item android:duration="300">
+        <layer-list>
+            <item android:width="8dp" android:height="8dp" android:left="0dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#4D1F1F" />
+                </shape>
+            </item>
+            <item android:width="8dp" android:height="8dp" android:left="14dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#4D1F1F" />
+                </shape>
+            </item>
+            <item android:width="8dp" android:height="8dp" android:left="28dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#DC2626" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    
+    <!-- Frame 4: Second dot bright again (reverse) -->
+    <item android:duration="300">
+        <layer-list>
+            <item android:width="8dp" android:height="8dp" android:left="0dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#4D1F1F" />
+                </shape>
+            </item>
+            <item android:width="8dp" android:height="8dp" android:left="14dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#DC2626" />
+                </shape>
+            </item>
+            <item android:width="8dp" android:height="8dp" android:left="28dp" android:top="0dp">
+                <shape android:shape="oval">
+                    <solid android:color="#4D1F1F" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    
+</animation-list>
