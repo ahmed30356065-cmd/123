@@ -265,393 +265,393 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
             );
         }
 
-        // 4. Sort (Latest First)
-        // Primary: Date (Descending - Newest First)
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        // 4. Sort (Strictly by ID Number ASCENDING: 1 -> Infinity)
+        result.sort((a, b) => {
+            const idA = parseInt(a.id.replace(/\D/g, '') || '0');
+            const idB = parseInt(b.id.replace(/\D/g, '') || '0');
 
-        // If timestamps differ significantly (e.g. > 1 second), sort by time
-        if (Math.abs(timeA - timeB) > 1000) {
+            // Primary: ID Number (Descending: 3, 2, 1...)
+            if (idA !== idB) {
+                return idB - idA;
+            }
+
+            // Secondary: Date (Descending)
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
             return timeB - timeA;
-        }
+        });
 
-        // Secondary: ID Number (Descending)
-        const idA = parseInt(a.id.replace(/\D/g, '') || '0');
-        const idB = parseInt(b.id.replace(/\D/g, '') || '0');
-        return idB - idA;
-    });
+        return result;
+    }, [orders, filterType, statusFilter, searchTerm]);
 
-    return result;
-}, [orders, filterType, statusFilter, searchTerm]);
+    // Restoring other missing derived state
+    const merchants = useMemo(() => users.filter(u => u.role === 'merchant'), [users]);
+    const drivers = useMemo(() => users.filter(u => u.role === 'driver'), [users]);
 
-// Restoring other missing derived state
-const merchants = useMemo(() => users.filter(u => u.role === 'merchant'), [users]);
-const drivers = useMemo(() => users.filter(u => u.role === 'driver'), [users]);
+    const filteredDrivers = useMemo(() => {
+        if (!driverSearchTerm) return drivers;
+        const lower = driverSearchTerm.toLowerCase();
+        return drivers.filter(d =>
+            d.name.toLowerCase().includes(lower) ||
+            (d.phone && d.phone.includes(lower))
+        );
+    }, [drivers, driverSearchTerm]);
 
-const filteredDrivers = useMemo(() => {
-    if (!driverSearchTerm) return drivers;
-    const lower = driverSearchTerm.toLowerCase();
-    return drivers.filter(d =>
-        d.name.toLowerCase().includes(lower) ||
-        (d.phone && d.phone.includes(lower))
-    );
-}, [drivers, driverSearchTerm]);
+    const selectedBulkDriver = useMemo(() => {
+        return drivers.find(d => d.id === bulkDriverId);
+    }, [drivers, bulkDriverId]);
 
-const selectedBulkDriver = useMemo(() => {
-    return drivers.find(d => d.id === bulkDriverId);
-}, [drivers, bulkDriverId]);
+    const currentOrders = useMemo(() => {
+        const indexOfLastItem = currentPage * itemsPerPage;
+        const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+        return filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
+    }, [filteredOrders, currentPage, itemsPerPage]);
 
-const currentOrders = useMemo(() => {
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    return filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
-}, [filteredOrders, currentPage, itemsPerPage]);
-
-return (
-    <div className="space-y-6 pb-32">
-        <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {/* Standard Status Filters */}
-            {filterOptions.map(opt => (
-                <FilterCard
-                    key={opt.value}
-                    label={opt.label}
-                    count={statusCounts[opt.value as any]}
-                    icon={opt.icon}
-                    isActive={filterType !== 'merchant' && filterType !== 'special' ? (statusFilter === opt.value) : (statusFilter === opt.value)} // Simplified: Status filter is independent of Type filter visually in terms of "Active" state, but we want to show it's active.
-                    onClick={() => {
-                        // If we are in default mode, we can switch freely.
-                        // If we are in viewMode='shopping', filtering by status keeps us in 'merchant' type.
-                        setStatusFilter(opt.value as any);
-                    }}
-                    colorClasses={opt.colorClasses}
-                />
-            ))}
-
-            {/* Custom Filters (Shopping/Special) Removed from here as per request */}
-
-            {canManage && (
-                <>
+    return (
+        <div className="space-y-6 pb-32">
+            <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {/* Standard Status Filters */}
+                {filterOptions.map(opt => (
                     <FilterCard
-                        label={`تعيين الكل (${statusCounts.pendingUnassigned})`}
-                        icon={<PlusIcon />}
-                        isActive={isBulkAssignOpen}
+                        key={opt.value}
+                        label={opt.label}
+                        count={statusCounts[opt.value as any]}
+                        icon={opt.icon}
+                        isActive={filterType !== 'merchant' && filterType !== 'special' ? (statusFilter === opt.value) : (statusFilter === opt.value)} // Simplified: Status filter is independent of Type filter visually in terms of "Active" state, but we want to show it's active.
                         onClick={() => {
-                            if (statusCounts.pendingUnassigned === 0) {
-                                setLocalToast('لا يوجد طلبات قيد الانتظار للتعيين حالياً');
-                                setTimeout(() => setLocalToast(null), 3000);
-                            } else {
-                                setIsBulkAssignOpen(true);
-                            }
+                            // If we are in default mode, we can switch freely.
+                            // If we are in viewMode='shopping', filtering by status keeps us in 'merchant' type.
+                            setStatusFilter(opt.value as any);
                         }}
-                        colorClasses="bg-indigo-500/20 text-indigo-400 border-indigo-500/30"
+                        colorClasses={opt.colorClasses}
                     />
+                ))}
 
-                    <FilterCard
-                        label="تغيير حالة الكل"
-                        icon={<RefreshCwIcon />}
-                        isActive={isBulkStatusToolsOpen}
-                        onClick={() => setIsBulkStatusToolsOpen(true)}
-                        colorClasses="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                    />
-                </>
-            )}
+                {/* Custom Filters (Shopping/Special) Removed from here as per request */}
 
-            {canDelete && (
-                <FilterCard label="أدوات الحذف" icon={<TrashIcon />} isActive={isDeleteToolsOpen} onClick={() => setIsDeleteToolsOpen(true)} colorClasses="bg-red-500/20 text-red-400 border-red-500/30" />
-            )}
-        </div>
+                {canManage && (
+                    <>
+                        <FilterCard
+                            label={`تعيين الكل (${statusCounts.pendingUnassigned})`}
+                            icon={<PlusIcon />}
+                            isActive={isBulkAssignOpen}
+                            onClick={() => {
+                                if (statusCounts.pendingUnassigned === 0) {
+                                    setLocalToast('لا يوجد طلبات قيد الانتظار للتعيين حالياً');
+                                    setTimeout(() => setLocalToast(null), 3000);
+                                } else {
+                                    setIsBulkAssignOpen(true);
+                                }
+                            }}
+                            colorClasses="bg-indigo-500/20 text-indigo-400 border-indigo-500/30"
+                        />
 
-        {/* Toast Notification */}
-        {localToast && (
-            <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-xl border border-gray-700 z-50 animate-fadeIn">
-                {localToast}
+                        <FilterCard
+                            label="تغيير حالة الكل"
+                            icon={<RefreshCwIcon />}
+                            isActive={isBulkStatusToolsOpen}
+                            onClick={() => setIsBulkStatusToolsOpen(true)}
+                            colorClasses="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                        />
+                    </>
+                )}
+
+                {canDelete && (
+                    <FilterCard label="أدوات الحذف" icon={<TrashIcon />} isActive={isDeleteToolsOpen} onClick={() => setIsDeleteToolsOpen(true)} colorClasses="bg-red-500/20 text-red-400 border-red-500/30" />
+                )}
             </div>
-        )}
 
-        <div className="bg-gray-800 p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 items-center border border-gray-700">
-            <div className="relative flex-1 w-full">
-                <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
-                <input type="text" placeholder="بحث برقم الطلب، هاتف العميل، العنوان..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-1 focus:ring-red-500 outline-none" />
-            </div>
-            {canManage && onNavigateToAdd && (
-                <button onClick={onNavigateToAdd} className="w-full md:w-auto flex justify-center items-center bg-red-600 text-white font-black px-6 py-2.5 rounded-lg shadow-lg hover:bg-red-700 transition-all active:scale-95">
-                    <PlusIcon className="w-5 h-5 ml-2" />
-                    <span>إضافة طلب</span>
-                </button>
-            )}
-        </div>
-
-        {/* Dynamic Title based on filter */}
-        {filterType !== 'all' && (
-            <div className="flex items-center gap-2 px-2">
-                <span className={`w-2 h-6 rounded-full ${filterType === 'merchant' ? 'bg-orange-500' : 'bg-purple-500'}`}></span>
-                <h3 className="text-xl font-bold text-white">
-                    {filterType === 'merchant' ? 'قائمة طلبات المتاجر' : 'قائمة الطلبات الخاصة'}
-                </h3>
-            </div>
-        )}
-
-        {/* Pagination Logic */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {currentOrders.length > 0 ? (
-                currentOrders.map(order => (
-                    <OrderCard
-                        key={order.id}
-                        order={order}
-                        users={users}
-                        onEdit={canManage ? setEditingOrder : undefined}
-                        onDelete={canDelete ? setDeletingOrder : undefined}
-                        onOpenStatusModal={onOpenStatusModal}
-                    />
-                ))
-            ) : (
-                <div className="col-span-full py-20 text-center flex flex-col items-center justify-center bg-gray-800/30 rounded-3xl border border-dashed border-gray-700">
-                    <TruckIconV2 className="w-16 h-16 text-gray-700 mb-4 opacity-20" />
-                    <p className="text-gray-500 font-bold">لا توجد طلبات للعرض</p>
+            {/* Toast Notification */}
+            {localToast && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-xl border border-gray-700 z-50 animate-fadeIn">
+                    {localToast}
                 </div>
             )}
-        </div>
 
-        {/* Pagination Controls */}
-        {filteredOrders.length > itemsPerPage && (
-            <div className="flex justify-center items-center gap-4 mt-8 pt-4 border-t border-gray-700">
-                <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50 hover:bg-gray-700 transition"
-                >
-                    السابق
-                </button>
-                <span className="text-gray-400 font-mono">
-                    صفحة {currentPage} من {Math.ceil(filteredOrders.length / itemsPerPage)}
-                </span>
-                <button
-                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredOrders.length / itemsPerPage), p + 1))}
-                    disabled={currentPage === Math.ceil(filteredOrders.length / itemsPerPage)}
-                    className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50 hover:bg-gray-700 transition"
-                >
-                    التالي
-                </button>
+            <div className="bg-gray-800 p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 items-center border border-gray-700">
+                <div className="relative flex-1 w-full">
+                    <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                    <input type="text" placeholder="بحث برقم الطلب، هاتف العميل، العنوان..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-1 focus:ring-red-500 outline-none" />
+                </div>
+                {canManage && onNavigateToAdd && (
+                    <button onClick={onNavigateToAdd} className="w-full md:w-auto flex justify-center items-center bg-red-600 text-white font-black px-6 py-2.5 rounded-lg shadow-lg hover:bg-red-700 transition-all active:scale-95">
+                        <PlusIcon className="w-5 h-5 ml-2" />
+                        <span>إضافة طلب</span>
+                    </button>
+                )}
             </div>
-        )}
 
-        {editingOrder && <EditOrderModal order={editingOrder} merchants={merchants} drivers={drivers} onClose={() => setEditingOrder(null)} onSave={(data) => {
-            const currentOrder = editingOrder;
-            let newStatus = currentOrder.status;
+            {/* Dynamic Title based on filter */}
+            {filterType !== 'all' && (
+                <div className="flex items-center gap-2 px-2">
+                    <span className={`w-2 h-6 rounded-full ${filterType === 'merchant' ? 'bg-orange-500' : 'bg-purple-500'}`}></span>
+                    <h3 className="text-xl font-bold text-white">
+                        {filterType === 'merchant' ? 'قائمة طلبات المتاجر' : 'قائمة الطلبات الخاصة'}
+                    </h3>
+                </div>
+            )}
 
-            // Smart Status Logic
-            if (data.driverId && data.deliveryFee !== null && data.deliveryFee !== undefined) {
-                if (currentOrder.status === OrderStatus.Pending) {
-                    newStatus = OrderStatus.InTransit;
-                }
-            } else if (!data.driverId) {
-                if (currentOrder.status === OrderStatus.InTransit) {
-                    newStatus = OrderStatus.Pending;
-                }
-            }
-
-            const finalData = { ...data };
-            if (newStatus !== currentOrder.status) {
-                (finalData as any).status = newStatus;
-            }
-
-            editOrder(editingOrder.id, finalData);
-            setEditingOrder(null);
-        }} currentUserRole={currentUser?.role} />}
-
-        {deletingOrder && (
-            <ConfirmationModal
-                title="حذف الطلب"
-                message={`هل أنت متأكد من حذف الطلب رقم ${deletingOrder.id} نهائياً؟`}
-                onClose={() => setDeletingOrder(null)}
-                onConfirm={() => { deleteOrder(deletingOrder.id); setDeletingOrder(null); }}
-                confirmButtonText="تأكيد الحذف"
-                confirmVariant='danger'
-            />
-        )}
-
-        {isBulkAssignOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setIsBulkAssignOpen(false)}>
-                <div className="bg-[#1e293b] w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl p-6 animate-pop-in" onClick={e => e.stopPropagation()}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-black text-white flex items-center gap-2">
-                            <TruckIconV2 className="w-6 h-6 text-indigo-400" />
-                            تعيين كافة الطلبات
-                        </h3>
-                        <button onClick={() => setIsBulkAssignOpen(false)} className="text-gray-500 hover:text-white"><XIcon className="w-6 h-6" /></button>
+            {/* Pagination Logic */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                {currentOrders.length > 0 ? (
+                    currentOrders.map(order => (
+                        <OrderCard
+                            key={order.id}
+                            order={order}
+                            users={users}
+                            onEdit={canManage ? setEditingOrder : undefined}
+                            onDelete={canDelete ? setDeletingOrder : undefined}
+                            onOpenStatusModal={onOpenStatusModal}
+                        />
+                    ))
+                ) : (
+                    <div className="col-span-full py-20 text-center flex flex-col items-center justify-center bg-gray-800/30 rounded-3xl border border-dashed border-gray-700">
+                        <TruckIconV2 className="w-16 h-16 text-gray-700 mb-4 opacity-20" />
+                        <p className="text-gray-500 font-bold">لا توجد طلبات للعرض</p>
                     </div>
-                    <div className="space-y-4">
-                        <p className="text-sm text-gray-400">سيتم تعيين <span className="text-yellow-500 font-bold">{statusCounts.pendingUnassigned}</span> طلبات (قيد الانتظار) للمندوب المختار.</p>
+                )}
+            </div>
 
-                        {/* Driver Selection Button */}
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-2">اختر المندوب</label>
+            {/* Pagination Controls */}
+            {filteredOrders.length > itemsPerPage && (
+                <div className="flex justify-center items-center gap-4 mt-8 pt-4 border-t border-gray-700">
+                    <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50 hover:bg-gray-700 transition"
+                    >
+                        السابق
+                    </button>
+                    <span className="text-gray-400 font-mono">
+                        صفحة {currentPage} من {Math.ceil(filteredOrders.length / itemsPerPage)}
+                    </span>
+                    <button
+                        onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredOrders.length / itemsPerPage), p + 1))}
+                        disabled={currentPage === Math.ceil(filteredOrders.length / itemsPerPage)}
+                        className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50 hover:bg-gray-700 transition"
+                    >
+                        التالي
+                    </button>
+                </div>
+            )}
+
+            {editingOrder && <EditOrderModal order={editingOrder} merchants={merchants} drivers={drivers} onClose={() => setEditingOrder(null)} onSave={(data) => {
+                const currentOrder = editingOrder;
+                let newStatus = currentOrder.status;
+
+                // Smart Status Logic
+                if (data.driverId && data.deliveryFee !== null && data.deliveryFee !== undefined) {
+                    if (currentOrder.status === OrderStatus.Pending) {
+                        newStatus = OrderStatus.InTransit;
+                    }
+                } else if (!data.driverId) {
+                    if (currentOrder.status === OrderStatus.InTransit) {
+                        newStatus = OrderStatus.Pending;
+                    }
+                }
+
+                const finalData = { ...data };
+                if (newStatus !== currentOrder.status) {
+                    (finalData as any).status = newStatus;
+                }
+
+                editOrder(editingOrder.id, finalData);
+                setEditingOrder(null);
+            }} currentUserRole={currentUser?.role} />}
+
+            {deletingOrder && (
+                <ConfirmationModal
+                    title="حذف الطلب"
+                    message={`هل أنت متأكد من حذف الطلب رقم ${deletingOrder.id} نهائياً؟`}
+                    onClose={() => setDeletingOrder(null)}
+                    onConfirm={() => { deleteOrder(deletingOrder.id); setDeletingOrder(null); }}
+                    confirmButtonText="تأكيد الحذف"
+                    confirmVariant='danger'
+                />
+            )}
+
+            {isBulkAssignOpen && (
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setIsBulkAssignOpen(false)}>
+                    <div className="bg-[#1e293b] w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl p-6 animate-pop-in" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-black text-white flex items-center gap-2">
+                                <TruckIconV2 className="w-6 h-6 text-indigo-400" />
+                                تعيين كافة الطلبات
+                            </h3>
+                            <button onClick={() => setIsBulkAssignOpen(false)} className="text-gray-500 hover:text-white"><XIcon className="w-6 h-6" /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <p className="text-sm text-gray-400">سيتم تعيين <span className="text-yellow-500 font-bold">{statusCounts.pendingUnassigned}</span> طلبات (قيد الانتظار) للمندوب المختار.</p>
+
+                            {/* Driver Selection Button */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-2">اختر المندوب</label>
+                                <button
+                                    onClick={() => setIsDriverSelectorOpen(true)}
+                                    className="w-full bg-[#0f172a] border border-gray-700 rounded-xl p-4 flex justify-between items-center text-white hover:border-gray-500 transition-colors"
+                                >
+                                    {selectedBulkDriver ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-600">
+                                                {selectedBulkDriver.storeImage ? <img src={selectedBulkDriver.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-4 h-4 text-gray-400" />}
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold text-sm">{selectedBulkDriver.name}</p>
+                                                <p className="text-xs text-gray-500 font-mono">{selectedBulkDriver.phone}</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <span className="text-gray-400 text-sm">اضغط للاختيار...</span>
+                                    )}
+                                    <ChevronDownIcon className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+
+                            {/* Delivery Fee */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-2">سعر التوصيل الموحد</label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={bulkFee}
+                                        onChange={(e) => setBulkFee(e.target.value)}
+                                        className="w-full bg-[#0f172a] border border-gray-700 rounded-xl py-3 pl-10 pr-4 text-white font-bold outline-none focus:border-indigo-500"
+                                    />
+                                    <span className="absolute left-3 top-3.5 text-gray-500 text-xs font-bold">ج.م</span>
+                                </div>
+                            </div>
+
                             <button
-                                onClick={() => setIsDriverSelectorOpen(true)}
-                                className="w-full bg-[#0f172a] border border-gray-700 rounded-xl p-4 flex justify-between items-center text-white hover:border-gray-500 transition-colors"
+                                onClick={handleBulkAssignConfirm}
+                                disabled={!bulkDriverId || !bulkFee}
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 mt-2"
                             >
-                                {selectedBulkDriver ? (
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-600">
-                                            {selectedBulkDriver.storeImage ? <img src={selectedBulkDriver.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-4 h-4 text-gray-400" />}
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-bold text-sm">{selectedBulkDriver.name}</p>
-                                            <p className="text-xs text-gray-500 font-mono">{selectedBulkDriver.phone}</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <span className="text-gray-400 text-sm">اضغط للاختيار...</span>
-                                )}
-                                <ChevronDownIcon className="w-5 h-5 text-gray-500" />
+                                تأكيد التعيين
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
 
-                        {/* Delivery Fee */}
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-2">سعر التوصيل الموحد</label>
+            {/* Driver Selector Modal */}
+            {isDriverSelectorOpen && (
+                <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setIsDriverSelectorOpen(false)}>
+                    <div className="bg-[#1e293b] w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl overflow-hidden flex flex-col max-h-[60vh]" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-gray-700">
                             <div className="relative">
+                                <SearchIcon className="absolute right-3 top-3 w-4 h-4 text-gray-500" />
                                 <input
-                                    type="number"
-                                    placeholder="0"
-                                    value={bulkFee}
-                                    onChange={(e) => setBulkFee(e.target.value)}
-                                    className="w-full bg-[#0f172a] border border-gray-700 rounded-xl py-3 pl-10 pr-4 text-white font-bold outline-none focus:border-indigo-500"
+                                    type="text"
+                                    placeholder="بحث عن مندوب..."
+                                    value={driverSearchTerm}
+                                    onChange={(e) => setDriverSearchTerm(e.target.value)}
+                                    className="w-full bg-[#0f172a] border border-gray-600 rounded-xl py-2.5 pr-9 pl-3 text-white text-sm outline-none focus:border-blue-500"
+                                    autoFocus
                                 />
-                                <span className="absolute left-3 top-3.5 text-gray-500 text-xs font-bold">ج.م</span>
                             </div>
                         </div>
-
-                        <button
-                            onClick={handleBulkAssignConfirm}
-                            disabled={!bulkDriverId || !bulkFee}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 mt-2"
-                        >
-                            تأكيد التعيين
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* Driver Selector Modal */}
-        {isDriverSelectorOpen && (
-            <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setIsDriverSelectorOpen(false)}>
-                <div className="bg-[#1e293b] w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl overflow-hidden flex flex-col max-h-[60vh]" onClick={e => e.stopPropagation()}>
-                    <div className="p-4 border-b border-gray-700">
-                        <div className="relative">
-                            <SearchIcon className="absolute right-3 top-3 w-4 h-4 text-gray-500" />
-                            <input
-                                type="text"
-                                placeholder="بحث عن مندوب..."
-                                value={driverSearchTerm}
-                                onChange={(e) => setDriverSearchTerm(e.target.value)}
-                                className="w-full bg-[#0f172a] border border-gray-600 rounded-xl py-2.5 pr-9 pl-3 text-white text-sm outline-none focus:border-blue-500"
-                                autoFocus
-                            />
+                        <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+                            {filteredDrivers.length > 0 ? (
+                                filteredDrivers.map(driver => (
+                                    <button
+                                        key={driver.id}
+                                        onClick={() => { setBulkDriverId(driver.id); setIsDriverSelectorOpen(false); }}
+                                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${bulkDriverId === driver.id ? 'bg-blue-900/20 border border-blue-500/30' : 'hover:bg-gray-800 border border-transparent'}`}
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                            {driver.storeImage ? <img src={driver.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 text-gray-400" />}
+                                        </div>
+                                        <div className="text-right flex-1">
+                                            <p className={`font-bold text-sm ${bulkDriverId === driver.id ? 'text-blue-400' : 'text-white'}`}>{driver.name}</p>
+                                            <p className="text-xs text-gray-500 font-mono">{driver.phone}</p>
+                                        </div>
+                                        {bulkDriverId === driver.id && <CheckCircleIcon className="w-5 h-5 text-blue-500" />}
+                                    </button>
+                                ))
+                            ) : (
+                                <p className="text-center text-gray-500 py-4 text-xs">لا يوجد مناديب</p>
+                            )}
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
-                        {filteredDrivers.length > 0 ? (
-                            filteredDrivers.map(driver => (
-                                <button
-                                    key={driver.id}
-                                    onClick={() => { setBulkDriverId(driver.id); setIsDriverSelectorOpen(false); }}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${bulkDriverId === driver.id ? 'bg-blue-900/20 border border-blue-500/30' : 'hover:bg-gray-800 border border-transparent'}`}
-                                >
-                                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                        {driver.storeImage ? <img src={driver.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 text-gray-400" />}
-                                    </div>
-                                    <div className="text-right flex-1">
-                                        <p className={`font-bold text-sm ${bulkDriverId === driver.id ? 'text-blue-400' : 'text-white'}`}>{driver.name}</p>
-                                        <p className="text-xs text-gray-500 font-mono">{driver.phone}</p>
-                                    </div>
-                                    {bulkDriverId === driver.id && <CheckCircleIcon className="w-5 h-5 text-blue-500" />}
-                                </button>
-                            ))
-                        ) : (
-                            <p className="text-center text-gray-500 py-4 text-xs">لا يوجد مناديب</p>
-                        )}
+                </div>
+            )}
+
+            {isBulkStatusToolsOpen && (
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setIsBulkStatusToolsOpen(false)}>
+                    <div className="bg-[#1e293b] w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl p-6 animate-pop-in text-center" onClick={e => e.stopPropagation()}>
+                        <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+                            <RefreshCwIcon className="w-8 h-8 text-emerald-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">تغيير حالة الكل</h3>
+                        <p className="text-gray-400 text-sm mb-6">قم بتغيير حالة جميع الطلبات النشطة بضغطة واحدة.</p>
+
+                        <div className="space-y-3">
+                            <button onClick={() => { setIsBulkStatusToolsOpen(false); setBulkStatusTarget(OrderStatus.Pending); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-yellow-400 transition-colors flex items-center justify-center gap-2">
+                                <ClockIcon className="w-4 h-4" />
+                                إعادة تعيين للانتظار
+                            </button>
+                            <button onClick={() => { setIsBulkStatusToolsOpen(false); setBulkStatusTarget(OrderStatus.Delivered); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-green-400 transition-colors flex items-center justify-center gap-2">
+                                <CheckCircleIcon className="w-4 h-4" />
+                                تحديد الكل "تم التوصيل"
+                            </button>
+                        </div>
+                        <button onClick={() => setIsBulkStatusToolsOpen(false)} className="mt-4 text-gray-500 text-xs hover:text-white transition-colors">إلغاء</button>
                     </div>
                 </div>
-            </div>
-        )}
+            )}
 
-        {isBulkStatusToolsOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setIsBulkStatusToolsOpen(false)}>
-                <div className="bg-[#1e293b] w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl p-6 animate-pop-in text-center" onClick={e => e.stopPropagation()}>
-                    <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
-                        <RefreshCwIcon className="w-8 h-8 text-emerald-500" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-2">تغيير حالة الكل</h3>
-                    <p className="text-gray-400 text-sm mb-6">قم بتغيير حالة جميع الطلبات النشطة بضغطة واحدة.</p>
+            {isDeleteToolsOpen && (
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setIsDeleteToolsOpen(false)}>
+                    <div className="bg-[#1e293b] w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl p-6 animate-pop-in text-center" onClick={e => e.stopPropagation()}>
+                        <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                            <TrashIcon className="w-8 h-8 text-red-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">أدوات الحذف الجماعي</h3>
+                        <p className="text-gray-400 text-sm mb-6">يرجى الحذر، هذه العمليات لا يمكن التراجع عنها.</p>
 
-                    <div className="space-y-3">
-                        <button onClick={() => { setIsBulkStatusToolsOpen(false); setBulkStatusTarget(OrderStatus.Pending); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-yellow-400 transition-colors flex items-center justify-center gap-2">
-                            <ClockIcon className="w-4 h-4" />
-                            إعادة تعيين للانتظار
-                        </button>
-                        <button onClick={() => { setIsBulkStatusToolsOpen(false); setBulkStatusTarget(OrderStatus.Delivered); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-green-400 transition-colors flex items-center justify-center gap-2">
-                            <CheckCircleIcon className="w-4 h-4" />
-                            تحديد الكل "تم التوصيل"
-                        </button>
-                    </div>
-                    <button onClick={() => setIsBulkStatusToolsOpen(false)} className="mt-4 text-gray-500 text-xs hover:text-white transition-colors">إلغاء</button>
-                </div>
-            </div>
-        )}
-
-        {isDeleteToolsOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setIsDeleteToolsOpen(false)}>
-                <div className="bg-[#1e293b] w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl p-6 animate-pop-in text-center" onClick={e => e.stopPropagation()}>
-                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-                        <TrashIcon className="w-8 h-8 text-red-500" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-2">أدوات الحذف الجماعي</h3>
-                    <p className="text-gray-400 text-sm mb-6">يرجى الحذر، هذه العمليات لا يمكن التراجع عنها.</p>
-
-                    <div className="space-y-3">
-                        <button onClick={() => { setIsDeleteToolsOpen(false); setDeleteTargetStatus(OrderStatus.Pending); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-yellow-400 transition-colors">
-                            حذف جميع الطلبات المعلقة ({statusCounts[OrderStatus.Pending]})
-                        </button>
-                        <button onClick={() => { setIsDeleteToolsOpen(false); setDeleteTargetStatus(OrderStatus.Cancelled); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-red-400 transition-colors">
-                            حذف جميع الطلبات الملغية ({statusCounts[OrderStatus.Cancelled]})
-                        </button>
-                        <button onClick={() => { setIsDeleteToolsOpen(false); setDeleteTargetStatus(OrderStatus.Delivered); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-green-400 transition-colors">
-                            حذف أرشيف الطلبات المكتملة ({statusCounts[OrderStatus.Delivered]})
-                        </button>
-                        <div className="h-px bg-gray-700 my-2"></div>
-                        <button onClick={() => { setIsDeleteToolsOpen(false); setDeleteTargetStatus('all'); }} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg transition-colors">
-                            مسح شامل لكافة الطلبات
-                        </button>
+                        <div className="space-y-3">
+                            <button onClick={() => { setIsDeleteToolsOpen(false); setDeleteTargetStatus(OrderStatus.Pending); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-yellow-400 transition-colors">
+                                حذف جميع الطلبات المعلقة ({statusCounts[OrderStatus.Pending]})
+                            </button>
+                            <button onClick={() => { setIsDeleteToolsOpen(false); setDeleteTargetStatus(OrderStatus.Cancelled); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-red-400 transition-colors">
+                                حذف جميع الطلبات الملغية ({statusCounts[OrderStatus.Cancelled]})
+                            </button>
+                            <button onClick={() => { setIsDeleteToolsOpen(false); setDeleteTargetStatus(OrderStatus.Delivered); }} className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl py-3 text-sm font-bold text-green-400 transition-colors">
+                                حذف أرشيف الطلبات المكتملة ({statusCounts[OrderStatus.Delivered]})
+                            </button>
+                            <div className="h-px bg-gray-700 my-2"></div>
+                            <button onClick={() => { setIsDeleteToolsOpen(false); setDeleteTargetStatus('all'); }} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg transition-colors">
+                                مسح شامل لكافة الطلبات
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        )}
+            )}
 
-        {bulkStatusTarget && statusInfo && (
-            <ConfirmationModal
-                title={statusInfo.title}
-                message={statusInfo.message}
-                onClose={() => setBulkStatusTarget(null)}
-                onConfirm={() => { onBulkStatusUpdate?.(bulkStatusTarget); setBulkStatusTarget(null); }}
-                confirmButtonText="تأكيد التغيير"
-                confirmVariant={statusInfo.variant as any}
-            />
-        )}
+            {bulkStatusTarget && statusInfo && (
+                <ConfirmationModal
+                    title={statusInfo.title}
+                    message={statusInfo.message}
+                    onClose={() => setBulkStatusTarget(null)}
+                    onConfirm={() => { onBulkStatusUpdate?.(bulkStatusTarget); setBulkStatusTarget(null); }}
+                    confirmButtonText="تأكيد التغيير"
+                    confirmVariant={statusInfo.variant as any}
+                />
+            )}
 
-        {deleteTargetStatus && deleteInfo && (
-            <ConfirmationModal
-                title={deleteInfo.title}
-                message={deleteInfo.message}
-                onClose={() => setDeleteTargetStatus(null)}
-                onConfirm={() => { onBulkDelete?.(deleteTargetStatus); setDeleteTargetStatus(null); }}
-                confirmButtonText="نعم، حذف نهائي"
-                confirmVariant={deleteInfo.variant as any || 'danger'}
-            />
-        )}
-    </div>
-);
+            {deleteTargetStatus && deleteInfo && (
+                <ConfirmationModal
+                    title={deleteInfo.title}
+                    message={deleteInfo.message}
+                    onClose={() => setDeleteTargetStatus(null)}
+                    onConfirm={() => { onBulkDelete?.(deleteTargetStatus); setDeleteTargetStatus(null); }}
+                    confirmButtonText="نعم، حذف نهائي"
+                    confirmVariant={deleteInfo.variant as any || 'danger'}
+                />
+            )}
+        </div>
+    );
 });
 
 export default AdminOrdersScreen;

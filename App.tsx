@@ -520,7 +520,13 @@ const App: React.FC = () => {
                     }}
                     onAcceptOrder={(oid, did, fee) => {
                         const order = orders.find(o => o.id === oid);
-                        firebaseService.updateData('orders', oid, { driverId: did, deliveryFee: fee, status: OrderStatus.InTransit });
+                        // HARD FIX: Explicitly set status string to avoid Enum issues
+                        firebaseService.updateData('orders', oid, {
+                            driverId: did,
+                            deliveryFee: fee,
+                            status: 'قيد التوصيل' // OrderStatus.InTransit
+                        });
+
                         if (order?.type === 'shopping_order' && order.customer?.phone) {
                             const customerUser = users.find(u => u.phone === order.customer.phone && u.role === 'customer');
                             if (customerUser) {

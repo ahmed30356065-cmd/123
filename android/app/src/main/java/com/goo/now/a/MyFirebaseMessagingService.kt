@@ -70,18 +70,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            val channelId = "high_importance_channel" // Align with Web App
-            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE) // Use Ringtone for urgency
+            val channelId = "high_importance_channel_v2" // Versioned to force update
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION) // Use Notification sound (less aggressive)
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 var channel = notificationManager.getNotificationChannel(channelId)
                 if (channel == null) {
-                    channel = NotificationChannel(channelId, "Urgent Orders", NotificationManager.IMPORTANCE_HIGH)
+                    channel = NotificationChannel(channelId, "Order Notifications v2", NotificationManager.IMPORTANCE_HIGH)
                     
                     val audioAttributes = android.media.AudioAttributes.Builder()
                         .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setUsage(android.media.AudioAttributes.USAGE_ALARM) // Alarm Usage to bypass some restrictions
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION) // Standard Notification Usage
                         .build()
                         
                     channel.setSound(soundUri, audioAttributes)
@@ -95,16 +95,17 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             }
 
             val builder = NotificationCompat.Builder(this, channelId)
-                .setSmallIcon(R.drawable.ic_launcher) // App Icon
+                .setSmallIcon(R.drawable.ic_launcher) // Revert to drawable
                 .setContentTitle(title)
                 .setContentText(body)
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setPriority(NotificationCompat.PRIORITY_HIGH) // MAX is often too much, HIGH is standard for Heads-up
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE) // Message, not Alarm
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setAutoCancel(true)
                 .setSound(soundUri)
-                .setVibrate(longArrayOf(0, 1000, 1000, 1000, 1000)) // Long vibration
+                .setVibrate(longArrayOf(0, 500, 200, 500)) // Standard "Ping-Ping" pattern
                 .setFullScreenIntent(pendingIntent, true) // Critical for Head-Up on locked screen
+                .setTimeoutAfter(5000) // Auto-cancel after 5 seconds if not interacting
                 .setContentIntent(pendingIntent)
 
             notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
