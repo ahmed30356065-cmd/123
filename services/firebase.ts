@@ -663,69 +663,30 @@ export const subscribeWebToTopic = async (topic: string) => {
 };
 
 // ==========================================
-// 🆔 ROBUST ID GENERATION (Fixes Duplicate/Low IDs)
+// 🆔 RANDOM NON-SEQUENTIAL ID GENERATION
 // ==========================================
 export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> => {
     if (!db) throw new Error("Firebase not initialized");
 
-    const counterRef = db.collection('settings').doc('counters');
+    const MAX_RETRIES = 5;
+    let retries = 0;
 
-    try {
-        return await db.runTransaction(async (transaction) => {
-            const doc = await transaction.get(counterRef);
+    while (retries < MAX_RETRIES) {
+        // Generate Random 6-Digit Number (100000 - 999999)
+        const randomNum = Math.floor(100000 + Math.random() * 900000);
+        const candidateId = `${prefix}${randomNum}`;
 
-            let nextVal = 1;
-            const fieldName = prefix === 'ORD-' ? 'lastOrderId' : 'lastShoppingId';
+        // Check if ID exists
+        const doc = await db.collection('orders').doc(candidateId).get();
 
-            if (!doc.exists) {
-                // ⚠️ First Run / Self-Healing: Scan DB to find true Max ID
-                // This happens once (or if counter is deleted).
-                // We fetch ALL orders (metadata only ideally, but SDK fetches docs)
-                // 173 docs is cheap. This ensures 100% safety.
-                const snapshot = await db!.collection('orders').get();
-                let maxId = 0;
-                snapshot.forEach(d => {
-                    const id = d.id;
-                    if (id.startsWith(prefix)) {
-                        const num = parseInt(id.replace(prefix, '') || '0');
-                        if (!isNaN(num)) maxId = Math.max(maxId, num);
-                    }
-                });
-                nextVal = maxId + 1;
-                transaction.set(counterRef, { [fieldName]: nextVal }, { merge: true });
-            } else {
-                const data = doc.data() || {};
-                const current = data[fieldName] || 0;
+        if (!doc.exists) {
+            return candidateId;
+        }
 
-                // Safety Check: If counter seems suspiciously low (e.g. < 179), strictly force a rescan?
-                // No, trust the counter if it exists. But we can be extra safe:
-                // If current is 0, we treat as uninitialized for that specific field
-                if (current === 0) {
-                    // Rescan Logic Duplicated (Safe for Transaction)
-                    const snapshot = await db!.collection('orders').get(); // Note: Transactions require reads before writes
-                    let maxId = 0;
-                    snapshot.forEach(d => {
-                        const id = d.id;
-                        if (id.startsWith(prefix)) {
-                            const num = parseInt(id.replace(prefix, '') || '0');
-                            if (!isNaN(num)) maxId = Math.max(maxId, num);
-                        }
-                    });
-                    nextVal = maxId + 1;
-                } else {
-                    nextVal = current + 1;
-                }
-
-                transaction.set(counterRef, { [fieldName]: nextVal }, { merge: true });
-            }
-
-            return `${prefix}${nextVal}`;
-        });
-    } catch (error) {
-        console.warn("Generating Sequential ID failed (likely permissions). Falling back to Timestamp ID.", error);
-        // Fallback: Generate a collision-resistant timestamp ID
-        // Format: ORD-{timestamp}-{random} to ensure uniqueness even if sequential fails
-        const fallbackId = `${prefix}${Date.now()}`;
-        return fallbackId;
+        console.warn(`ID Collision detected for ${candidateId}. Retrying...`);
+        retries++;
     }
+
+    // Fallback if extremely unlucky (should mathematically never happen with 6 digits and low volume)
+    return `${prefix}${Date.now().toString().slice(-6)}`;
 };
