@@ -100,9 +100,18 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
 
             // Load cached orders for EVERYONE initially
             // This gives admin/supervisors instant data
-            // For drivers, we'll clear this cache and rely on Firebase subscription only
+            // For drivers/merchants, we avoid stale cache to ensure deleted orders vanish (Zombie Fix)
             if (cOrders.length) {
-                setOrders(cOrders);
+                // If we know the role from local storage init, use it.
+                // We access the initial state of currentUser directly if possible or check storage again?
+                // Using the variable from closure might be tricky if it changes, but this effect runs ONCE.
+                // A safer bet is checking the parsed currentUser from localStorage if available.
+                const savedUser = SafeLocalStorage.get('currentUser', null);
+                const role = savedUser?.role;
+
+                if (role === 'admin' || role === 'supervisor') {
+                    setOrders(cOrders);
+                }
                 setIsOrdersLoaded(true);
             }
 
@@ -195,6 +204,12 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
             });
         } else if (currentUser.role === 'merchant') {
             // 🏪 Merchant: See only orders from MY store
+            // CRITICAL: Clear cache to prevent "Deleted" orders from showing up from local storage
+            if (prevOrdersRef.current === 0) {
+                setOrders([]);
+                AppStorage.set('cache_orders', []);
+            }
+
             unsubOrders = firebaseService.subscribeToQuery('orders', [
                 { field: 'merchantId', op: '==', value: currentUser.id }
             ], (data) => {

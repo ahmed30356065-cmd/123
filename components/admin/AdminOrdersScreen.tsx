@@ -44,10 +44,10 @@ const FilterCard: React.FC<{
     onClick: () => void;
     colorClasses: string;
     disabled?: boolean;
-}> = React.memo(({ label, count, icon, isActive, onClick, colorClasses, disabled }) => (
+}> = ({ label, count, icon, isActive, onClick, colorClasses, disabled }) => (
     <button
         onClick={disabled ? undefined : onClick}
-        className={`p-3 rounded-xl flex flex-col items-center justify-center text-center w-full transition-all duration-200 border-2 min-h-[90px] ${disabled
+        className={`p-3 rounded-xl flex flex-col items-center justify-center text-center w-full transition-all duration-200 border-2 min-h-[90px] focus:outline-none ${disabled
             ? 'opacity-40 cursor-not-allowed bg-gray-800 border-transparent grayscale'
             : isActive
                 ? 'border-red-500 bg-gray-700/50 shadow-lg scale-105 z-10'
@@ -60,7 +60,7 @@ const FilterCard: React.FC<{
         <p className="text-gray-400 text-[10px] font-bold mb-1 line-clamp-1">{label}</p>
         {count !== undefined && <p className="text-white text-lg font-black leading-none">{count}</p>}
     </button>
-));
+);
 
 const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders, users, deleteOrder, editOrder, onNavigateToAdd, permissions, onOpenStatusModal, onBulkAssign, onBulkStatusUpdate, onBulkDelete, appName, currentUser, viewMode = 'default' }) => {
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -317,7 +317,7 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
                         label={opt.label}
                         count={statusCounts[opt.value as any]}
                         icon={opt.icon}
-                        isActive={filterType !== 'merchant' && filterType !== 'special' ? (statusFilter === opt.value) : (statusFilter === opt.value)} // Simplified: Status filter is independent of Type filter visually in terms of "Active" state, but we want to show it's active.
+                        isActive={statusFilter === opt.value}
                         onClick={() => {
                             // If we are in default mode, we can switch freely.
                             // If we are in viewMode='shopping', filtering by status keeps us in 'merchant' type.

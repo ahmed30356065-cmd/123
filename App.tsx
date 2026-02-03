@@ -320,23 +320,35 @@ const App: React.FC = () => {
                         // let currentMax = orders.filter(o => o.id.startsWith('ORD-')).reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
 
                         // Prepare orders first
-                        dataArray.forEach(orderData => {
-                            // Use shared logic for ID generation to ensure consistency
-                            // We calculate this dynamically based on the CURRENT 'newOrders' + existing orders
-                            const relevantOrders = [...orders, ...newOrders].filter(o => o.id.startsWith('ORD-') && !o.isArchived);
-                            const currentMax = relevantOrders.reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
+                        // Prepare orders first
+                        // We use a specific prefix logic
+                        const prefix = 'ORD-';
 
-                            const newId = `ORD-${currentMax + 1}`;
-                            newOrders.push({ ...orderData, id: newId, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request' });
-                        });
+                        // We must serialize this because generateUniqueId is atomic but efficient
+                        // However, for bulk add, we might want to reserve a block or just call it sequentially.
+                        // For simplicity and safety, we call it in parallel if the implementation supports it, 
+                        // but our implementation locks the doc. Sequential is safer.
+
+                        for (const orderData of dataArray) {
+                            // Use SERVER-SIDE atomic generation
+                            const newId = await firebaseService.generateUniqueId('ORD-');
+                            const newOrder = {
+                                ...orderData,
+                                id: newId,
+                                status: OrderStatus.Pending,
+                                createdAt: new Date(),
+                                type: 'delivery_request'
+                            };
+                            newOrders.push(newOrder);
+                        }
 
                         // 1. OPTIMISTIC UPDATE: Add to UI immediately
                         setOrders(prev => [...prev, ...newOrders]);
 
-                        // 2. Save to DB first to ensure data consistency
+                        // 2. Save to DB
                         await firebaseService.batchSaveData('orders', newOrders);
 
-                        // Then send notifications in parallel
+                        // Then send notifications
                         const notificationPromises = newOrders.map(order =>
                             firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${order.id} وهو متاح للتوصيل`, url: `/?target=order&id=${order.id}` })
                         );
@@ -549,7 +561,8 @@ const App: React.FC = () => {
             {currentUser.role === 'merchant' && (
                 <MerchantPortal merchant={currentUser} users={users} orders={orders} messages={messages}
                     addOrder={async (d) => {
-                        const newId = generateNextId(orders, false);
+                        // Use Safe Server ID
+                        const newId = await firebaseService.generateUniqueId('ORD-');
                         const newOrder: Order = {
                             ...d, id: newId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
                         };
@@ -576,7 +589,9 @@ const App: React.FC = () => {
                 <CustomerApp user={currentUser} merchants={users.filter(u => u.role === 'merchant')} orders={orders} messages={messages}
                     onPlaceOrder={async (d: any) => {
                         const isShopping = d.type === 'shopping_order';
-                        const newId = generateNextId(orders, isShopping);
+                        // Use Safe Server ID
+                        const newId = await firebaseService.generateUniqueId(isShopping ? 'S-' : 'ORD-');
+
                         await firebaseService.updateData('orders', newId, { ...d, id: newId });
 
                         await firebaseService.sendExternalNotification('admin', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
@@ -584,8 +599,7 @@ const App: React.FC = () => {
                         await firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `يوجد طلب جديد #${newId} في الانتظار`, url: `/?target=order&id=${newId}` });
 
                         if (!isShopping && d.merchantId && d.merchantId !== 'delinow') {
-                            // Merchant notification removed as per request (Start Pending)
-                            // await firebaseService.sendExternalNotification('merchant', { title: "طلب جديد", body: `لديك طلب جديد #${newId} من ${d.customer.name}`, targetId: d.merchantId, url: `/?target=orders` });
+                            // Merchant notification logic...
                         }
                     }}
                     onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}

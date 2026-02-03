@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ef4444;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#b91c1c;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="#1e1e1e"/>
+  
+  <!-- Tube 1 -->
+  <path d="M156 120h60v200c0 16-14 30-30 30s-30-14-30-30V120z" fill="#ffffff" opacity="0.2"/>
+  <path d="M156 120h4v200c0 14 10 26 26 26s26-12 26-26V120h4v200c0 16-14 30-30 30s-30-14-30-30V120z" fill="#ffffff" opacity="0.5"/>
+  <path d="M160 220h52v100c0 14-10 26-26 26s-26-12-26-26V220z" fill="url(#grad1)"/>
+  
+  <!-- Tube 2 -->
+  <path d="M296 120h60v200c0 16-14 30-30 30s-30-14-30-30V120z" fill="#ffffff" opacity="0.2"/>
+  <path d="M296 120h4v200c0 14 10 26 26 26s26-12 26-26V120h4v200c0 16-14 30-30 30s-30-14-30-30V120z" fill="#ffffff" opacity="0.5"/>
+  <path d="M300 220h52v100c0 14-10 26-26 26s-26-12-26-26V220z" fill="url(#grad2)"/>
+  
+  <!-- Drops -->
+  <circle cx="256" cy="80" r="20" fill="#3b82f6" opacity="0.8">
+    <animate attributeName="cy" values="80;100;80" dur="2s" repeatCount="indefinite" />
+  </circle>
+</svg>

@@ -13,11 +13,38 @@ interface GamesScreenProps {
 // Simple global cache for Firestore URLs to avoid re-fetching
 const imageCache: Record<string, string> = {};
 
-const GameImage: React.FC<{ src: string; alt?: string; className?: string }> = ({ src, alt, className }) => {
-    const [imgUrl, setImgUrl] = React.useState<string>(src && !src.startsWith('FIRESTORE_FILE:') ? src : (imageCache[src] || ''));
+
+// Import Local Assets
+import waterSortIcon from '../../src/assets/games/water_sort.svg';
+import snakeIcon from '../../src/assets/games/snake.svg';
+import defaultIcon from '../../src/assets/games/default.svg';
+
+const LOCAL_GAME_ICONS: Record<string, string> = {
+    'sort': waterSortIcon,
+    'water': waterSortIcon,
+    'snake': snakeIcon,
+    'default': defaultIcon
+};
+
+const getLocalIcon = (name: string): string | null => {
+    if (!name) return null;
+    const lower = name.toLowerCase();
+    if (lower.includes('sort') || lower.includes('water')) return LOCAL_GAME_ICONS['water'];
+    if (lower.includes('snake')) return LOCAL_GAME_ICONS['snake'];
+    return null;
+};
+
+const GameImage: React.FC<{ src: string; alt?: string; className?: string; name: string }> = ({ src, alt, className, name }) => {
+    // 1. Check Local Asset Matches First (Instant)
+    const localSrc = getLocalIcon(name);
+    // If local match found, use it immediately. Ignore 'src' URL.
+
+    const [imgUrl, setImgUrl] = React.useState<string>(localSrc || (src && !src.startsWith('FIRESTORE_FILE:') ? src : (imageCache[src] || '')));
     const [error, setError] = React.useState(false);
 
     React.useEffect(() => {
+        if (localSrc) return; // Skip logic if local
+
         let isMounted = true;
         if (src && src.startsWith('FIRESTORE_FILE:') && !imageCache[src]) {
             const fileId = src.replace('FIRESTORE_FILE:', '');
@@ -37,13 +64,11 @@ const GameImage: React.FC<{ src: string; alt?: string; className?: string }> = (
             setError(true);
         }
         return () => { isMounted = false; };
-    }, [src, imgUrl]);
+    }, [src, imgUrl, localSrc]);
 
     if (error || !imgUrl) {
         return (
-            <div className={`${className} bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center`}>
-                <GamepadIcon className="w-8 h-8 text-gray-700" />
-            </div>
+            <img src={defaultIcon} alt={alt} className={className} />
         );
     }
 

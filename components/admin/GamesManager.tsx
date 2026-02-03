@@ -8,10 +8,37 @@ interface GamesManagerProps {
     onUpdateAppConfig: (config: AppConfig) => void;
 }
 
+
+// Import Local Assets
+import waterSortIcon from '../../src/assets/games/water_sort.svg';
+import snakeIcon from '../../src/assets/games/snake.svg';
+import defaultIcon from '../../src/assets/games/default.svg';
+
+const LOCAL_GAME_ICONS: Record<string, string> = {
+    'sort': waterSortIcon,
+    'water': waterSortIcon,
+    'snake': snakeIcon,
+    'default': defaultIcon
+};
+
+const getLocalIcon = (name: string): string | null => {
+    if (!name) return null;
+    const lower = name.toLowerCase();
+    if (lower.includes('sort') || lower.includes('water')) return LOCAL_GAME_ICONS['water'];
+    if (lower.includes('snake')) return LOCAL_GAME_ICONS['snake'];
+    return null;
+};
+
 const GameImage: React.FC<{ src: string; alt?: string; className?: string }> = ({ src, alt, className }) => {
-    const [imgUrl, setImgUrl] = React.useState(src);
+    // 1. Check Local Asset Matches First (Instant)
+    // We use 'alt' which usually contains the game name
+    const localSrc = getLocalIcon(alt || '');
+
+    const [imgUrl, setImgUrl] = React.useState<string>(localSrc || (src && !src.startsWith('FIRESTORE_FILE:') ? src : src));
 
     React.useEffect(() => {
+        if (localSrc) return;
+
         let isMounted = true;
         if (src && src.startsWith('FIRESTORE_FILE:')) {
             const fileId = src.replace('FIRESTORE_FILE:', '');
@@ -22,13 +49,13 @@ const GameImage: React.FC<{ src: string; alt?: string; className?: string }> = (
                 .catch(err => {
                     console.error("Failed to load image:", err);
                 });
-        } else {
+        } else if (src && !src.startsWith('FIRESTORE_FILE:') && !imgUrl) {
             setImgUrl(src);
         }
         return () => { isMounted = false; };
-    }, [src]);
+    }, [src, localSrc, imgUrl]);
 
-    return <img src={imgUrl} alt={alt} className={className} />;
+    return <img src={imgUrl || defaultIcon} alt={alt} className={className} />;
 };
 
 const GamesManager: React.FC<GamesManagerProps> = ({ appConfig, onUpdateAppConfig }) => {
