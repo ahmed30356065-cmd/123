@@ -162,7 +162,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     </div>
 
                     {/* Price and Payment Status - Show ONLY if NOT collected AND NOT Vodafone Cash AND has permission */}
-                    {viewingMerchant && hasFinancialPerm && !order.isCollected && !order.isVodafoneCash && (
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && hasFinancialPerm && !order.isCollected && !order.isVodafoneCash && (
                         <div className="mt-3 animate-fadeIn space-y-3">
                             {/* Price Display */}
                             {isPaid ? (
@@ -262,7 +262,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
 
 
                     {/* Status for Vodafone Cash - Always "Paid" */}
-                    {viewingMerchant && order.isVodafoneCash && (
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && order.isVodafoneCash && (
                         <div className="mt-3 animate-fadeIn">
                             <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-3 flex items-center justify-center gap-2">
                                 <CheckCircleIcon className="w-5 h-5 text-green-400" />
@@ -273,7 +273,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </div>
                     )}
 
-                    {viewingMerchant && order.isCollected && (
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && order.isCollected && (
                         <div className="mt-3 animate-fadeIn">
                             <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-3 flex items-center justify-center gap-2">
                                 <CheckCircleIcon className="w-5 h-5 text-green-400" />
@@ -302,9 +302,11 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             <span className="font-mono dir-ltr copyable-phone">{order.customer?.phone || ''}</span>
                         </p>
 
-                        {/* For non-merchants, always show price if available */}
-                        {!viewingMerchant?.canManageOrderDetails && order.totalPrice !== undefined && (
-                            <p className="text-xs text-gray-400 flex items-center gap-1 bg-gray-700/30 px-2 py-1 rounded-lg">
+                        {/* For non-merchants (Admin), always show price. 
+                            For Merchants: ONLY show if they have permission AND don't have the advanced panel (to avoid duplication).
+                        */}
+                        {(!viewingMerchant || (viewingMerchant.canManageOrderDetails && !viewingMerchant.canManageAdvancedFinancials)) && order.totalPrice !== undefined && (
+                            <p className="text-xs text-gray-400 flex items-center gap-1 bg-gray-700/30 px-2 py-1 rounded-lg animate-fadeIn">
                                 <BanknoteIcon className="w-3 h-3" />
                                 <span className="font-bold text-red-400">{order.totalPrice.toFixed(2)} ج.م</span>
                             </p>
