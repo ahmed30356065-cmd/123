@@ -15,6 +15,9 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
     // New Fields State
     const [customOrderNumber, setCustomOrderNumber] = useState('');
     const [paymentOption, setPaymentOption] = useState<'unpaid' | 'paid' | 'vodafone_cash'>('unpaid');
+    const [paidAmount, setPaidAmount] = useState('');
+    const [unpaidAmount, setUnpaidAmount] = useState('');
+    const [cashAmount, setCashAmount] = useState('');
 
     const [error, setError] = useState('');
     const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
@@ -67,10 +70,15 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
             if (paymentOption === 'vodafone_cash') {
                 orderData.paymentStatus = 'paid';
                 orderData.isVodafoneCash = true;
+                if (cashAmount) orderData.cashAmount = parseFloat(cashAmount);
             } else {
                 orderData.paymentStatus = paymentOption;
                 orderData.isVodafoneCash = false;
             }
+
+            // Add payment amounts
+            if (paidAmount) orderData.paidAmount = parseFloat(paidAmount);
+            if (unpaidAmount) orderData.unpaidAmount = parseFloat(unpaidAmount);
         }
 
         // 3. Process
@@ -91,6 +99,9 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 setNotes('');
                 setCustomOrderNumber('');
                 setPaymentOption('unpaid'); // Reset to default
+                setPaidAmount('');
+                setUnpaidAmount('');
+                setCashAmount('');
 
                 setStatus('idle');
             }, 1500);
@@ -159,8 +170,8 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                                         type="button"
                                         onClick={() => setPaymentOption(opt.id)}
                                         className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${paymentOption === opt.id
-                                                ? (opt.id === 'unpaid' ? 'bg-red-500 text-white' : opt.id === 'paid' ? 'bg-green-600 text-white' : 'bg-red-800 text-white')
-                                                : 'text-gray-400 hover:text-white'
+                                            ? (opt.id === 'unpaid' ? 'bg-red-500 text-white' : opt.id === 'paid' ? 'bg-green-600 text-white' : 'bg-red-800 text-white')
+                                            : 'text-gray-400 hover:text-white'
                                             }`}
                                     >
                                         {opt.label}
@@ -168,6 +179,58 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Payment Amount Fields */}
+                        {paymentOption === 'paid' && (
+                            <div>
+                                <label htmlFor="paidAmount" className="block text-xs font-bold text-neutral-400 mb-2">المبلغ المدفوع (ج.م)</label>
+                                <input
+                                    type="number"
+                                    id="paidAmount"
+                                    value={paidAmount}
+                                    onChange={(e) => setPaidAmount(e.target.value)}
+                                    disabled={status === 'submitting'}
+                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none disabled:opacity-50 text-center"
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    min="0"
+                                />
+                            </div>
+                        )}
+
+                        {paymentOption === 'unpaid' && (
+                            <div>
+                                <label htmlFor="unpaidAmount" className="block text-xs font-bold text-neutral-400 mb-2">المبلغ غير المدفوع (ج.م)</label>
+                                <input
+                                    type="number"
+                                    id="unpaidAmount"
+                                    value={unpaidAmount}
+                                    onChange={(e) => setUnpaidAmount(e.target.value)}
+                                    disabled={status === 'submitting'}
+                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50 text-center"
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    min="0"
+                                />
+                            </div>
+                        )}
+
+                        {paymentOption === 'vodafone_cash' && (
+                            <div>
+                                <label htmlFor="cashAmount" className="block text-xs font-bold text-neutral-400 mb-2">مبلغ فودافون كاش (ج.م)</label>
+                                <input
+                                    type="number"
+                                    id="cashAmount"
+                                    value={cashAmount}
+                                    onChange={(e) => setCashAmount(e.target.value)}
+                                    disabled={status === 'submitting'}
+                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-red-800 focus:border-red-800 outline-none disabled:opacity-50 text-center"
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    min="0"
+                                />
+                            </div>
+                        )}
                     </div>
                 )}
 

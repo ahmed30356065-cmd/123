@@ -290,7 +290,12 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
     const uncollectedTotalDelivery = uncollectedOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
 
     const collectedCount = collectedOrders.length;
-    const collectedTotalDelivery = collectedOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+    const collectedTotalDelivery = collectedOrders.reduce((sum: number, o: any) => sum + (o.totalPrice || 0), 0);
+
+    // Calculate total cash (Vodafone Cash) for the day
+    const totalCash = finalFilteredOrders
+        .filter((o: any) => o.isVodafoneCash && o.cashAmount)
+        .reduce((sum: number, o: any) => sum + (o.cashAmount || 0), 0);
 
     // Counts for Badges
     const counts = useMemo(() => {
@@ -399,6 +404,20 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                         </div>
                     </div>
                 </div>
+
+                {/* Cash Total Card - Only shown if merchant has permission and there's cash */}
+                {viewingMerchant?.canManageOrderDetails && totalCash > 0 && (
+                    <div className="bg-gradient-to-br from-red-900/20 to-pink-900/20 rounded-2xl p-6 border-2 border-red-500/30 shadow-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                            <h3 className="text-lg font-bold text-red-400">إجمالي الكاش اليومي</h3>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-4xl font-black text-red-400">{totalCash.toLocaleString('en-US')}</p>
+                            <p className="text-sm text-red-300/70 mt-1">ج.م (فودافون كاش)</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Collection Summary - Only shown if merchant has permission */}
                 {viewingMerchant?.canManageOrderDetails && (uncollectedCount > 0 || collectedCount > 0) && (

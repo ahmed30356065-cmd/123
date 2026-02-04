@@ -159,6 +159,9 @@ export interface Order {
   paymentStatus?: 'paid' | 'unpaid';
   isVodafoneCash?: boolean;
   isCollected?: boolean;
+  paidAmount?: number; // Amount paid
+  unpaidAmount?: number; // Amount unpaid
+  cashAmount?: number; // Cash amount (Vodafone Cash)
 }
 
 export interface Message {

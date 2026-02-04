@@ -25,6 +25,7 @@ interface MerchantPortalProps {
   deletedMessageIds: string[];
   onUpdateUser?: (userId: string, data: Partial<User>) => void;
   onUpdateOrderStatus?: (orderId: string, status: OrderStatus) => void;
+  onUpdateOrder?: (orderId: string, data: Partial<Order>) => void;
   onLogout: () => void;
   appTheme: AppTheme;
   onUpdateTheme?: (config: any) => void;
@@ -35,7 +36,7 @@ interface MerchantPortalProps {
 type MerchantPage = 'home' | 'history' | 'menu' | 'incoming' | 'messages' | 'profile';
 
 const MerchantPortal: React.FC<MerchantPortalProps> = ({
-  merchant, orders, users, addOrder, messages, seenMessageIds, markMessageAsSeen, hideMessage, deletedMessageIds, onUpdateUser, onUpdateOrderStatus, onLogout, appTheme, onUpdateTheme, initialRoute, appConfig
+  merchant, orders, users, addOrder, messages, seenMessageIds, markMessageAsSeen, hideMessage, deletedMessageIds, onUpdateUser, onUpdateOrderStatus, onUpdateOrder, onLogout, appTheme, onUpdateTheme, initialRoute, appConfig
 }) => {
   const [page, setPage] = useState<MerchantPage>('home');
   const [messageToShow, setMessageToShow] = useState<Message | null>(null);
