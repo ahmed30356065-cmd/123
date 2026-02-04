@@ -813,6 +813,14 @@ export const ExternalLinkIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props)
   </svg>
 );
 
-export const VodafoneIcon: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => (
-  <img src="/vodafone-logo.png" alt="Vodafone Cash" {...props} className={`rounded-full ${props.className || ''}`} />
+export const VodafoneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" {...props}>
+    <circle cx="24" cy="24" r="22" className="fill-red-600" />
+    <path d="M24 10C16.268 10 10 16.268 10 24C10 31.732 16.268 38 24 38C31.732 38 38 31.732 38 24C38 16.268 31.732 10 24 10ZM24 34C18.477 34 14 29.523 14 24C14 18.477 18.477 14 24 14C29.523 14 34 18.477 34 24C34 29.523 29.523 34 24 34Z" fill="white" fillOpacity="0.2" />
+    <path d="M28.5 19.5C28.5 19.5 27.5 18 25.5 18C23.5 18 22 19.5 22 21.5C22 23.5 23.5 25 25.5 25C27 25 28 24 28 24" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    <path d="M28.5 27.5C28.5 27.5 27.5 29 25.5 29C23.5 29 22 27.5 22 25.5C22 23.5 23.5 22 25.5 22C27 22 28 23 28 23" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    <path d="M19.5 24H16" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    <path d="M25 15V18" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    <path d="M25 29V32" stroke="white" strokeWidth="3" strokeLinecap="round" />
+  </svg>
 );

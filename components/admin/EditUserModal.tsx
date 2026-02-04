@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useMemo } from 'react';
 import { User, SupervisorPermission, Role } from '../../types';
-import { ChevronLeftIcon, CameraIcon, UploadIcon, EyeIcon, EyeOffIcon, MapPinIcon, SettingsIcon, TruckIconV2, GridIcon, ShieldCheckIcon, UtensilsIcon, ClockIcon, ChartBarIcon, MessageSquareIcon, TicketIcon, HeadsetIcon, StoreIcon, UsersIcon, CheckCircleIcon, ClipboardListIcon } from '../icons';
+import { ChevronLeftIcon, CameraIcon, UploadIcon, EyeIcon, EyeOffIcon, MapPinIcon, SettingsIcon, TruckIconV2, GridIcon, ShieldCheckIcon, UtensilsIcon, ClockIcon, ChartBarIcon, MessageSquareIcon, TicketIcon, HeadsetIcon, StoreIcon, UsersIcon, CheckCircleIcon, ClipboardListIcon, BanknoteIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
 interface EditUserModalProps {
@@ -56,7 +56,9 @@ const PERMISSION_GROUPS: {
                 { id: 'view_reports', label: 'التقارير والإحصائيات', desc: 'الوصول للوحة الإحصائيات' },
                 { id: 'view_wallet', label: 'المحفظة والتسويات', desc: 'إدارة المحافظ المالية للمناديب' },
                 { id: 'view_logs', label: 'سجل المراقبة', desc: 'مشاهدة سجلات النشاط' },
+                { id: 'manage_advanced_financials', label: 'إدارة المدفوعات المتقدمة', desc: 'تعديل الأسعار وحالات الدفع بشكل كامل' },
             ]
+
         },
         {
             title: 'التسويق والمحتوى',
@@ -115,6 +117,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
     const [canShowDeliveryTime, setCanShowDeliveryTime] = useState(user.canShowDeliveryTime || false);
     const [canManageMenu, setCanManageMenu] = useState(user.canManageMenu !== false);
     const [canManageOrderDetails, setCanManageOrderDetails] = useState(user.canManageOrderDetails || false);
+    const [canManageAdvancedFinancials, setCanManageAdvancedFinancials] = useState(user.canManageAdvancedFinancials || false);
 
     const [error, setError] = useState('');
     const [image, setImage] = useState<string | null>(user.storeImage || null);
@@ -226,7 +229,6 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
                 }
             }
         }
-
         setError('');
 
         const updatedData: Partial<User> = {
@@ -253,6 +255,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
             updatedData.canShowDeliveryTime = canShowDeliveryTime;
             updatedData.canManageMenu = canManageMenu;
             updatedData.canManageOrderDetails = canManageOrderDetails;
+            updatedData.canManageAdvancedFinancials = canManageAdvancedFinancials;
         }
 
         if (role === 'supervisor') {
@@ -504,15 +507,18 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
                                     <input type="checkbox" checked={canShowDeliveryTime} onChange={(e) => setCanShowDeliveryTime(e.target.checked)} className="h-5 w-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" />
                                 </div>
 
-                                <div className="flex items-center justify-between p-3 bg-[#252525] rounded-xl border border-[#333]">
-                                    <div className="flex items-center gap-2">
-                                        <ClipboardListIcon className="w-4 h-4 text-pink-400" />
-                                        <label className="text-sm font-bold text-white">تفاصيل الطلب (رقم/دفع/تحصيل)</label>
-                                    </div>
-                                    <input type="checkbox" checked={canManageOrderDetails} onChange={(e) => setCanManageOrderDetails(e.target.checked)} className="h-5 w-5 text-pink-600 bg-gray-700 border-gray-600 rounded focus:ring-pink-500" />
+                                <input type="checkbox" checked={canManageOrderDetails} onChange={(e) => setCanManageOrderDetails(e.target.checked)} className="h-5 w-5 text-pink-600 bg-gray-700 border-gray-600 rounded focus:ring-pink-500" />
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 bg-[#252525] rounded-xl border border-[#333]">
+                                <div className="flex items-center gap-2">
+                                    <BanknoteIcon className="w-4 h-4 text-emerald-400" />
+                                    <label className="text-sm font-bold text-white">لوحة المدفوعات المتقدمة</label>
                                 </div>
+                                <input type="checkbox" checked={canManageAdvancedFinancials} onChange={(e) => setCanManageAdvancedFinancials(e.target.checked)} className="h-5 w-5 text-emerald-600 bg-gray-700 border-gray-600 rounded focus:ring-emerald-500" />
                             </div>
                         </div>
+
                     )}
 
                     {/* Driver Settings */}
@@ -614,7 +620,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
 
                 {error && <p className="text-red-400 font-bold text-center bg-red-900/20 p-3 rounded-xl border border-red-500/30">{error}</p>}
             </div>
-        </div>
+        </div >
     );
 };
 export default EditUserModal;

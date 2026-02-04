@@ -347,7 +347,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
 
                 {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
-                <div className="pt-2">
+                <div className="pt-2 pb-24">
                     <button
                         type="submit"
                         disabled={status === 'submitting'}

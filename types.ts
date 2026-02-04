@@ -17,7 +17,8 @@ export type SupervisorPermission =
   | 'manage_support'
   | 'delete_support_messages'
   | 'manage_decorations' // Added permission for managing frames and badges
-  | 'manage_supervisors'; // Added check for managing other supervisors
+  | 'manage_supervisors' // Added check for managing other supervisors
+  | 'manage_advanced_financials'; // NEW: Full control over payments and prices
 
 export interface ProductSize {
   name: string;
@@ -78,6 +79,7 @@ export interface User {
   canShowDeliveryTime?: boolean;
   canManageMenu?: boolean;
   canManageOrderDetails?: boolean; // Added: Control "Payment/OrderNo" features
+  canManageAdvancedFinancials?: boolean; // NEW: Advanced Payment Control Panel
   // Decoration (Updated to allow strings for extended collection)
   specialFrame?: string;
   specialBadge?: string;
