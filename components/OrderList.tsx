@@ -228,9 +228,31 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </div>
                     )}
 
-                    {/* Admin Financial Control Button - Only if permitted and NOT Merchant View */}
+                    {/* Admin Financial Control - Status & Button */}
                     {hasFinancialPerm && !viewingMerchant && (
-                        <div className="mt-3 flex justify-end animate-fadeIn">
+                        <div className="mt-3 flex items-center justify-between animate-fadeIn border-t border-gray-700/50 pt-3">
+                            {/* Status Display */}
+                            <div className="flex items-center gap-2">
+                                {order.isCollected ? (
+                                    <span className="text-[10px] text-blue-400 font-bold px-2 py-1 bg-blue-900/20 border border-blue-500/20 rounded-md">
+                                        تم التحصيل
+                                    </span>
+                                ) : order.isVodafoneCash ? (
+                                    <span className="text-[10px] text-red-400 font-bold px-2 py-1 bg-red-900/20 border border-red-500/20 rounded-md flex items-center gap-1">
+                                        <VodafoneIcon className="w-3 h-3 rounded-full" />
+                                        فودافون كاش
+                                    </span>
+                                ) : order.paymentStatus === 'paid' ? (
+                                    <span className="text-[10px] text-green-400 font-bold px-2 py-1 bg-green-900/20 border border-green-500/20 rounded-md">
+                                        مدفوع (نقدي)
+                                    </span>
+                                ) : (
+                                    <span className="text-[10px] text-gray-400 font-bold px-2 py-1 bg-gray-700/30 border border-gray-600/30 rounded-md">
+                                        غير مدفوع
+                                    </span>
+                                )}
+                            </div>
+
                             <button
                                 onClick={() => setShowPaymentModal(true)}
                                 className="bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg hover:bg-emerald-900/50 transition-all flex items-center gap-2 font-bold text-xs"
