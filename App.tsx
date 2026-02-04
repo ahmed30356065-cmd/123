@@ -547,21 +547,30 @@ const App: React.FC = () => {
                         logAction('update', 'الطلبات', `قام المشرف بتعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
                         firebaseService.sendExternalNotification('driver', { title: "طلب جديد مسند إليك", body: `تم إسناد الطلب ${id} إليك بتكلفة ${fe} ج.م`, targetId: dr, url: `/?target=order&id=${id}` });
                     }}
-                    adminAddOrder={(d) => {
+                    adminAddOrder={async (d) => {
                         const dataArray = Array.isArray(d) ? d : [d];
                         const newOrders: any[] = [];
 
-                        // REMOVED: Inline obsolete calculation
-                        // let currentMax = orders.filter(o => o.id.startsWith('ORD-')).reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
-                        dataArray.forEach(orderData => {
-                            const relevantOrders = [...orders, ...newOrders].filter(o => o.id.startsWith('ORD-') && !o.isArchived);
-                            const currentMax = relevantOrders.reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
-
-                            const newId = `ORD-${currentMax + 1}`;
-                            newOrders.push({ ...orderData, id: newId, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request' });
+                        for (const orderData of dataArray) {
+                            // Use SERVER-SIDE atomic generation (Fixes duplicates)
+                            const newId = await firebaseService.generateUniqueId('ORD-');
+                            newOrders.push({
+                                ...orderData,
+                                id: newId,
+                                status: OrderStatus.Pending,
+                                createdAt: new Date(),
+                                type: 'delivery_request'
+                            });
+                            // Notification is async, don't await block
                             firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${newId} وهو متاح للتوصيل`, url: `/?target=order&id=${newId}` });
-                        });
-                        firebaseService.batchSaveData('orders', newOrders);
+                        }
+
+                        // Optimistic Update
+                        setOrders(prev => [...prev, ...newOrders]);
+
+                        // Batch Save
+                        await firebaseService.batchSaveData('orders', newOrders);
+
                         logAction('create', 'الطلبات', `قام المشرف بإضافة ${newOrders.length} طلبات جديدة`);
                     }}
                     adminAddUser={async (u) => {

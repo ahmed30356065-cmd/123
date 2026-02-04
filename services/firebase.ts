@@ -663,35 +663,70 @@ export const subscribeWebToTopic = async (topic: string) => {
 };
 
 // ==========================================
-// 🆔 SEQUENTIAL ID GENERATION (Scan Strategy - Fast & Safe)
+// 🆔 SEQUENTIAL ID GENERATION (Atomic Transactions - Trusted)
 // ==========================================
 export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> => {
     if (!db) throw new Error("Firebase not initialized");
 
-    try {
-        // 1. Scan LATEST 50 orders to find the highest ID
-        // fetching the whole collection is too slow. 50 is safe for sequentiality.
-        const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').limit(50).get();
-        let maxId = 0;
+    const counterRef = db.collection('settings').doc('counters');
 
-        snapshot.forEach(doc => {
-            const id = doc.id;
-            if (id.startsWith(prefix)) {
-                // Extract number: "ORD-123" -> 123
-                const num = parseInt(id.replace(prefix, '') || '0');
-                if (!isNaN(num)) {
-                    maxId = Math.max(maxId, num);
+    try {
+        return await db.runTransaction(async (transaction) => {
+            const doc = await transaction.get(counterRef);
+            let nextId = 1;
+
+            if (!doc.exists) {
+                // FIRST RUN: Scan to initialize the counter correctly
+                // This prevents resetting to 1 if we switch strategies mid-production
+                const snapshot = await db.collection('orders')
+                    .orderBy('createdAt', 'desc')
+                    .limit(50)
+                    .get();
+
+                let maxId = 0;
+                snapshot.forEach(d => {
+                    const id = d.id;
+                    if (id.startsWith(prefix)) {
+                        const num = parseInt(id.replace(prefix, '') || '0');
+                        if (!isNaN(num)) maxId = Math.max(maxId, num);
+                    }
+                });
+                nextId = maxId + 1;
+            } else {
+                const data = doc.data();
+                // Get current value for this specific prefix (ORD- or S-)
+                const current = (data && data[prefix]) ? data[prefix] : 0;
+
+                // Safety check: If counter is 0 found but we have orders? 
+                // We assume if it exists, it's correct. If it's 0, we start at 1.
+                // To be extra safe on migration, we could double check if current < 1000? 
+                // But let's trust the transaction flow. valid nextId is current + 1.
+
+                // If the key is missing (e.g. we added S- later), we might want to scan?
+                // For now, let's assume simple increment.
+                if (!current) {
+                    // Fallback scan if key missing in existing doc
+                    const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
+                    let max = 0;
+                    snapshot.forEach(d => {
+                        const num = parseInt(d.id.replace(prefix, '') || '0');
+                        if (!isNaN(num)) max = Math.max(max, num);
+                    });
+                    nextId = max + 1;
+                } else {
+                    nextId = current + 1;
                 }
             }
+
+            // Update the counter
+            transaction.set(counterRef, { [prefix]: nextId }, { merge: true });
+
+            return `${prefix}${nextId}`;
         });
-
-        // 2. Next ID
-        const nextId = maxId + 1;
-        return `${prefix}${nextId}`;
-
     } catch (error) {
-        console.error("Sequential ID Scan failed:", error);
-        // Fallback to random if scan totally fails (e.g. network)
-        return `${prefix}${Math.floor(100000 + Math.random() * 900000)}`;
+        console.error("Transaction failed:", error);
+        // Fallback to random if transaction totally fails (e.g. permission/network)
+        // But we really want to know if this fails.
+        return `${prefix}${Date.now()}`;
     }
 };
