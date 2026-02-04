@@ -119,7 +119,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
     };
 
     return (
-        <div className={`bg - gray - 800 rounded - 2xl p - 4 space - y - 3 transition - all border shadow - sm hover: shadow - md relative overflow - hidden group ${isShoppingOrder ? 'border-purple-500/30' : 'border-gray-700'} `}>
+        <div className={`bg-gray-800 rounded-2xl p-4 space-y-3 transition-all border shadow-sm hover:shadow-md relative overflow-hidden group ${isShoppingOrder ? 'border-purple-500/30' : 'border-gray-700'}`}>
             {isShoppingOrder && (
                 <div className="absolute top-0 left-0 bg-purple-600 text-white text-[9px] px-2 py-0.5 rounded-br-lg font-bold z-10">
                     تسوق خاص
@@ -321,11 +321,11 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                 <div className="flex items-center justify-between">
                     <div className="flex items-center">
                         <div className="p-1.5 bg-gray-700 rounded-full ml-2 border border-gray-600">
-                            <TruckIconV2 className={`w - 3.5 h - 3.5 ${driver.name !== 'لم يعين' ? 'text-blue-400' : 'text-gray-500'} `} />
+                            <TruckIconV2 className={`w-3.5 h-3.5 ${driver.name !== 'لم يعين' ? 'text-blue-400' : 'text-gray-500'}`} />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-[10px] text-gray-500">مندوب التوصيل</span>
-                            <span className={`text - xs font - bold ${driver.name === 'لم يعين' ? 'text-gray-500 italic' : 'text-white'} `}>
+                            <span className={`text-xs font-bold ${driver.name === 'لم يعين' ? 'text-gray-500 italic' : 'text-white'}`}>
                                 {driver.name}
                             </span>
                         </div>
@@ -640,6 +640,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
 
             {/* Orders List */}
             <div className="p-4 space-y-3 pb-24">
+                <p className="text-[10px] text-yellow-500 font-mono text-center">List Count Debug: {visibleOrders.length}</p>
                 {visibleOrders.length === 0 ? (
                     <div className="flex flex-col items-center justify-center text-center text-gray-500 py-20 bg-gray-800/20 rounded-3xl border border-dashed border-gray-700 mt-4">
                         <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-4 shadow-inner">
