@@ -804,7 +804,7 @@ export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Pr
     const counterRef = db.collection('settings').doc('counters');
 
     try {
-        return await db.runTransaction(async (transaction) => {
+        const transactionPromise = db.runTransaction(async (transaction) => {
             const doc = await transaction.get(counterRef);
             let nextIdStart = 1;
 
@@ -853,13 +853,60 @@ export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Pr
             console.log(`[BatchID] Generated ${count} IDs: ${ids[0]} to ${ids[ids.length - 1]}`);
             return ids;
         });
+
+        // 🚀 SPEED: Race against a timeout (2.5s)
+        return await Promise.race([
+            transactionPromise,
+            new Promise<string[]>((_, reject) => setTimeout(() => reject(new Error("Transaction timeout")), 2500))
+        ]);
+
     } catch (error) {
-        console.error("Batch ID Gen failed:", error);
-        // Fallback to timestamp loop (risky but better than crash)
-        const ids: string[] = [];
-        for (let i = 0; i < count; i++) {
-            ids.push(`${prefix}${Date.now()}_${i}`);
+        console.error("Batch ID Gen failed/timedout, switching to smart fallback:", error);
+
+        try {
+            // 🛡️ ACCURACY: Read Max ID directly from Orders
+            // Smart Logic: Ignore "Timestamp" IDs (usually > 10 digits) to preserve the clean sequence.
+            const snapshot = await db!.collection('orders')
+                .orderBy('createdAt', 'desc')
+                .limit(50)
+                .get();
+
+            let maxId = 0;
+            snapshot.forEach(d => {
+                const id = d.id;
+                if (id.startsWith(prefix)) {
+                    const numStr = id.replace(prefix, '') || '0';
+                    const num = parseInt(numStr);
+
+                    // HEURISTIC: Timestamp IDs are usually huge (e.g. 1700000000000).
+                    // Sequential IDs are usually < 1,000,000.
+                    // We only count it if it looks like a sequence ID (less than 1 billion).
+                    if (!isNaN(num) && num < 1000000000) {
+                        maxId = Math.max(maxId, num);
+                    }
+                }
+            });
+
+            const start = maxId + 1;
+            const ids: string[] = [];
+            for (let i = 0; i < count; i++) {
+                ids.push(`${prefix}${start + i}`);
+            }
+            console.log(`[BatchID-Fallback] Generated ${count} IDs from max ${maxId} (Smart Filter)`);
+
+            // Try to repair counter if possible
+            db!.collection('settings').doc('counters').set({ [prefix]: start + count - 1 }, { merge: true }).catch(() => { });
+
+            return ids;
+
+        } catch (fallbackError) {
+            console.error("Critical Fallback failed:", fallbackError);
+            // Worst Case: Timestamp
+            const ids: string[] = [];
+            for (let i = 0; i < count; i++) {
+                ids.push(`${prefix}${Date.now()}_${i}`);
+            }
+            return ids;
         }
-        return ids;
     }
 };
