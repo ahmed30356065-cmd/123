@@ -72,6 +72,7 @@ interface AdminPanelProps {
     onUpdatePointsConfig: (config: any) => void;
     appConfig?: AppConfig;
     onUpdateAppConfig?: (config: AppConfig) => void;
+    logAction: (actionType: 'create' | 'update' | 'delete' | 'financial', target: string, details: string) => void;
 }
 
 const SideMenuItem: React.FC<{ icon: React.ReactNode, label: string, onClick: () => void, isActive?: boolean, danger?: boolean }> = ({ icon, label, onClick, isActive, danger }) => (
@@ -184,15 +185,33 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const handleBulkAssign = useCallback(async (driverId: string, fee: number) => {
         const pendingOrders = props.orders.filter(o => o.status === OrderStatus.Pending && !o.driverId);
         if (pendingOrders.length === 0) return;
+
         const updates = pendingOrders.map(o => ({
-            ...o,
+            id: o.id,
             driverId,
             deliveryFee: fee,
             status: OrderStatus.InTransit
         }));
+
         await props.onBulkUpdate(updates);
+
+        // Optimize: Single Log + Single Notification
+        const driver = props.users.find(u => u.id === driverId);
+        const driverName = driver ? driver.name : 'المندوب';
+
+        props.logAction('update', 'الطلبات', `تم تعيين ${updates.length} طلب دفعة واحدة للمندوب ${driverName}`);
         props.showNotification(`تم تعيين ${updates.length} طلب للمندوب بنجاح`, 'success');
-    }, [props.orders, props.onBulkUpdate, props.showNotification]);
+
+        // Single Notification to Driver
+        if (driver) {
+            firebaseService.sendExternalNotification('driver', {
+                title: "مجموعة طلبات جديدة 📦",
+                body: `تم إسناد ${updates.length} طلب جديد إليك. يرجى مراجعة التطبيق.`,
+                targetId: driverId,
+                url: `/?target=orders`
+            });
+        }
+    }, [props.orders, props.onBulkUpdate, props.showNotification, props.users, props.logAction]);
 
     const handleBulkStatusUpdate = useCallback(async (status: OrderStatus) => {
         let updates: any[] = [];

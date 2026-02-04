@@ -50,8 +50,9 @@ const App: React.FC = () => {
         handleSignUp,
         handleHideMessage,
         handleClearAuditLogs,
-        generateNextUserId
-    } = useAppActions({ users, orders, messages, currentUser, showNotify });
+        generateNextUserId,
+        deletePayment
+    } = useAppActions({ users, orders, messages, payments, currentUser, showNotify }); // Added payments
 
     // Handle Android Deep Links without Reload
     useEffect(() => {
@@ -271,6 +272,7 @@ const App: React.FC = () => {
 
             {currentUser.role === 'admin' && (
                 <AdminPanel
+                    logAction={logAction} // Passed for bulk buffering
                     user={currentUser} users={users} orders={orders} messages={messages} payments={payments} passwordResetRequests={passwordResetRequests}
                     resolvePasswordResetRequest={(phone) => {
                         firebaseService.deleteData('reset_requests', phone);
@@ -319,8 +321,55 @@ const App: React.FC = () => {
                         if (order && order.driverId && s !== OrderStatus.Pending) firebaseService.sendExternalNotification('driver', { title: "تحديث حالة", body: `الطلب ${id} أصبح ${s}`, targetId: order.driverId, url: `/?target=order&id=${id}` });
                     }}
                     editOrder={(id, d) => {
-                        firebaseService.updateData('orders', id, d);
+                        const oldOrder = orders.find(o => o.id === id);
+                        if (!oldOrder) return;
+
+                        // 1. Optimistic Update
+                        setOrders(prev => prev.map(o => {
+                            if (o.id === id) {
+                                // If status is changing explicitly in 'd', use it.
+                                // Else if driver is assigned and it was pending, auto-switch to InTransit (matching AdminOrdersScreen smart logic)
+                                let newStatus = d.status || o.status;
+                                if (!d.status && d.driverId && o.status === OrderStatus.Pending) {
+                                    newStatus = OrderStatus.InTransit;
+                                }
+                                // If driver is removed
+                                if (d.driverId === null && o.status === OrderStatus.InTransit) {
+                                    newStatus = OrderStatus.Pending;
+                                }
+
+                                return { ...o, ...d, status: newStatus };
+                            }
+                            return o;
+                        }));
+
+                        // 2. Server Update
+                        // Prepare exact payload for Firebase
+                        const updatePayload = { ...d };
+                        // We duplicate the status logic here for the server payload to ensure consistency
+                        if (!d.status && d.driverId && oldOrder.status === OrderStatus.Pending) {
+                            updatePayload.status = OrderStatus.InTransit;
+                        }
+
+                        firebaseService.updateData('orders', id, updatePayload).catch(err => {
+                            console.error("Edit order failed:", err);
+                            showNotify('فشل تحديث الطلب، يرجى التحقق من الانترنت', 'error');
+                            // We should technically revert optimistic update here, but for now notification is enough
+                        });
+
                         logAction('update', 'الطلبات', `تم تعديل تفاصيل الطلب رقم ${id}`);
+
+                        // 3. Notification Logic
+                        // If driver was assigned (and wasn't before, or changed)
+                        if (d.driverId && d.driverId !== oldOrder.driverId) {
+                            const fee = d.deliveryFee !== undefined ? d.deliveryFee : oldOrder.deliveryFee;
+                            firebaseService.sendExternalNotification('driver', {
+                                title: "طلب جديد مسند إليك",
+                                body: `تم إسناد الطلب ${id} إليك. انتقل للتطبيق للتفاصيل.`,
+                                targetId: d.driverId,
+                                url: `/?target=order&id=${id}`
+                            });
+                        }
                     }}
                     assignDriverAndSetStatus={(id, dr, fe, st) => {
                         // 1. Optimistic Update

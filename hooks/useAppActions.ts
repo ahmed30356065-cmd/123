@@ -7,11 +7,12 @@ interface UseAppActionsProps {
     users: User[];
     orders: Order[];
     messages: any[];
+    payments?: any[]; // Added payments prop
     currentUser: User | null;
     showNotify: (msg: string, type: 'success' | 'error' | 'info', silent?: boolean) => void;
 }
 
-export const useAppActions = ({ users, orders, messages, currentUser, showNotify }: UseAppActionsProps) => {
+export const useAppActions = ({ users, orders, messages, payments = [], currentUser, showNotify }: UseAppActionsProps) => {
 
     const generateNextUserId = (allUsers: User[]) => {
         const maxId = allUsers.reduce((max, u) => {
@@ -204,9 +205,32 @@ export const useAppActions = ({ users, orders, messages, currentUser, showNotify
         }
     };
 
-    const deletePayment = (paymentId: string) => {
+    const deletePayment = async (paymentId: string) => {
+        // 1. Find the payment to get linked orders
+        // Use the passed payments prop if available, otherwise we might fail to unreconcile if not provided.
+        // Assuming payments are passed from App.tsx
+        const payment = payments?.find(p => p.id === paymentId);
+
+        if (payment && payment.reconciledOrderIds && payment.reconciledOrderIds.length > 0) {
+            // 2. Un-reconcile orders
+            const orderUpdates = payment.reconciledOrderIds.map((oid: string) => ({
+                id: oid,
+                reconciled: false
+            }));
+
+            try {
+                await firebaseService.batchSaveData('orders', orderUpdates);
+                console.log(`Un-reconciled ${orderUpdates.length} orders for payment ${paymentId}`);
+            } catch (e) {
+                console.error("Failed to un-reconcile orders:", e);
+                showNotify('فشل استعادة حالة الطلبات، لكن سيتم حذف السجل', 'error');
+            }
+        }
+
+        // 3. Delete the payment record
         firebaseService.deleteData('payments', paymentId);
         logAction('financial', 'المدفوعات', `تم حذف عملية الدفع رقم ${paymentId}`);
+        showNotify('تم حذف عملية الدفع واستعادة مديونية الطلبات', 'success');
     };
 
     return {
