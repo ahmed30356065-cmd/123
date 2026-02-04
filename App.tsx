@@ -691,7 +691,8 @@ const App: React.FC = () => {
                             const relevantOrders = orders.filter(o => o.id.startsWith(prefix) && !o.isArchived);
                             maxId = relevantOrders.reduce((max, o) => {
                                 const num = parseInt(o.id.replace(prefix, '') || '0');
-                                return !isNaN(num) ? Math.max(max, num) : max;
+                                // Filter out timestamps (large numbers) to preserve sequence
+                                return (!isNaN(num) && num < 1000000) ? Math.max(max, num) : max;
                             }, 0);
                         }
 

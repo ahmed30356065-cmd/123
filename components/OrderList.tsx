@@ -211,8 +211,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </div>
                     )}
 
-                    {/* ADVANCED FINANCIAL CONTROL PANEL */}
-                    {hasFinancialPerm && (
+                    {/* ADVANCED FINANCIAL CONTROL PANEL - Admin/Supervisor Only */}
+                    {hasFinancialPerm && !viewingMerchant && (
                         <div className="mt-4 bg-gray-800/80 p-3 rounded-lg border border-emerald-500/30 animate-fadeIn">
                             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-700/50">
                                 <BanknoteIcon className="w-4 h-4 text-emerald-400" />
