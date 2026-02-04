@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Order, OrderStatus, User, AppTheme } from '../../types';
-import { PhoneIcon, WhatsAppIcon, MapPinIcon, BuildingStorefrontIcon, ClockIcon, ClipboardListIcon, ShoppingCartIcon, CheckCircleIcon, SparklesIcon, UserIcon, DollarSignIcon, CalendarIcon, RocketIcon } from '../icons';
+import { PhoneIcon, WhatsAppIcon, MapPinIcon, BuildingStorefrontIcon, ClockIcon, ClipboardListIcon, ShoppingCartIcon, CheckCircleIcon, SparklesIcon, UserIcon, DollarSignIcon, CalendarIcon, RocketIcon, BanknoteIcon } from '../icons';
 
 interface OrderDetailsScreenProps {
     order: Order;
@@ -182,9 +182,9 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                             <>
                                 <div className="flex items-center justify-between mb-3 relative z-10">
                                     <div className="flex items-center gap-2">
-                                        <ClipboardListIcon className="w-4 h-4 text-purple-500" />
+                                        <BanknoteIcon className="w-4 h-4 text-green-400" />
                                         <h4 className="text-xs font-bold text-gray-300">
-                                            {(order.items && order.items.length > 0) ? 'قائمة المنتجات' : 'تفاصيل الطلب'}
+                                            سعر الطلب
                                         </h4>
                                     </div>
                                     <span className={`text-xs font-bold ${order.isVodafoneCash ? 'text-green-400' : 'text-white'} bg-black/20 px-2 py-0.5 rounded`}>
@@ -192,8 +192,8 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                                     </span>
                                 </div>
 
-                                {/* Show details only if allowed */}
-                                {(merchant?.canManageOrderDetails !== false) && (
+                                {/* Collect Button - Show only if assigned and valid for collection */}
+                                {!order.isCollected && order.assignedTo && (
                                     <div className="space-y-3 relative z-10">
                                         {order.items?.map((item, idx) => (
                                             <div key={idx} className="flex justify-between items-center bg-[#1A1A1A] p-2 rounded-lg border border-white/5">

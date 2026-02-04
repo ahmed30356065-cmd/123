@@ -152,7 +152,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             </div>
 
                             {/* Collect Button - Show only if assigned and valid for collection */}
-                            {(!isPaid || order.isVodafoneCash) && !order.isCollected && order.assignedTo && (
+                            {!order.isCollected && order.assignedTo && (
                                 <div className="flex justify-start">
                                     <button
                                         onClick={handleCollect}
