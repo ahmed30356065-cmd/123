@@ -65,7 +65,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
             // إرسال إشعار للمندوب عند تأكيد التحصيل
             if (order.assignedTo || order.driverId) {
                 try {
-                    const priceText = order.totalPrice ? `${order.totalPrice.toFixed(2)} ج.م` : '';
+                    const priceText = order.totalPrice ? `${Math.floor(order.totalPrice)} ج.م` : '';
                     await sendExternalNotification('driver', {
                         title: '✅ تأكيد استلام المبلغ',
                         body: `تم تأكيد استلام مبلغ ${priceText} للطلب #${order.customOrderNumber || order.id}`,
@@ -95,8 +95,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             #{order.id}
                         </span>
 
-                        {/* Show Custom Order Number only if NOT collected */}
-                        {viewingMerchant?.canManageOrderDetails && order.customOrderNumber && !order.isCollected && (
+                        {/* Show Custom Order Number - Always visible for merchant */}
+                        {viewingMerchant?.canManageOrderDetails && order.customOrderNumber && (
                             <span className="font-mono text-xs text-blue-400 bg-blue-900/10 px-2 py-0.5 rounded-md border border-blue-900/30 font-bold tracking-wider">
                                 #{order.customOrderNumber}
                             </span>
@@ -127,17 +127,17 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     {viewingMerchant && !order.isCollected && (
                         <div className="mt-3 animate-fadeIn space-y-3">
                             {/* Price Display */}
-                            <div className={`bg-gradient-to-br ${isPaid && !order.isVodafoneCash ? 'from-green-600/20 to-green-800/20 border-green-500/30' : 'from-red-600/20 to-red-800/20 border-red-500/30'} border rounded-lg p-3`}>
+                            <div className={`bg-gradient-to-br ${isPaid ? 'from-green-600/20 to-green-800/20 border-green-500/30' : 'from-red-600/20 to-red-800/20 border-red-500/30'} border rounded-lg p-3`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <div className={`${isPaid && !order.isVodafoneCash ? 'bg-green-600/30' : 'bg-red-600/30'} p-2 rounded-lg`}>
-                                            <BanknoteIcon className={`w-5 h-5 ${isPaid && !order.isVodafoneCash ? 'text-green-400' : 'text-red-400'}`} />
+                                        <div className={`${isPaid ? 'bg-green-600/30' : 'bg-red-600/30'} p-2 rounded-lg`}>
+                                            <BanknoteIcon className={`w-5 h-5 ${isPaid ? 'text-green-400' : 'text-red-400'}`} />
                                         </div>
                                         <div>
-                                            <p className={`text-[10px] font-medium ${isPaid && !order.isVodafoneCash ? 'text-green-400/80' : 'text-red-400/80'}`}>
-                                                {isPaid && !order.isVodafoneCash ? 'المبلغ المدفوع' : 'المبلغ المطلوب'}
+                                            <p className={`text-[10px] font-medium ${isPaid ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                                                {isPaid ? (order.isVodafoneCash ? 'فودافون كاش' : 'المبلغ المدفوع') : 'المبلغ المطلوب'}
                                             </p>
-                                            <p className={`text-lg font-bold ${isPaid && !order.isVodafoneCash ? 'text-green-400' : 'text-red-400'}`}>
+                                            <p className="text-lg font-bold text-white">
                                                 {Math.floor(order.totalPrice || 0)} ج.م
                                             </p>
                                         </div>

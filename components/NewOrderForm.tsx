@@ -64,16 +64,39 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
         const orderData: any = { customer: { ...customer }, notes };
 
         if (merchant?.canManageOrderDetails) {
+            // Validation for Custom Fields
+            if (!customOrderNumber.trim()) {
+                setError('يرجى إدخال رقم الطلب.');
+                setStatus('idle');
+                return;
+            }
+
             if (customOrderNumber) orderData.customOrderNumber = customOrderNumber;
 
             // Map the 3-way toggle to data model
             if (paymentOption === 'vodafone_cash') {
+                if (!cashAmount || parseFloat(cashAmount) <= 0) {
+                    setError('يرجى إدخال مبلغ فودافون كاش.');
+                    setStatus('idle');
+                    return;
+                }
                 orderData.paymentStatus = 'paid';
                 orderData.isVodafoneCash = true;
                 if (cashAmount) orderData.cashAmount = parseFloat(cashAmount);
             } else {
                 orderData.paymentStatus = paymentOption;
                 orderData.isVodafoneCash = false;
+
+                if (paymentOption === 'paid' && (!paidAmount || parseFloat(paidAmount) <= 0)) {
+                    setError('يرجى إدخال المبلغ المدفوع.');
+                    setStatus('idle');
+                    return;
+                }
+                if (paymentOption === 'unpaid' && (!unpaidAmount || parseFloat(unpaidAmount) <= 0)) {
+                    setError('يرجى إدخال المبلغ المطلوب (غير المدفوع).');
+                    setStatus('idle');
+                    return;
+                }
             }
 
             // Add payment amounts and calculate totalPrice
