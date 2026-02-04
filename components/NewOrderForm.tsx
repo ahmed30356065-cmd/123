@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Customer, User } from '../types';
-import { ClipboardPlusIcon, CheckCircleIcon, ClipboardListIcon, PhoneIcon, MapPinIcon } from './icons';
+import { ClipboardPlusIcon, CheckCircleIcon, ClipboardListIcon, PhoneIcon, MapPinIcon, XCircleIcon, BanknoteIcon, VodafoneIcon } from './icons';
 
 interface NewOrderFormProps {
     addOrder: (order: { customer: Customer, notes?: string, customOrderNumber?: string, paymentStatus?: 'paid' | 'unpaid', isVodafoneCash?: boolean }) => Promise<void> | void;
@@ -163,24 +163,39 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                         <div>
                             <label className="block text-xs font-bold text-neutral-400 mb-1.5">حالة الدفع</label>
                             <div className="flex bg-gray-700 rounded-lg p-1 border border-gray-600 gap-1">
-                                {([
-                                    { id: 'unpaid', label: 'غير مدفوع', icon: '❌' },
-                                    { id: 'paid', label: 'مدفوع', icon: '✓' },
-                                    { id: 'vodafone_cash', label: 'كاش', icon: '💰' }
-                                ] as const).map(opt => (
-                                    <button
-                                        key={opt.id}
-                                        type="button"
-                                        onClick={() => setPaymentOption(opt.id)}
-                                        className={`flex-1 py-2 px-2 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === opt.id
-                                            ? (opt.id === 'unpaid' ? 'bg-red-500 text-white shadow-lg' : opt.id === 'paid' ? 'bg-green-600 text-white shadow-lg' : 'bg-red-800 text-white shadow-lg')
-                                            : 'text-gray-400 hover:text-white hover:bg-gray-600'
-                                            }`}
-                                    >
-                                        <span>{opt.icon}</span>
-                                        <span>{opt.label}</span>
-                                    </button>
-                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentOption('unpaid')}
+                                    className={`flex-1 py-2 px-2 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === 'unpaid'
+                                        ? 'bg-red-500 text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                                        }`}
+                                >
+                                    <XCircleIcon className="w-3.5 h-3.5" />
+                                    <span>غير مدفوع</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentOption('paid')}
+                                    className={`flex-1 py-2 px-2 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === 'paid'
+                                        ? 'bg-green-600 text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                                        }`}
+                                >
+                                    <CheckCircleIcon className="w-3.5 h-3.5" />
+                                    <span>مدفوع</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentOption('vodafone_cash')}
+                                    className={`flex-1 py-2 px-2 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === 'vodafone_cash'
+                                        ? 'bg-red-800 text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                                        }`}
+                                >
+                                    <VodafoneIcon className="w-4 h-4" />
+                                    <span>فودافون كاش</span>
+                                </button>
                             </div>
                         </div>
 

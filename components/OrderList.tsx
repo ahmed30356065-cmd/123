@@ -1,8 +1,8 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, User, OrderStatus } from '../types';
 import OrderStatusBadge from './OrderStatusBadge';
-import { PhoneIcon, WhatsAppIcon, EmptyBoxIcon, SearchIcon, ChartBarIcon, UserIcon, ClockIcon, CalendarIcon, ShoppingCartIcon, RocketIcon, CheckCircleIcon, XIcon, TruckIconV2, ClipboardListIcon } from './icons';
+import { PhoneIcon, WhatsAppIcon, UserIcon, ClockIcon, ShoppingCartIcon, RocketIcon, CheckCircleIcon, TruckIconV2, BanknoteIcon, XCircleIcon, ChartBarIcon, SearchIcon, ClipboardListIcon, CalendarIcon, EmptyBoxIcon } from './icons';
+import { sendExternalNotification } from '../services/firebase';
 
 interface MerchantOrderCardProps {
     order: Order;
@@ -57,9 +57,23 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
         setShowCollectModal(true);
     };
 
-    const confirmCollect = () => {
+    const confirmCollect = async () => {
         if (onUpdateOrder) {
             onUpdateOrder(order.id, { isCollected: true });
+
+            // إرسال إشعار للمندوب عند تأكيد التحصيل
+            if (order.assignedTo && order.totalPrice) {
+                try {
+                    await sendExternalNotification('driver', {
+                        title: 'تأكيد استلام المبلغ',
+                        body: `تم تأكيد استلام مبلغ ${order.totalPrice.toFixed(2)} ج.م من الطلب ${order.customOrderNumber || order.id}`,
+                        targetId: order.assignedTo
+                    });
+                    console.log('تم إرسال إشعار التحصيل للمندوب');
+                } catch (error) {
+                    console.error('فشل إرسال إشعار التحصيل:', error);
+                }
+            }
         }
         setShowCollectModal(false);
     };
@@ -107,29 +121,49 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </p>
                     </div>
 
-                    {/* Payment Status & Collection - Only show if NOT paid and NOT collected */}
+                    {/* Payment Status & Collection - Enhanced Professional Layout */}
                     {viewingMerchant?.canManageOrderDetails && !isPaid && !order.isCollected && (
-                        <div className="mt-2 flex items-center gap-2 flex-wrap animate-fadeIn">
-                            <span className="text-[10px] font-bold bg-red-600/20 text-red-400 px-2 py-1 rounded-md border border-red-600/20">
-                                غير مدفوع
-                            </span>
+                        <div className="mt-3 animate-fadeIn">
+                            {/* Price Display - Prominent */}
+                            <div className="bg-gradient-to-br from-red-600/20 to-red-800/20 border border-red-500/30 rounded-lg p-3 mb-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-red-600/30 p-2 rounded-lg">
+                                            <BanknoteIcon className="w-5 h-5 text-red-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-red-400/80 font-medium">المبلغ المطلوب</p>
+                                            <p className="text-lg font-bold text-red-400">{order.totalPrice?.toFixed(2) || '0.00'} ج.م</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] font-bold bg-red-600/30 text-red-300 px-2.5 py-1.5 rounded-md border border-red-500/30">
+                                        في انتظار الدفع
+                                    </span>
+                                </div>
+                            </div>
 
-                            <button
-                                onClick={handleCollect}
-                                className="text-[10px] font-bold bg-blue-600 text-white px-3 py-1 rounded-md shadow hover:bg-blue-700 transition-colors flex items-center gap-1"
-                            >
-                                <CheckCircleIcon className="w-3 h-3" />
-                                تحصيل
-                            </button>
+                            {/* Collect Button - Left Aligned */}
+                            <div className="flex justify-start">
+                                <button
+                                    onClick={handleCollect}
+                                    className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 font-bold text-sm"
+                                >
+                                    <CheckCircleIcon className="w-4 h-4" />
+                                    تأكيد التحصيل
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     {/* Show "Paid" status if paid OR collected */}
                     {viewingMerchant?.canManageOrderDetails && (isPaid || order.isCollected) && (
-                        <div className="mt-2 animate-fadeIn">
-                            <span className="text-[10px] font-bold bg-green-600/20 text-green-400 px-2 py-1 rounded-md border border-green-600/20">
-                                تم الدفع {order.isVodafoneCash ? '(فودافون كاش)' : ''}
-                            </span>
+                        <div className="mt-3 animate-fadeIn">
+                            <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 border border-green-500/30 rounded-lg p-2.5">
+                                <span className="text-xs font-bold text-green-400 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-4 h-4" />
+                                    تم الدفع {order.isVodafoneCash ? '(فودافون كاش)' : ''}
+                                </span>
+                            </div>
                         </div>
                     )}
 
@@ -153,10 +187,11 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                 {order.totalPrice.toLocaleString('en-US')} ج.م
                             </p>
                         )}
-                        {/* For non-merchant users or if no special permissions, always show price */}
-                        {!viewingMerchant?.canManageOrderDetails && order.totalPrice && (
-                            <p className="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-1 rounded-lg border border-green-500/10">
-                                {order.totalPrice.toLocaleString('en-US')} ج.م
+                        {/* For non-merchants, always show price if available */}
+                        {!viewingMerchant?.canManageOrderDetails && order.totalPrice !== undefined && (
+                            <p className="text-xs text-gray-400 flex items-center gap-1 bg-gray-700/30 px-2 py-1 rounded-lg">
+                                <BanknoteIcon className="w-3 h-3" />
+                                <span className="font-bold text-red-400">{order.totalPrice.toFixed(2)} ج.م</span>
                             </p>
                         )}
                     </div>
