@@ -5,7 +5,7 @@ import OrderStatusBadge from './OrderStatusBadge';
 import {
     MapPinIcon, PhoneIcon, ClockIcon, CheckCircleIcon, XCircleIcon,
     UserIcon, TruckIconV2, ChartBarIcon, SearchIcon, FilterIcon,
-    RefreshIcon, BanknoteIcon, EditIcon, RocketIcon
+    RefreshIcon, BanknoteIcon, EditIcon, RocketIcon, ClipboardListIcon, CalendarIcon, VodafoneIcon, EmptyBoxIcon
 } from './icons';
 import { sendExternalNotification } from '../services/firebase';
 
@@ -160,8 +160,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </p>
                     </div>
 
-                    {/* Price and Payment Status - Show ONLY if NOT collected AND NOT Vodafone Cash */}
-                    {viewingMerchant && !order.isCollected && !order.isVodafoneCash && (
+                    {/* Price and Payment Status - Show ONLY if NOT collected AND NOT Vodafone Cash AND has permission */}
+                    {viewingMerchant && hasFinancialPerm && !order.isCollected && !order.isVodafoneCash && (
                         <div className="mt-3 animate-fadeIn space-y-3">
                             {/* Price Display */}
                             {isPaid ? (
