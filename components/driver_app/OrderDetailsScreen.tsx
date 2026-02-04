@@ -188,7 +188,7 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                                         </h4>
                                     </div>
                                     <span className={`text-xs font-bold ${order.isVodafoneCash ? 'text-green-400' : 'text-white'} bg-black/20 px-2 py-0.5 rounded`}>
-                                        {order.isVodafoneCash ? 'تم الدفع (فودافون)' : `${productTotal} ج.م`}
+                                        {order.isVodafoneCash ? 'تم الدفع (فودافون)' : `${Math.floor(productTotal)} ج.م`}
                                     </span>
                                 </div>
 

@@ -123,8 +123,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </p>
                     </div>
 
-                    {/* Price and Payment Status - Always show for merchant */}
-                    {viewingMerchant && (
+                    {/* Price and Payment Status - Show ONLY if NOT collected */}
+                    {viewingMerchant && !order.isCollected && (
                         <div className="mt-3 animate-fadeIn space-y-3">
                             {/* Price Display */}
                             <div className={`bg-gradient-to-br ${isPaid && !order.isVodafoneCash ? 'from-green-600/20 to-green-800/20 border-green-500/30' : 'from-red-600/20 to-red-800/20 border-red-500/30'} border rounded-lg p-3`}>
@@ -138,13 +138,13 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                                 {isPaid && !order.isVodafoneCash ? 'المبلغ المدفوع' : 'المبلغ المطلوب'}
                                             </p>
                                             <p className={`text-lg font-bold ${isPaid && !order.isVodafoneCash ? 'text-green-400' : 'text-red-400'}`}>
-                                                {order.totalPrice?.toFixed(2) || '0.00'} ج.م
+                                                {Math.floor(order.totalPrice || 0)} ج.م
                                             </p>
                                         </div>
                                     </div>
                                     <span className={`text-[10px] font-bold px-2.5 py-1.5 rounded-md border ${isPaid
-                                            ? 'bg-green-600/30 text-green-300 border-green-500/30'
-                                            : 'bg-red-600/30 text-red-300 border-red-500/30'
+                                        ? 'bg-green-600/30 text-green-300 border-green-500/30'
+                                        : 'bg-red-600/30 text-red-300 border-red-500/30'
                                         }`}>
                                         {isPaid ? (order.isVodafoneCash ? 'فودافون كاش' : 'تم الدفع') : 'في انتظار الدفع'}
                                     </span>
