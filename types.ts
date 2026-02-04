@@ -141,6 +141,7 @@ export interface Order {
   status: OrderStatus;
   deliveryFee?: number;
   regionPrice?: number;
+  type?: 'delivery_request' | 'shopping_order' | string; // Fix: Added missing type field
   createdAt: Date;
   deliveryLocation?: {
     latitude: number;

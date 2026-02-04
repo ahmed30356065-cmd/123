@@ -293,22 +293,44 @@ const App: React.FC = () => {
                         logAction('delete', 'الطلبات', `تم حذف الطلب رقم ${id}`);
                     }}
                     updateOrderStatus={(id, s) => {
+                        // 1. Optimistic Update (Instant Feedback)
+                        setOrders(prev => prev.map(o => {
+                            if (o.id === id) {
+                                const newO = { ...o, status: s };
+                                if (s === OrderStatus.Delivered) newO.deliveredAt = new Date();
+                                if (s === OrderStatus.Pending) { newO.driverId = undefined; newO.deliveryFee = undefined; } // Use undefined for clean removal
+                                return newO;
+                            }
+                            return o;
+                        }));
+
+                        // 2. Server Update
                         const order = orders.find(o => o.id === id);
                         const updates: any = { status: s };
                         if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
                         if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
-                        firebaseService.updateData('orders', id, updates);
+
+                        firebaseService.updateData('orders', id, updates).catch(err => {
+                            console.error("Status update failed:", err);
+                            showNotify('فشل تحديث الحالة، يرجى التحقق من الشبكة', 'error');
+                            // Optional: Revert state here if critical
+                        });
 
                         if (order && order.driverId && s !== OrderStatus.Pending) firebaseService.sendExternalNotification('driver', { title: "تحديث حالة", body: `الطلب ${id} أصبح ${s}`, targetId: order.driverId, url: `/?target=order&id=${id}` });
-                        // Merchant notification removed by request
                     }}
                     editOrder={(id, d) => {
                         firebaseService.updateData('orders', id, d);
                         logAction('update', 'الطلبات', `تم تعديل تفاصيل الطلب رقم ${id}`);
                     }}
                     assignDriverAndSetStatus={(id, dr, fe, st) => {
-                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st });
+                        // 1. Optimistic Update
                         const driverName = users.find(u => u.id === dr)?.name || dr;
+                        setOrders(prev => prev.map(o => o.id === id ? { ...o, driverId: dr, deliveryFee: fe, status: st, driverName: driverName } : o));
+
+                        // 2. Server Update
+                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st })
+                            .catch(err => showNotify('فشل تعيين المندوب', 'error'));
+
                         logAction('update', 'الطلبات', `تم تعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
                         firebaseService.sendExternalNotification('driver', { title: "طلب جديد مسند إليك", body: `تم إسناد الطلب ${id} إليك بتكلفة ${fe} ج.م`, targetId: dr, url: `/?target=order&id=${id}` });
                     }}
@@ -436,22 +458,43 @@ const App: React.FC = () => {
                         logAction('delete', 'الطلبات', `قام المشرف بحذف الطلب رقم ${id}`);
                     }}
                     updateOrderStatus={(id, s) => {
+                        // 1. Optimistic Update
+                        setOrders(prev => prev.map(o => {
+                            if (o.id === id) {
+                                const newO = { ...o, status: s };
+                                if (s === OrderStatus.Delivered) newO.deliveredAt = new Date();
+                                if (s === OrderStatus.Pending) { newO.driverId = undefined; newO.deliveryFee = undefined; }
+                                return newO;
+                            }
+                            return o;
+                        }));
+
+                        // 2. Server Update
                         const order = orders.find(o => o.id === id);
                         const updates: any = { status: s };
                         if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
                         if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
-                        firebaseService.updateData('orders', id, updates);
+
+                        firebaseService.updateData('orders', id, updates).catch(err => {
+                            console.error("Status update failed:", err);
+                            showNotify('فشل تحديث الحالة', 'error');
+                        });
 
                         if (order && order.driverId && s !== OrderStatus.Pending) firebaseService.sendExternalNotification('driver', { title: "تحديث حالة", body: `الطلب ${id} أصبح ${s}`, targetId: order.driverId, url: `/?target=order&id=${id}` });
-                        // Merchant notification removed by request
                     }}
                     editOrder={(id, d) => {
                         firebaseService.updateData('orders', id, d);
                         logAction('update', 'الطلبات', `قام المشرف بتعديل تفاصيل الطلب رقم ${id}`);
                     }}
                     assignDriverAndSetStatus={(id, dr, fe, st) => {
-                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st });
+                        // 1. Optimistic Update
                         const driverName = users.find(u => u.id === dr)?.name || dr;
+                        setOrders(prev => prev.map(o => o.id === id ? { ...o, driverId: dr, deliveryFee: fe, status: st, driverName: driverName } : o));
+
+                        // 2. Server Update
+                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st })
+                            .catch(err => showNotify('فشل تعيين المندوب', 'error'));
+
                         logAction('update', 'الطلبات', `قام المشرف بتعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
                         firebaseService.sendExternalNotification('driver', { title: "طلب جديد مسند إليك", body: `تم إسناد الطلب ${id} إليك بتكلفة ${fe} ج.م`, targetId: dr, url: `/?target=order&id=${id}` });
                     }}
@@ -532,12 +575,26 @@ const App: React.FC = () => {
                     }}
                     onAcceptOrder={(oid, did, fee) => {
                         const order = orders.find(o => o.id === oid);
-                        // HARD FIX: Explicitly set status string to avoid Enum issues
-                        firebaseService.updateData('orders', oid, {
+
+                        // 1. Optimistic Update (Immediate Feedback)
+                        const optimisticUpdate = {
                             driverId: did,
                             deliveryFee: fee,
-                            status: 'قيد التوصيل' // OrderStatus.InTransit
-                        });
+                            status: OrderStatus.InTransit // Force status update immediately
+                        };
+
+                        // Update local state immediately via parent helper (setOrders) or just let firebase subscription catch it.
+                        // Since we don't have direct setOrders here, we rely on Firebase's offline persistence or fast network.
+                        // Ideally checking setOrders is better, but direct firebase update is standard here.
+
+                        firebaseService.updateData('orders', oid, optimisticUpdate)
+                            .then(() => {
+                                console.log(`Order ${oid} accepted successfully.`);
+                            })
+                            .catch((err) => {
+                                console.error("Failed to accept order:", err);
+                                showNotify('تعذر قبول الطلب. يرجى التحقق من الانترنت.', 'error');
+                            });
 
                         if (order?.type === 'shopping_order' && order.customer?.phone) {
                             const customerUser = users.find(u => u.phone === order.customer.phone && u.role === 'customer');

@@ -119,9 +119,16 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
 
         // Single pass filtering
         for (const o of props.orders) {
+            // 1. Pending Pooled Orders (Not assigned to anyone yet)
             if (o.status === OrderStatus.Pending && !o.driverId) {
                 pending.push(o);
-            } else if (o.driverId === myId && o.status === OrderStatus.InTransit) {
+            }
+            // 2. My Active Orders (Assigned to me)
+            // Fix: Show ANY order assigned to me in active list, regardless of status lag
+            // This prevents orders from disappearing if they are assigned but status is still Pending
+            else if (o.driverId === myId &&
+                o.status !== OrderStatus.Delivered &&
+                o.status !== OrderStatus.Cancelled) {
                 active.push(o);
             }
         }
