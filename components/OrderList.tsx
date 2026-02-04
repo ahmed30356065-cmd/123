@@ -19,6 +19,7 @@ interface MerchantOrderCardProps {
 
 const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, viewingMerchant, onUpdateOrder }) => {
     const [showCollectModal, setShowCollectModal] = React.useState(false);
+    const [showPaymentModal, setShowPaymentModal] = React.useState(false);
     const formattedDate = (() => {
         try {
             const createdAt = order.createdAt;
@@ -130,7 +131,10 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         {/* Show IDs - ONLY if NOT collected */}
-                        {!order.isCollected && (
+                        {/* Show IDs - Logic: Show unless (Collected) OR (Paid & Accepted) */}
+                        {/* But ALWAYS show for Admins (viewingMerchant is undefined) */}
+                        {/* Or if user has advanced financial permission */}
+                        {(!order.isCollected && !((isPaid) && (order.assignedTo || order.driverId))) || (!viewingMerchant || hasFinancialPerm) ? (
                             <>
                                 <span className="font-mono text-xs text-red-400 bg-red-900/10 px-2 py-0.5 rounded-md border border-red-900/30 font-bold tracking-wider flex items-center h-6">
                                     #{order.id}
@@ -142,7 +146,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                     </span>
                                 )}
                             </>
-                        )}
+                        ) : null}
 
                         <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded-md">
                             <ClockIcon className="w-3 h-3 opacity-70" />
@@ -152,6 +156,13 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             <span className="text-[10px] text-green-400 font-bold flex items-center gap-1 bg-green-900/20 px-2 py-0.5 rounded-md border border-green-500/20 animate-fadeIn">
                                 <CheckCircleIcon className="w-3 h-3" />
                                 تم: {deliveryTime}
+                            </span>
+                        )}
+                        {/* Merchant Collected Badge - Small & In Header */}
+                        {viewingMerchant && order.isCollected && (
+                            <span className="text-[10px] text-blue-400 font-bold flex items-center gap-1 bg-blue-900/20 px-2 py-0.5 rounded-md border border-blue-500/20 animate-fadeIn">
+                                <CheckCircleIcon className="w-3 h-3" />
+                                تم التحصيل
                             </span>
                         )}
                     </div>
@@ -166,7 +177,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     </div>
 
                     {/* Price and Payment Status - Show ONLY if NOT collected AND NOT Vodafone Cash AND has permission */}
-                    {viewingMerchant && viewingMerchant.canManageOrderDetails && hasFinancialPerm && !order.isCollected && !order.isVodafoneCash && (
+                    {/* Price and Payment Status - Show ONLY if NOT collected AND NOT (Paid & Accepted) (unless Admin/FinPerm) */}
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && hasFinancialPerm && !order.isCollected && !order.isVodafoneCash && !(isPaid && (order.assignedTo || order.driverId)) && (
                         <div className="mt-3 animate-fadeIn space-y-3">
                             {/* Price Display */}
                             {isPaid ? (
@@ -193,7 +205,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                                 <p className="text-lg font-bold text-white">{Number(order.totalPrice || 0).toLocaleString('en-US')} ج.م</p>
                                             </div>
                                         </div>
-                                        <span className="text-[10px] font-bold px-2.5 py-1.5 rounded-md border bg-red-600/30 text-red-300 border-red-500/30">
+                                        <span className="text-xs font-bold px-2.5 py-1.5 rounded-md border bg-red-600/30 text-red-300 border-red-500/30">
                                             في انتظار الدفع
                                         </span>
                                     </div>
@@ -216,52 +228,16 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </div>
                     )}
 
-                    {/* ADVANCED FINANCIAL CONTROL PANEL - Admin/Supervisor Only */}
+                    {/* Admin Financial Control Button - Only if permitted and NOT Merchant View */}
                     {hasFinancialPerm && !viewingMerchant && (
-                        <div className="mt-4 bg-gray-800/80 p-3 rounded-lg border border-emerald-500/30 animate-fadeIn">
-                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-700/50">
-                                <BanknoteIcon className="w-4 h-4 text-emerald-400" />
-                                <span className="text-xs font-bold text-emerald-400">لوحة التحكم المالي</span>
-                            </div>
-
-                            {/* Price Edit */}
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="flex-1 relative">
-                                    <input
-                                        type="number"
-                                        value={newPrice}
-                                        onChange={(e) => setNewPrice(e.target.value)}
-                                        disabled={!isEditingPrice}
-                                        className={`w-full bg-gray-900 border ${isEditingPrice ? 'border-emerald-500' : 'border-gray-700'} rounded-lg py-1.5 px-3 text-sm text-white text-center font-mono focus:outline-none`}
-                                    />
-                                    {!isEditingPrice && <span className="absolute right-3 top-1.5 text-xs text-gray-500 font-bold">ج.م</span>}
-                                </div>
-                                {isEditingPrice ? (
-                                    <button onClick={handlePriceUpdate} className="bg-emerald-600 text-white p-1.5 rounded-lg">
-                                        <CheckCircleIcon className="w-4 h-4" />
-                                    </button>
-                                ) : (
-                                    <button onClick={() => setIsEditingPrice(true)} className="bg-gray-700 text-gray-400 p-1.5 rounded-lg">
-                                        <PencilIcon className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* Quick Actions */}
-                            <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => handleStatusUpdate('paid')} className={`text-[10px] font-bold py-2 rounded-lg border ${order.paymentStatus === 'paid' && !order.isVodafoneCash && !order.isCollected ? 'bg-green-600 text-white border-green-500' : 'bg-gray-700 text-gray-400 border-gray-600'}`}>
-                                    مدفوع (نقدي)
-                                </button>
-                                <button onClick={() => handleStatusUpdate('unpaid')} className={`text-[10px] font-bold py-2 rounded-lg border ${order.paymentStatus === 'unpaid' ? 'bg-red-600 text-white border-red-500' : 'bg-gray-700 text-gray-400 border-gray-600'}`}>
-                                    غير مدفوع
-                                </button>
-                                <button onClick={() => handleStatusUpdate('vodafone')} className={`text-[10px] font-bold py-2 rounded-lg border ${order.isVodafoneCash ? 'bg-red-800 text-white border-red-600' : 'bg-gray-700 text-gray-400 border-gray-600'}`}>
-                                    فودافون كاش
-                                </button>
-                                <button onClick={() => handleStatusUpdate('collected')} className={`text-[10px] font-bold py-2 rounded-lg border ${order.isCollected ? 'bg-blue-600 text-white border-blue-500' : 'bg-gray-700 text-gray-400 border-gray-600'}`}>
-                                    تم التحصيل
-                                </button>
-                            </div>
+                        <div className="mt-3 flex justify-end animate-fadeIn">
+                            <button
+                                onClick={() => setShowPaymentModal(true)}
+                                className="bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg hover:bg-emerald-900/50 transition-all flex items-center gap-2 font-bold text-xs"
+                            >
+                                <BanknoteIcon className="w-3.5 h-3.5" />
+                                إدارة الدفع
+                            </button>
                         </div>
                     )}
 
@@ -278,12 +254,14 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </div>
                     )}
 
-                    {viewingMerchant && viewingMerchant.canManageOrderDetails && order.isCollected && (
+
+
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && isPaid && !order.isCollected && !order.isVodafoneCash && (order.assignedTo || order.driverId) && (
                         <div className="mt-3 animate-fadeIn">
                             <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-3 flex items-center justify-center gap-2">
                                 <CheckCircleIcon className="w-5 h-5 text-green-400" />
-                                <p className="text-sm font-bold text-green-400">
-                                    تم الدفع والتحصيل
+                                <p className="text-lg font-bold text-green-400">
+                                    تم الدفع
                                 </p>
                             </div>
                         </div>
@@ -378,6 +356,70 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                 >
                                     تأكيد التحصيل
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Payment Management Modal - Admin/Supervisor Only */}
+            {
+                showPaymentModal && hasFinancialPerm && !viewingMerchant && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+                        <div className="bg-gray-800 rounded-2xl p-5 max-w-sm w-full border border-gray-700 shadow-2xl transform animate-scaleIn">
+                            <div className="flex items-center justify-between mb-4 border-b border-gray-700 pb-3">
+                                <div className="flex items-center gap-2">
+                                    <BanknoteIcon className="w-5 h-5 text-emerald-400" />
+                                    <h3 className="text-lg font-bold text-white">لوحة التحكم المالي</h3>
+                                </div>
+                                <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-white">
+                                    <XCircleIcon className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="bg-gray-900/50 p-2 rounded-lg border border-gray-700/50 mb-4 flex justify-between items-center">
+                                <span className="text-xs text-gray-400 font-bold">رقم الطلب:</span>
+                                <span className="font-mono text-sm text-emerald-400 font-bold">#{order.customOrderNumber || order.id}</span>
+                            </div>
+
+                            {/* Price Edit */}
+                            <div className="mb-4">
+                                <label className="text-[10px] text-gray-400 font-bold mb-1.5 block">المبلغ المطلوب (ج.م)</label>
+                                <div className="flex gap-2">
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="number"
+                                            value={newPrice}
+                                            onChange={(e) => setNewPrice(e.target.value)}
+                                            className="w-full bg-gray-900 border border-gray-600 rounded-xl py-2.5 px-3 text-white text-center font-mono font-bold focus:outline-none focus:border-emerald-500 transition-colors"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handlePriceUpdate}
+                                        className="bg-emerald-600 text-white px-3 rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center"
+                                    >
+                                        <CheckCircleIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Quick Actions */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] text-gray-400 font-bold block">تحديث الحالة</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => handleStatusUpdate('paid')} className={`text-xs font-bold py-3 rounded-xl border transition-all ${order.paymentStatus === 'paid' && !order.isVodafoneCash && !order.isCollected ? 'bg-green-600 text-white border-green-500 shadow-lg' : 'bg-gray-700/50 text-gray-400 border-gray-600 hover:bg-gray-700'}`}>
+                                        مدفوع (نقدي)
+                                    </button>
+                                    <button onClick={() => handleStatusUpdate('unpaid')} className={`text-xs font-bold py-3 rounded-xl border transition-all ${order.paymentStatus === 'unpaid' ? 'bg-red-600 text-white border-red-500 shadow-lg' : 'bg-gray-700/50 text-gray-400 border-gray-600 hover:bg-gray-700'}`}>
+                                        غير مدفوع
+                                    </button>
+                                    <button onClick={() => handleStatusUpdate('vodafone')} className={`text-xs font-bold py-3 rounded-xl border transition-all ${order.isVodafoneCash ? 'bg-red-800 text-white border-red-600 shadow-lg' : 'bg-gray-700/50 text-gray-400 border-gray-600 hover:bg-gray-700'}`}>
+                                        فودافون كاش
+                                    </button>
+                                    <button onClick={() => handleStatusUpdate('collected')} className={`text-xs font-bold py-3 rounded-xl border transition-all ${order.isCollected ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-gray-700/50 text-gray-400 border-gray-600 hover:bg-gray-700'}`}>
+                                        تم التحصيل
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -82,7 +82,9 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
     }
 
     const productTotal = order.finalPrice ?? order.totalPrice ?? 0;
-    const totalToCollect = (order.deliveryFee || 0) + productTotal;
+    const isPaid = order.isVodafoneCash || order.paymentStatus === 'paid';
+    // If paid (Vodafone or Cash/Paid), driver only collects Delivery Fee
+    const totalToCollect = (order.deliveryFee || 0) + (isPaid ? 0 : productTotal);
 
     const isFeeValid = fee !== '' && !isNaN(parseFloat(fee)) && parseFloat(fee) > 0;
 
@@ -188,7 +190,7 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                                         </h4>
                                     </div>
                                     <span className={`text-xs font-bold ${order.isVodafoneCash ? 'text-green-400' : 'text-white'} bg-black/20 px-2 py-0.5 rounded`}>
-                                        {order.isVodafoneCash ? 'تم الدفع (فودافون)' : `${Math.floor(productTotal)} ج.م`}
+                                        {(order.isVodafoneCash || order.paymentStatus === 'paid') ? 'تم الدفع' : `${Math.floor(productTotal)} ج.م`}
                                     </span>
                                 </div>
 
@@ -237,10 +239,10 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                                 <span className="text-xs text-gray-400">إجمالي التحصيل من العميل</span>
                                 <div className="text-right">
                                     <span className="text-xl font-black text-green-400 block leading-none">
-                                        {order.isVodafoneCash ? parseFloat(fee) : (productTotal + parseFloat(fee))} <span className="text-xs font-bold text-gray-500">ج.م</span>
+                                        {(order.isVodafoneCash || order.paymentStatus === 'paid') ? parseFloat(fee) : (productTotal + parseFloat(fee))} <span className="text-xs font-bold text-gray-500">ج.م</span>
                                     </span>
                                     <span className="text-[9px] text-gray-500 mt-1 block">
-                                        {order.isVodafoneCash ? '(توصيل فقط)' : `(${productTotal} طلب + ${fee} توصيل)`}
+                                        {(order.isVodafoneCash || order.paymentStatus === 'paid') ? '(توصيل فقط)' : `(${productTotal} طلب + ${fee} توصيل)`}
                                     </span>
                                 </div>
                             </div>
