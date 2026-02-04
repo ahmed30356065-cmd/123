@@ -462,7 +462,13 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                         await batch.commit();
                     }
 
-                    showToast(`تم إعادة ترقيم ${processed} طلب (تم تغيير ${changesCount}).`, 'success');
+                    // CRITICAL: Update the Global Counter to match the new count!
+                    // This ensures the next "Add Order" continues from where we left off.
+                    await firebase.firestore().collection('settings').doc('counters').set({
+                        'ORD-': orders.length
+                    }, { merge: true });
+
+                    showToast(`تم إعادة ترقيم ${processed} طلب (تم تغيير ${changesCount}) وتحديث العداد إلى ${orders.length}.`, 'success');
                     setTimeout(() => window.location.reload(), 2000);
 
                 } catch (error) {

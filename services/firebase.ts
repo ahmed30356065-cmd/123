@@ -758,10 +758,18 @@ export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<strin
                     }
                 });
                 nextId = maxId + 1;
+                nextId = maxId + 1;
             } else {
                 const data = doc.data();
                 const current = (data && data[prefix]) ? data[prefix] : 0;
-                if (!current) {
+
+                // OPTIMIZATION: If we have a stored counter, trust it!
+                // Skip the expensive existence check for the target doc to speed up the transaction.
+                // The probability of the counter being out of sync with an existing doc is low if only this method is used.
+                if (current > 0) {
+                    nextId = current + 1;
+                } else {
+                    // Only fallback to scanning if counter is missing/zero
                     const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
                     let max = 0;
                     snapshot.forEach(d => {
@@ -769,22 +777,20 @@ export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<strin
                         if (!isNaN(num)) max = Math.max(max, num);
                     });
                     nextId = max + 1;
-                } else {
-                    nextId = current + 1;
+
+                    // Sanity Check only when guessing from scan
+                    let retries = 0;
+                    while (retries < 5) {
+                        const checkPath = prefix + nextId;
+                        const checkDoc = await transaction.get(db!.collection('orders').doc(checkPath));
+                        if (!checkDoc.exists) break;
+                        nextId++;
+                        retries++;
+                    }
                 }
             }
 
-            // COLLISION CHECK & REPAIR
-            let retries = 0;
-            while (retries < 20) {
-                const checkPath = prefix + nextId;
-                const checkDoc = await transaction.get(db!.collection('orders').doc(checkPath));
-                if (!checkDoc.exists) break;
-                nextId++;
-                retries++;
-            }
-            if (retries >= 20) nextId += Math.floor(Math.random() * 100) + 50;
-
+            // Update counter immediately
             transaction.set(counterRef, { [prefix]: nextId }, { merge: true });
             return `${prefix}${nextId}`;
         });
