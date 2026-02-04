@@ -13,7 +13,7 @@ interface DriverOrderCardProps {
 const DriverOrderCard: React.FC<DriverOrderCardProps> = React.memo(({ order, users, onViewDetails, theme }) => {
     const isNewOrder = order.status === OrderStatus.Pending;
     const isShoppingOrder = order.type === 'shopping_order';
-    
+
     // Efficiently find merchant without heavy computation
     const merchantUser = useMemo(() => users?.find(u => u.id === order.merchantId), [users, order.merchantId]);
 
@@ -46,19 +46,19 @@ const DriverOrderCard: React.FC<DriverOrderCardProps> = React.memo(({ order, use
 
     const getFrameContainerClass = (type?: string) => {
         if (type?.startsWith('data:') || type?.startsWith('http')) return 'p-0';
-        switch(type) {
+        switch (type) {
             case 'gold': return 'p-[2px] bg-gradient-to-tr from-[#BF953F] via-[#FCF6BA] to-[#B38728] shadow-[0_0_8px_rgba(252,246,186,0.4)]';
             case 'neon': return 'p-[2px] bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_8px_rgba(34,211,238,0.5)]';
             case 'royal': return 'p-[2px] bg-gradient-to-bl from-indigo-900 via-purple-500 to-indigo-900 shadow-sm border border-purple-500/30';
             case 'fire': return 'p-[2px] bg-gradient-to-t from-yellow-500 via-red-500 to-yellow-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.4)]';
-            default: return 'p-0'; 
+            default: return 'p-0';
         }
     };
-    
+
     const isCustomFrame = (frame?: string) => frame?.startsWith('data:') || frame?.startsWith('http');
 
     return (
-        <button 
+        <button
             type="button"
             onClick={(e) => {
                 // Prevent double firing if event bubbles from children unexpectedly
@@ -68,12 +68,11 @@ const DriverOrderCard: React.FC<DriverOrderCardProps> = React.memo(({ order, use
             className={`w-full text-right bg-[#1e1e1e] rounded-2xl overflow-hidden shadow-lg transition-all duration-200 relative group border ${isShoppingOrder ? 'border-purple-500/30' : 'border-white/5'} active:scale-[0.98] mb-1 cursor-pointer select-none`}
         >
             {/* Left accent bar (Status indicator) */}
-            <div className={`absolute right-0 top-0 bottom-0 w-1.5 z-10 ${
-                isShoppingOrder ? 'bg-gradient-to-b from-purple-600 to-indigo-500' :
-                isNewOrder ? 'bg-gradient-to-b from-blue-500 to-blue-700' : 
-                'bg-gradient-to-b from-green-500 to-emerald-700'
-            }`}></div>
-            
+            <div className={`absolute right-0 top-0 bottom-0 w-1.5 z-10 ${isShoppingOrder ? 'bg-gradient-to-b from-purple-600 to-indigo-500' :
+                    isNewOrder ? 'bg-gradient-to-b from-blue-500 to-blue-700' :
+                        'bg-gradient-to-b from-green-500 to-emerald-700'
+                }`}></div>
+
             {/* Shopping Background Gradient */}
             {isShoppingOrder && (
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-900/10 to-transparent pointer-events-none"></div>
@@ -89,11 +88,18 @@ const DriverOrderCard: React.FC<DriverOrderCardProps> = React.memo(({ order, use
                                 <RocketIcon className="w-3 h-3" /> خاص
                             </span>
                         )}
+                        {/* Vodafone Cash Badge */}
+                        {order.isVodafoneCash && (
+                            <span className="bg-red-600/20 text-red-400 text-[9px] font-bold px-2 py-0.5 rounded border border-red-500/30 flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                فودافون كاش
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center gap-1">
-                         <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${isNewOrder ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+                        <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${isNewOrder ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
                             {isNewOrder ? 'طلب متاح' : order.status}
-                         </span>
+                        </span>
                     </div>
                 </div>
 
@@ -111,7 +117,7 @@ const DriverOrderCard: React.FC<DriverOrderCardProps> = React.memo(({ order, use
 
                 {/* Body Content */}
                 <div className="space-y-3 pr-1">
-                    
+
                     {/* 1. Customer (Destination) */}
                     <div className="flex items-start gap-3">
                         <div className="mt-0.5 p-1.5 rounded-full bg-blue-500/10 text-blue-400 flex-shrink-0">
@@ -137,7 +143,7 @@ const DriverOrderCard: React.FC<DriverOrderCardProps> = React.memo(({ order, use
                             <p className={`text-[9px] font-bold mb-0.5 uppercase ${isShoppingOrder ? 'text-purple-300' : 'text-purple-400'}`}>
                                 {isShoppingOrder ? 'تفاصيل الطلب' : 'المرسل (التاجر)'}
                             </p>
-                            
+
                             {isShoppingOrder ? (
                                 <p className="text-gray-200 text-xs leading-relaxed line-clamp-2 italic">
                                     "{order.notes || 'لا توجد تفاصيل إضافية'}"
@@ -165,7 +171,7 @@ const DriverOrderCard: React.FC<DriverOrderCardProps> = React.memo(({ order, use
                             <span className="text-[10px] font-bold text-gray-400 italic">في انتظار تحديد قيمة التوصيل</span>
                         )}
                     </div>
-                    
+
                     <div className="flex items-center gap-1.5 text-gray-400 text-[10px] font-black bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 group-hover:bg-white/10 transition-all">
                         <span>تفاصيل الطلب</span>
                         <ChevronLeftIcon className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
@@ -183,7 +189,7 @@ const DriverOrderCard: React.FC<DriverOrderCardProps> = React.memo(({ order, use
         prev.order.driverId === next.order.driverId &&
         prev.order.deliveryFee === next.order.deliveryFee &&
         prev.order.totalPrice === next.order.totalPrice &&
-        prev.users === next.users && 
+        prev.users === next.users &&
         prev.theme === next.theme
     );
 });

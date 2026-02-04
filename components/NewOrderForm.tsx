@@ -1,7 +1,6 @@
-
 import React, { useState, useRef } from 'react';
 import { Customer, User } from '../types';
-import { ClipboardPlusIcon, CheckCircleIcon, ClipboardListIcon, PhoneIcon, MapPinIcon, XCircleIcon, BanknoteIcon, VodafoneIcon } from './icons';
+import { PhoneIcon, WhatsAppIcon, UserIcon, ClockIcon, ShoppingCartIcon, RocketIcon, CheckCircleIcon, TruckIconV2, BanknoteIcon, XCircleIcon, ChartBarIcon, SearchIcon, ClipboardListIcon, CalendarIcon, EmptyBoxIcon, VodafoneIcon, MapPinIcon, ReceiptIcon, ClipboardPlusIcon } from './icons';
 
 interface NewOrderFormProps {
     addOrder: (order: { customer: Customer, notes?: string, customOrderNumber?: string, paymentStatus?: 'paid' | 'unpaid', isVodafoneCash?: boolean }) => Promise<void> | void;
@@ -174,15 +173,12 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 {/* Extra Fields Section - Only if Enabled */}
                 {merchant?.canManageOrderDetails && (
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50 space-y-4 animate-fadeIn">
-                        <div className="flex items-center gap-2 mb-2">
-                            <ClipboardListIcon className="w-4 h-4 text-pink-400" />
-                            <h3 className="text-xs font-bold text-pink-400">بيانات الطلب الإضافية</h3>
-                        </div>
+                        {/* Header Removed */}
 
                         <div>
                             <label htmlFor="orderNum" className="block text-xs font-bold text-neutral-400 mb-1.5 flex items-center gap-1">
-                                <ClipboardListIcon className="w-3.5 h-3.5" />
-                                رقم الطلب (اختياري)
+                                <ReceiptIcon className="w-3.5 h-3.5" />
+                                رقم الطلب
                             </label>
                             <input
                                 ref={orderNumInputRef}
