@@ -4,8 +4,8 @@ import { Order, User, OrderStatus } from '../types';
 import OrderStatusBadge from './OrderStatusBadge';
 import {
     MapPinIcon, PhoneIcon, ClockIcon, CheckCircleIcon, XCircleIcon,
-    UserIcon, TruckIconV2, ChartBarIcon, SearchIcon, FilterIcon,
-    RefreshIcon, BanknoteIcon, EditIcon, RocketIcon, ClipboardListIcon, CalendarIcon, VodafoneIcon, EmptyBoxIcon, WhatsAppIcon
+    UserIcon, TruckIconV2, ChartBarIcon, SearchIcon,
+    RefreshCwIcon, BanknoteIcon, PencilIcon, RocketIcon, ClipboardListIcon, CalendarIcon, VodafoneIcon, EmptyBoxIcon, WhatsAppIcon
 } from './icons';
 import { sendExternalNotification } from '../services/firebase';
 
@@ -237,7 +237,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                     </button>
                                 ) : (
                                     <button onClick={() => setIsEditingPrice(true)} className="bg-gray-700 text-gray-400 p-1.5 rounded-lg">
-                                        <EditIcon className="w-4 h-4" />
+                                        <PencilIcon className="w-4 h-4" />
                                     </button>
                                 )}
                             </div>
@@ -527,8 +527,16 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                     <ChartBarIcon className="w-6 h-6" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-black text-white">سجل الطلبات (v2.3) - {orders.length}</h3>
-                    <p className="text-xs text-gray-400 font-medium">عرض ومتابعة تاريخ الطلبات</p>
+                    <h3 className="text-xl font-black text-white">سجل الطلبات (v2.3.1)</h3>
+                    <p className="text-[10px] text-red-400 font-mono">
+                        Prop: {orders.length} |
+                        DateFiltered: {dateFilteredOrders.length} |
+                        Final: {finalFilteredOrders.length} |
+                        Visible: {visibleOrders.length}
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-mono">
+                        Filter: {filterMode} | Search: "{searchTerm}"
+                    </p>
                 </div>
             </div>
 
