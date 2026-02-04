@@ -476,7 +476,17 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                 (order.customer?.address || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                 (order.customer?.phone || '').includes(searchTerm)
             )
-            .sort((a, b) => getOrderDate(b).getTime() - getOrderDate(a).getTime()); // Newest first
+            .sort((a, b) => {
+                // Primary: Date (Newest first)
+                const timeA = getOrderDate(a).getTime();
+                const timeB = getOrderDate(b).getTime();
+                if (timeA !== timeB) return timeB - timeA;
+
+                // Secondary: ID Number (Descending)
+                const idA = parseInt(a.id.replace(/\D/g, '') || '0');
+                const idB = parseInt(b.id.replace(/\D/g, '') || '0');
+                return idB - idA;
+            });
     }, [dateFilteredOrders, showShoppingOnly, searchTerm]);
 
     // Statistics calculations - Updated Logic

@@ -678,25 +678,39 @@ const App: React.FC = () => {
             {currentUser.role === 'merchant' && (
                 <MerchantPortal merchant={currentUser} users={users} orders={orders} messages={messages}
                     addOrder={async (d) => {
-                        // Use Safe Server ID
-                        const newId = await firebaseService.generateUniqueIdSafe('ORD-');
+                        // 1. Calculate Local ID (INSTANT)
+                        const prefix = 'ORD-';
+                        // Only consider active orders for ID calculation to match server logic roughly
+                        const relevantOrders = orders.filter(o => o.id.startsWith(prefix) && !o.isArchived);
+                        const maxId = relevantOrders.reduce((max, o) => {
+                            const num = parseInt(o.id.replace(prefix, '') || '0');
+                            return !isNaN(num) ? Math.max(max, num) : max;
+                        }, 0);
+                        const localId = `${prefix}${maxId + 1}`;
+
                         const newOrder: Order = {
-                            ...d, id: newId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
+                            ...d, id: localId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
                         };
 
-                        // 1. OPTIMISTIC UPDATE: Add to UI immediately
+                        // 2. OPTIMISTIC UPDATE: Add to UI immediately
                         setOrders(prev => [...prev, newOrder]);
-                        logAction('create', 'الطلبات', `تم إضافة طلب جديد #${newId}`);
+                        logAction('create', 'الطلبات', `تم إضافة طلب جديد #${localId} (مبدئي)`);
 
-                        // 2. Send to Server & Notifications (Background - Non-blocking)
+                        // 3. Send to Server & Notifications (Background - Non-blocking)
                         (async () => {
                             try {
-                                await firebaseService.updateData('orders', newId, newOrder);
-                                firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
-                                firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
-                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${newId} متاح للتوصيل`, url: `/?target=order&id=${newId}` });
+                                // Use Safe Server ID (Might differ from localId if collision)
+                                const finalId = await firebaseService.generateUniqueIdSafe('ORD-');
+                                const finalOrder = { ...newOrder, id: finalId };
+
+                                await firebaseService.updateData('orders', finalId, finalOrder);
+
+                                firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
+                                firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
+                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${finalId} متاح للتوصيل`, url: `/?target=order&id=${finalId}` });
                             } catch (e) {
                                 console.error("Merchant addOrder background error:", e);
+                                showNotify('حدث خطأ في مزامنة الطلب مع السيرفر', 'error');
                             }
                         })();
                     }}
