@@ -129,15 +129,19 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
             <div className="flex justify-between items-start">
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="font-mono text-xs text-red-400 bg-red-900/10 px-2 py-0.5 rounded-md border border-red-900/30 font-bold tracking-wider">
-                            #{order.id}
-                        </span>
+                        {/* Show IDs - ONLY if NOT collected */}
+                        {!order.isCollected && (
+                            <>
+                                <span className="font-mono text-xs text-red-400 bg-red-900/10 px-2 py-0.5 rounded-md border border-red-900/30 font-bold tracking-wider flex items-center h-6">
+                                    #{order.id}
+                                </span>
 
-                        {/* Show Custom Order Number - Always visible if exists */}
-                        {order.customOrderNumber && (
-                            <span className="font-mono text-xs text-blue-400 bg-blue-900/10 px-2 py-0.5 rounded-md border border-blue-900/30 font-bold tracking-wider">
-                                #{order.customOrderNumber}
-                            </span>
+                                {order.customOrderNumber && (
+                                    <span className="font-mono text-xs text-blue-400 bg-blue-900/10 px-2 py-0.5 rounded-md border border-blue-900/30 font-bold tracking-wider">
+                                        #{order.customOrderNumber}
+                                    </span>
+                                )}
+                            </>
                         )}
 
                         <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded-md">
@@ -172,7 +176,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                         <CheckCircleIcon className="w-4 h-4 text-green-500" />
                                         <div>
                                             <p className="text-[10px] font-bold text-green-400">تم الدفع</p>
-                                            <p className="text-xs font-bold text-white leading-none">{Math.floor(order.totalPrice || 0)} ج.م</p>
+                                            <p className="text-xs font-bold text-white leading-none">{Number(order.totalPrice || 0).toLocaleString('en-US')} ج.م</p>
                                         </div>
                                     </div>
                                 </div>
@@ -186,7 +190,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-medium text-red-400/80">المبلغ المطلوب</p>
-                                                <p className="text-lg font-bold text-white">{Math.floor(order.totalPrice || 0)} ج.م</p>
+                                                <p className="text-lg font-bold text-white">{Number(order.totalPrice || 0).toLocaleString('en-US')} ج.م</p>
                                             </div>
                                         </div>
                                         <span className="text-[10px] font-bold px-2.5 py-1.5 rounded-md border bg-red-600/30 text-red-300 border-red-500/30">
@@ -305,10 +309,10 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         {/* For non-merchants (Admin), always show price. 
                             For Merchants: ONLY show if they have permission AND don't have the advanced panel (to avoid duplication).
                         */}
-                        {(!viewingMerchant || (viewingMerchant.canManageOrderDetails && !viewingMerchant.canManageAdvancedFinancials)) && order.totalPrice !== undefined && (
+                        {(!viewingMerchant || (viewingMerchant.canManageOrderDetails && !viewingMerchant.canManageAdvancedFinancials)) && order.totalPrice !== undefined && !order.isCollected && (
                             <p className="text-xs text-gray-400 flex items-center gap-1 bg-gray-700/30 px-2 py-1 rounded-lg animate-fadeIn">
                                 <BanknoteIcon className="w-3 h-3" />
-                                <span className="font-bold text-red-400">{order.totalPrice.toFixed(2)} ج.م</span>
+                                <span className="font-bold text-red-400">{Number(order.totalPrice).toLocaleString('en-US')} ج.م</span>
                             </p>
                         )}
                     </div>
