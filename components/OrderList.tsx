@@ -5,7 +5,7 @@ import OrderStatusBadge from './OrderStatusBadge';
 import {
     MapPinIcon, PhoneIcon, ClockIcon, CheckCircleIcon, XCircleIcon,
     UserIcon, TruckIconV2, ChartBarIcon, SearchIcon, FilterIcon,
-    RefreshIcon, BanknoteIcon, EditIcon, RocketIcon, ClipboardListIcon, CalendarIcon, VodafoneIcon, EmptyBoxIcon
+    RefreshIcon, BanknoteIcon, EditIcon, RocketIcon, ClipboardListIcon, CalendarIcon, VodafoneIcon, EmptyBoxIcon, WhatsAppIcon
 } from './icons';
 import { sendExternalNotification } from '../services/firebase';
 
@@ -14,9 +14,10 @@ interface MerchantOrderCardProps {
     driver: { name: string; phone?: string | null };
     viewingMerchant?: User;
     onUpdateOrder?: (orderId: string, data: Partial<Order>) => void;
+    onDeleteOrder?: (orderId: string) => void;
 }
 
-const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, viewingMerchant, onUpdateOrder }) => {
+const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, viewingMerchant, onUpdateOrder, onDeleteOrder }) => {
     const [showCollectModal, setShowCollectModal] = React.useState(false);
     const formattedDate = (() => {
         try {
@@ -384,6 +385,7 @@ interface OrderListProps {
     users: User[];
     viewingMerchant?: User; // New prop to pass permission context
     onUpdateOrder?: (orderId: string, data: Partial<Order>) => void;
+    onDeleteOrder?: (orderId: string) => void;
 }
 
 const FilterChip: React.FC<{
@@ -410,7 +412,7 @@ const FilterChip: React.FC<{
     </button>
 );
 
-const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, onUpdateOrder }) => {
+const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, onUpdateOrder, onDeleteOrder }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Filter States
