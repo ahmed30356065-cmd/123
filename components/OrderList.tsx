@@ -123,51 +123,51 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </p>
                     </div>
 
-                    {/* Payment Status & Collection - Enhanced Professional Layout - Show only if driver assigned */}
-                    {viewingMerchant && (!isPaid || order.isVodafoneCash) && !order.isCollected && order.assignedTo && (
-                        <div className="mt-3 animate-fadeIn">
-                            {/* Price Display - Prominent */}
-                            <div className="bg-gradient-to-br from-red-600/20 to-red-800/20 border border-red-500/30 rounded-lg p-3 mb-2">
+                    {/* Price and Payment Status - Always show for merchant */}
+                    {viewingMerchant && (
+                        <div className="mt-3 animate-fadeIn space-y-3">
+                            {/* Price Display */}
+                            <div className={`bg-gradient-to-br ${isPaid && !order.isVodafoneCash ? 'from-green-600/20 to-green-800/20 border-green-500/30' : 'from-red-600/20 to-red-800/20 border-red-500/30'} border rounded-lg p-3`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <div className="bg-red-600/30 p-2 rounded-lg">
-                                            <BanknoteIcon className="w-5 h-5 text-red-400" />
+                                        <div className={`${isPaid && !order.isVodafoneCash ? 'bg-green-600/30' : 'bg-red-600/30'} p-2 rounded-lg`}>
+                                            <BanknoteIcon className={`w-5 h-5 ${isPaid && !order.isVodafoneCash ? 'text-green-400' : 'text-red-400'}`} />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-red-400/80 font-medium">المبلغ المطلوب</p>
-                                            <p className="text-lg font-bold text-red-400">{order.totalPrice?.toFixed(2) || '0.00'} ج.م</p>
+                                            <p className={`text-[10px] font-medium ${isPaid && !order.isVodafoneCash ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                                                {isPaid && !order.isVodafoneCash ? 'المبلغ المدفوع' : 'المبلغ المطلوب'}
+                                            </p>
+                                            <p className={`text-lg font-bold ${isPaid && !order.isVodafoneCash ? 'text-green-400' : 'text-red-400'}`}>
+                                                {order.totalPrice?.toFixed(2) || '0.00'} ج.م
+                                            </p>
                                         </div>
                                     </div>
-                                    <span className="text-[10px] font-bold bg-red-600/30 text-red-300 px-2.5 py-1.5 rounded-md border border-red-500/30">
-                                        في انتظار الدفع
+                                    <span className={`text-[10px] font-bold px-2.5 py-1.5 rounded-md border ${isPaid
+                                            ? 'bg-green-600/30 text-green-300 border-green-500/30'
+                                            : 'bg-red-600/30 text-red-300 border-red-500/30'
+                                        }`}>
+                                        {isPaid ? (order.isVodafoneCash ? 'فودافون كاش' : 'تم الدفع') : 'في انتظار الدفع'}
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Collect Button - Left Aligned */}
-                            <div className="flex justify-start">
-                                <button
-                                    onClick={handleCollect}
-                                    className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 font-bold text-sm"
-                                >
-                                    <CheckCircleIcon className="w-4 h-4" />
-                                    تأكيد التحصيل
-                                </button>
-                            </div>
+                            {/* Collect Button - Show only if assigned and valid for collection */}
+                            {(!isPaid || order.isVodafoneCash) && !order.isCollected && order.assignedTo && (
+                                <div className="flex justify-start">
+                                    <button
+                                        onClick={handleCollect}
+                                        className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 font-bold text-sm"
+                                    >
+                                        <CheckCircleIcon className="w-4 h-4" />
+                                        تأكيد التحصيل
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {/* Show "Paid" status if paid OR collected */}
-                    {viewingMerchant?.canManageOrderDetails && (isPaid || order.isCollected) && (
-                        <div className="mt-3 animate-fadeIn">
-                            <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 border border-green-500/30 rounded-lg p-2.5">
-                                <span className="text-xs font-bold text-green-400 flex items-center gap-2">
-                                    <CheckCircleIcon className="w-4 h-4" />
-                                    تم الدفع {order.isVodafoneCash ? '(فودافون كاش)' : ''}
-                                </span>
-                            </div>
-                        </div>
-                    )}
+
 
                     {order.notes && (
                         <div className="mt-2 bg-red-900/10 p-2.5 rounded-lg border border-red-500/20">
