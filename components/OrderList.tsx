@@ -63,13 +63,13 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
 
             // إرسال إشعار للمندوب عند تأكيد التحصيل
             // إرسال إشعار للمندوب عند تأكيد التحصيل
-            if (order.assignedTo) {
+            if (order.assignedTo || order.driverId) {
                 try {
                     const priceText = order.totalPrice ? `${order.totalPrice.toFixed(2)} ج.م` : '';
                     await sendExternalNotification('driver', {
                         title: '✅ تأكيد استلام المبلغ',
                         body: `تم تأكيد استلام مبلغ ${priceText} للطلب #${order.customOrderNumber || order.id}`,
-                        targetId: order.assignedTo
+                        targetId: order.assignedTo || order.driverId
                     });
                     console.log('تم إرسال إشعار التحصيل للمندوب');
                 } catch (error) {
@@ -152,7 +152,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             </div>
 
                             {/* Collect Button - Show only if assigned and valid for collection */}
-                            {!order.isCollected && order.assignedTo && (
+                            {!order.isCollected && (order.assignedTo || order.driverId) && (
                                 <div className="flex justify-start">
                                     <button
                                         onClick={handleCollect}
