@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, User, OrderStatus } from '../types';
 import OrderStatusBadge from './OrderStatusBadge';
-import { PhoneIcon, WhatsAppIcon, UserIcon, ClockIcon, ShoppingCartIcon, RocketIcon, CheckCircleIcon, TruckIconV2, BanknoteIcon, XCircleIcon, ChartBarIcon, SearchIcon, ClipboardListIcon, CalendarIcon, EmptyBoxIcon, VodafoneIcon } from './icons';
+import { PhoneIcon, WhatsAppIcon, UserIcon, ClockIcon, ShoppingCartIcon, RocketIcon, CheckCircleIcon, TruckIconV2, BanknoteIcon, XCircleIcon, ChartBarIcon, SearchIcon, ClipboardListIcon, CalendarIcon, EmptyBoxIcon, VodafoneIcon, MapPinIcon } from './icons';
 import { sendExternalNotification } from '../services/firebase';
 
 interface MerchantOrderCardProps {
@@ -116,15 +116,15 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
 
                     <div className="flex items-start gap-2">
                         <div className="mt-0.5">
-                            {isShoppingOrder ? <RocketIcon className="w-4 h-4 text-purple-400" /> : <ShoppingCartIcon className="w-4 h-4 text-gray-500" />}
+                            {isShoppingOrder ? <RocketIcon className="w-4 h-4 text-purple-400" /> : <MapPinIcon className="w-4 h-4 text-gray-500" />}
                         </div>
                         <p className="font-bold text-white text-sm leading-snug line-clamp-2">
                             {order.customer?.address || 'العنوان غير محدد'}
                         </p>
                     </div>
 
-                    {/* Payment Status & Collection - Enhanced Professional Layout */}
-                    {viewingMerchant?.canManageOrderDetails && !isPaid && !order.isCollected && (
+                    {/* Payment Status & Collection - Enhanced Professional Layout - Show only if driver assigned */}
+                    {viewingMerchant?.canManageOrderDetails && !isPaid && !order.isCollected && order.assignedTo && (
                         <div className="mt-3 animate-fadeIn">
                             {/* Price Display - Prominent */}
                             <div className="bg-gradient-to-br from-red-600/20 to-red-800/20 border border-red-500/30 rounded-lg p-3 mb-2">
@@ -183,12 +183,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             <UserIcon className="w-3 h-3" />
                             <span className="font-mono dir-ltr copyable-phone">{order.customer?.phone || ''}</span>
                         </p>
-                        {/* Show price only if NOT paid and NOT collected */}
-                        {viewingMerchant?.canManageOrderDetails && !isPaid && !order.isCollected && order.totalPrice && (
-                            <p className="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-1 rounded-lg border border-green-500/10">
-                                {order.totalPrice.toLocaleString('en-US')} ج.م
-                            </p>
-                        )}
+
                         {/* For non-merchants, always show price if available */}
                         {!viewingMerchant?.canManageOrderDetails && order.totalPrice !== undefined && (
                             <p className="text-xs text-gray-400 flex items-center gap-1 bg-gray-700/30 px-2 py-1 rounded-lg">

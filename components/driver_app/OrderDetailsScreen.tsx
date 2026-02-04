@@ -116,8 +116,8 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                         </div>
                     ) : (
                         <div className="bg-blue-500/10 text-blue-300 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-blue-500/20 flex items-center gap-1.5">
-                            <ShoppingCartIcon className="w-3.5 h-3.5" />
-                            طلب توصيل
+                            <ClipboardListIcon className="w-3.5 h-3.5" />
+                            تفاصيل الطلب
                         </div>
                     )}
                 </div>
@@ -204,8 +204,10 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
 
                                 {productTotal > 0 && (
                                     <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
-                                        <span className="text-xs text-gray-400">إجمالي المنتجات</span>
-                                        <span className="text-lg font-bold text-white">{productTotal} ج.م</span>
+                                        <span className="text-xs text-gray-400">سعر الطلب</span>
+                                        <span className={`text-lg font-bold ${order.isVodafoneCash ? 'text-green-400' : 'text-white'}`}>
+                                            {order.isVodafoneCash ? 'تم الدفع (فودافون كاش)' : `${productTotal} ج.م`}
+                                        </span>
                                     </div>
                                 )}
                             </>
@@ -231,6 +233,21 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                 {/* Input & Accept Button - Now inside scroll view */}
                 {listType === 'new' && (
                     <div className="bg-[#1F1F1F] p-4 rounded-2xl border border-white/5 shadow-lg mt-2">
+                        {/* Dynamic Total Calculation Display */}
+                        {fee && !isNaN(parseFloat(fee)) && (
+                            <div className="mb-4 bg-black/20 p-3 rounded-xl border border-white/5 flex justify-between items-center animate-fadeIn">
+                                <span className="text-xs text-gray-400">إجمالي التحصيل من العميل</span>
+                                <div className="text-right">
+                                    <span className="text-xl font-black text-green-400 block leading-none">
+                                        {order.isVodafoneCash ? parseFloat(fee) : (productTotal + parseFloat(fee))} <span className="text-xs font-bold text-gray-500">ج.م</span>
+                                    </span>
+                                    <span className="text-[9px] text-gray-500 mt-1 block">
+                                        {order.isVodafoneCash ? '(توصيل فقط)' : `(${productTotal} طلب + ${fee} توصيل)`}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex gap-3 items-center">
                             <div className="flex-1 relative">
                                 <input
