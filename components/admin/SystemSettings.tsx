@@ -398,14 +398,14 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
         );
     };
 
-    // --- NEW: Reset & Renumber Orders (Sequential Fix) ---
+    // --- NEW: Reset & Renumber Orders (Sequential Fix - SAFER) ---
     const handleRenumberOrders = async () => {
         openConfirmModal('⚠️ إعادة ترقيم الطلبات',
-            'سيتم إعادة ترتيب جميع الطلبات الحالية لتكون متسلسلة (1, 2, 3...) بناءً على تاريخ إنشائها.\n\nسيتم إصلاح أي فجوات في الأرقام (مثل القفزة من 5 إلى 1000).\n\nهذا الإجراء آمن وسيحتفظ ببيانات الطلبات.\n\nهل أنت متأكد؟',
+            'سيتم إعادة ترتيب جميع الطلبات الحالية لتكون متسلسلة (1, 2, 3...) بناءً على تاريخ إنشائها.\n\nسيتم استخدام معرفات مؤقتة لضمان عدم فقدان البيانات أثناء النقل.\n\nهل أنت متأكد؟',
             async () => {
-                showToast('جاري إعادة الترتيب...', 'info');
+                showToast('جاري التحضير...', 'info');
                 try {
-                    const snapshot = await firebase.firestore().collection('orders').get(); // Direct fetch
+                    const snapshot = await firebase.firestore().collection('orders').get();
                     if (snapshot.empty) return showToast('لا توجد طلبات', 'info');
 
                     const orders = snapshot.docs.map(d => ({ ...d.data() as any, _docRef: d.ref }));
@@ -417,63 +417,87 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                         return timeA - timeB;
                     });
 
-                    const batchSize = 400;
+                    // PHASE 1: Move ALL to TEMP-ORD-XXX
+                    // This prevents collision if we rename ORD-5 to ORD-1 while ORD-1 exists.
+                    showToast(`المرحلة 1: نقل ${orders.length} طلب إلى مؤقت...`, 'info');
+
                     let batch = firebase.firestore().batch();
                     let count = 0;
-                    let processed = 0;
-                    let changesCount = 0;
+
+                    const tempIds: string[] = [];
 
                     for (let i = 0; i < orders.length; i++) {
                         const order = orders[i];
-                        const oldId = order.id;
-                        // Determine prefix relative to order type, default ORD-
-                        // But wait, user has numbers 1-5. They might be "ORD-1" or just "1".
-                        // AddOrderModal generates "ORD-N". Auth generates "5" for admin.
-                        // Assuming "ORD-" prefix for orders. But if existing are "1", "2", "3".
-                        // I should verify format.
-                        // Safe approach: Use "ORD-" prefix if that is the standard. User said "from number 1".
-                        // App logic uses "ORD-".
-                        // So I will normalize to "ORD-" + (i+1).
+                        const tempId = `TEMP-ORD-${i + 1}`;
+                        tempIds.push(tempId);
 
-                        const newId = `ORD-${i + 1}`;
+                        const newRef = firebase.firestore().collection('orders').doc(tempId);
+                        const { _docRef, ...dataToCopy } = order;
 
-                        if (oldId !== newId) {
-                            // Create New Doc
-                            const newRef = firebase.firestore().collection('orders').doc(newId);
-                            const { _docRef, ...dataToCopy } = order;
-                            batch.set(newRef, { ...dataToCopy, id: newId });
+                        // Copy to TEMP
+                        batch.set(newRef, { ...dataToCopy, id: tempId });
+                        // Delete ORIGINAL
+                        batch.delete(order._docRef);
 
-                            // Delete Old Doc
-                            batch.delete(order._docRef);
-
-                            changesCount++;
-                            count += 2; // 1 set + 1 delete
-                        }
-
-                        if (count >= batchSize) {
+                        count += 2;
+                        if (count >= 400) {
                             await batch.commit();
                             batch = firebase.firestore().batch();
                             count = 0;
                         }
-                        processed++;
                     }
+                    if (count > 0) await batch.commit();
 
-                    if (count > 0) {
-                        await batch.commit();
+                    // PHASE 2: Move TEMP to FINAL ORD-XXX
+                    showToast(`المرحلة 2: التثبيت النهائي...`, 'info');
+
+                    batch = firebase.firestore().batch();
+                    count = 0;
+
+                    for (let i = 0; i < tempIds.length; i++) {
+                        const tempId = tempIds[i];
+                        const finalId = `ORD-${i + 1}`;
+
+                        // We need to reference the RECENTLY created temp doc
+                        // Since we don't have the doc object ref, we make it.
+                        const tempRef = firebase.firestore().collection('orders').doc(tempId);
+                        const finalRef = firebase.firestore().collection('orders').doc(finalId);
+
+                        // Use a trick: We know the data structure is preserved.
+                        // But we can't "read" inside a batch easily without transaction.
+                        // However, we KNOW we just wrote it.
+                        // Wait, we need the DATA to write to finalRef.
+                        // We can't just "move" without reading.
+                        // The order `orders[i]` contains the data (except the ID which we updated to tempId).
+                        // WE CAN REUSE `orders[i]` data! 
+                        // Just ensure we update the 'id' field to finalId.
+
+                        const originalData = orders[i];
+                        const { _docRef, ...dataToCopy } = originalData; // _docRef is the OLD one (irrelevant now)
+
+                        batch.set(finalRef, { ...dataToCopy, id: finalId });
+                        batch.delete(tempRef);
+
+                        count += 2;
+                        if (count >= 400) {
+                            await batch.commit();
+                            batch = firebase.firestore().batch();
+                            count = 0;
+                        }
                     }
+                    if (count > 0) await batch.commit();
 
-                    // CRITICAL: Update the Global Counter to match the new count!
-                    // This ensures the next "Add Order" continues from where we left off.
+                    // Update Counter
                     await firebase.firestore().collection('settings').doc('counters').set({
                         'ORD-': orders.length
                     }, { merge: true });
 
-                    showToast(`تم إعادة ترقيم ${processed} طلب (تم تغيير ${changesCount}) وتحديث العداد إلى ${orders.length}.`, 'success');
+                    showToast(`تمت العملية بنجاح! تم ترتيب ${orders.length} طلب.`, 'success');
                     setTimeout(() => window.location.reload(), 2000);
 
                 } catch (error) {
                     console.error(error);
-                    showToast('حدث خطأ أثناء إعادة الترقيم', 'error');
+                    showToast('حدث خطأ فادح أثناء العملية. تحقق من الكونسول.', 'error');
                 }
             }, 'danger'
         );
