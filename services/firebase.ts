@@ -789,8 +789,38 @@ export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<strin
             return `${prefix}${nextId}`;
         });
     } catch (error) {
-        console.error("Safe ID Gen Transaction failed:", error);
-        return `${prefix}${Date.now()}`;
+        console.error("Safe ID Gen Transaction failed, trying Safe Fallback (Query):", error);
+        // FALLBACK: Query the latest ID directly. 
+        // Allows offline support via Firebase Cache and prevents Timestamp IDs.
+        try {
+            // 1. Query Last Order
+            const snapshot = await db!.collection('orders')
+                .orderBy('createdAt', 'desc')
+                .limit(20) // Scan last 20 to find max valid ID
+                .get();
+
+            let maxId = 0;
+            snapshot.forEach(d => {
+                const id = d.id;
+                if (id.startsWith(prefix)) {
+                    const num = parseInt(id.replace(prefix, '') || '0');
+                    // Filter out large timestamp IDs
+                    if (!isNaN(num) && num < 1000000000) maxId = Math.max(maxId, num);
+                }
+            });
+
+            // 2. Increment
+            const nextId = maxId + 1;
+            const finalId = `${prefix}${nextId}`;
+
+            // 3. Try repair counter (fire and forget)
+            db!.collection('settings').doc('counters').set({ [prefix]: nextId }, { merge: true }).catch(() => { });
+
+            return finalId;
+        } catch (e2) {
+            console.error("Critical: Even Fallback Failed", e2);
+            throw new Error("Could not generate ID. Check connection.");
+        }
     }
 };
 
@@ -902,11 +932,7 @@ export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Pr
         } catch (fallbackError) {
             console.error("Critical Fallback failed:", fallbackError);
             // Worst Case: Timestamp
-            const ids: string[] = [];
-            for (let i = 0; i < count; i++) {
-                ids.push(`${prefix}${Date.now()}_${i}`);
-            }
-            return ids;
+            throw new Error("Batch ID Generation Failed completely. Please retry.");
         }
     }
 };

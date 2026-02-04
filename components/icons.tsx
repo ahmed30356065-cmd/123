@@ -816,5 +816,5 @@ export const ExternalLinkIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props)
 import vodafoneLogo from '../src/assets/vodafone-cash-new.png';
 
 export const VodafoneIcon: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = (props) => (
-  <img src={vodafoneLogo} alt="Vodafone Cash" {...props} />
+  <img src={vodafoneLogo} alt="Vodafone Cash" className={`w-full h-full object-cover rounded-full ${props.className || ''}`} {...props} />
 );
