@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Customer, User } from '../types';
-import { ClipboardPlusIcon, CheckCircleIcon, ClipboardListIcon } from './icons';
+import { ClipboardPlusIcon, CheckCircleIcon, ClipboardListIcon, PhoneIcon, MapPinIcon } from './icons';
 
 interface NewOrderFormProps {
     addOrder: (order: { customer: Customer, notes?: string, customOrderNumber?: string, paymentStatus?: 'paid' | 'unpaid', isVodafoneCash?: boolean }) => Promise<void> | void;
@@ -114,7 +114,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
     };
 
     return (
-        <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 relative overflow-hidden transition-all duration-300">
+        <div className="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700 relative overflow-hidden transition-all duration-300">
 
             {/* Success Overlay Animation */}
             <div
@@ -126,9 +126,9 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 <h3 className="text-xl font-bold text-white mt-4">تم إضافة الطلب بنجاح!</h3>
             </div>
 
-            <h2 className="text-2xl font-bold text-neutral-100 mb-6 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-neutral-100 mb-4 flex items-center justify-between">
                 <div className="flex items-center">
-                    <ClipboardPlusIcon className="w-6 h-6 ml-3 text-red-500" />
+                    <ClipboardPlusIcon className="w-5 h-5 ml-2 text-red-500" />
                     <span>إنشاء طلب جديد</span>
                 </div>
             </h2>
@@ -144,7 +144,10 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                         </div>
 
                         <div>
-                            <label htmlFor="orderNum" className="block text-xs font-bold text-neutral-400 mb-2">رقم الطلب (اختياري)</label>
+                            <label htmlFor="orderNum" className="block text-xs font-bold text-neutral-400 mb-1.5 flex items-center gap-1">
+                                <ClipboardListIcon className="w-3.5 h-3.5" />
+                                رقم الطلب (اختياري)
+                            </label>
                             <input
                                 ref={orderNumInputRef}
                                 type="text"
@@ -152,45 +155,45 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                                 value={customOrderNumber}
                                 onChange={(e) => setCustomOrderNumber(e.target.value)}
                                 disabled={status === 'submitting'}
-                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none disabled:opacity-50 font-mono text-center"
+                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none disabled:opacity-50 font-mono text-center text-sm"
                                 placeholder="#1234"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-neutral-400 mb-2">حالة الدفع</label>
-                            <div className="flex bg-gray-700 rounded-lg p-1 border border-gray-600">
+                            <label className="block text-xs font-bold text-neutral-400 mb-1.5">حالة الدفع</label>
+                            <div className="flex bg-gray-700 rounded-lg p-1 border border-gray-600 gap-1">
                                 {([
-                                    { id: 'unpaid', label: 'غير مدفوع' },
-                                    { id: 'paid', label: 'مدفوع' },
-                                    { id: 'vodafone_cash', label: 'فودافون كاش' }
+                                    { id: 'unpaid', label: 'غير مدفوع', icon: '❌' },
+                                    { id: 'paid', label: 'مدفوع', icon: '✓' },
+                                    { id: 'vodafone_cash', label: 'كاش', icon: '💰' }
                                 ] as const).map(opt => (
                                     <button
                                         key={opt.id}
                                         type="button"
                                         onClick={() => setPaymentOption(opt.id)}
-                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${paymentOption === opt.id
-                                            ? (opt.id === 'unpaid' ? 'bg-red-500 text-white' : opt.id === 'paid' ? 'bg-green-600 text-white' : 'bg-red-800 text-white')
-                                            : 'text-gray-400 hover:text-white'
+                                        className={`flex-1 py-2 px-2 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === opt.id
+                                            ? (opt.id === 'unpaid' ? 'bg-red-500 text-white shadow-lg' : opt.id === 'paid' ? 'bg-green-600 text-white shadow-lg' : 'bg-red-800 text-white shadow-lg')
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-600'
                                             }`}
                                     >
-                                        {opt.label}
+                                        <span>{opt.icon}</span>
+                                        <span>{opt.label}</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Payment Amount Fields */}
                         {paymentOption === 'paid' && (
-                            <div>
-                                <label htmlFor="paidAmount" className="block text-xs font-bold text-neutral-400 mb-2">المبلغ المدفوع (ج.م)</label>
+                            <div className="animate-fadeIn">
+                                <label htmlFor="paidAmount" className="block text-xs font-bold text-neutral-400 mb-1.5">المبلغ المدفوع (ج.م)</label>
                                 <input
                                     type="number"
                                     id="paidAmount"
                                     value={paidAmount}
                                     onChange={(e) => setPaidAmount(e.target.value)}
                                     disabled={status === 'submitting'}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none disabled:opacity-50 text-center"
+                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none disabled:opacity-50 text-center text-sm"
                                     placeholder="0.00"
                                     step="0.01"
                                     min="0"
@@ -199,15 +202,15 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                         )}
 
                         {paymentOption === 'unpaid' && (
-                            <div>
-                                <label htmlFor="unpaidAmount" className="block text-xs font-bold text-neutral-400 mb-2">المبلغ غير المدفوع (ج.م)</label>
+                            <div className="animate-fadeIn">
+                                <label htmlFor="unpaidAmount" className="block text-xs font-bold text-neutral-400 mb-1.5">المبلغ غير المدفوع (ج.م)</label>
                                 <input
                                     type="number"
                                     id="unpaidAmount"
                                     value={unpaidAmount}
                                     onChange={(e) => setUnpaidAmount(e.target.value)}
                                     disabled={status === 'submitting'}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50 text-center"
+                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50 text-center text-sm"
                                     placeholder="0.00"
                                     step="0.01"
                                     min="0"
@@ -216,15 +219,15 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                         )}
 
                         {paymentOption === 'vodafone_cash' && (
-                            <div>
-                                <label htmlFor="cashAmount" className="block text-xs font-bold text-neutral-400 mb-2">مبلغ فودافون كاش (ج.م)</label>
+                            <div className="animate-fadeIn">
+                                <label htmlFor="cashAmount" className="block text-xs font-bold text-neutral-400 mb-1.5">مبلغ فودافون كاش (ج.م)</label>
                                 <input
                                     type="number"
                                     id="cashAmount"
                                     value={cashAmount}
                                     onChange={(e) => setCashAmount(e.target.value)}
                                     disabled={status === 'submitting'}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-red-800 focus:border-red-800 outline-none disabled:opacity-50 text-center"
+                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-red-800 focus:border-red-800 outline-none disabled:opacity-50 text-center text-sm"
                                     placeholder="0.00"
                                     step="0.01"
                                     min="0"
@@ -235,40 +238,55 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 )}
 
                 <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-neutral-300 mb-2">رقم الهاتف</label>
-                    <input
-                        ref={phoneInputRef}
-                        type="tel"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={11}
-                        name="phone"
-                        id="phone"
-                        value={customer.phone}
-                        onChange={handleCustomerChange}
-                        required
-                        disabled={status === 'submitting'}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-500 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50 text-right placeholder:text-right font-mono"
-                        placeholder="يجب أن يتكون من 11 رقم"
-                        dir="rtl"
-                    />
+                    <label htmlFor="phone" className="block text-sm font-medium text-neutral-300 mb-1.5 flex items-center gap-1">
+                        <PhoneIcon className="w-4 h-4 text-blue-400" />
+                        رقم الهاتف
+                    </label>
+                    <div className="relative">
+                        <PhoneIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                        <input
+                            ref={phoneInputRef}
+                            type="tel"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={11}
+                            name="phone"
+                            id="phone"
+                            value={customer.phone}
+                            onChange={handleCustomerChange}
+                            required
+                            disabled={status === 'submitting'}
+                            className="w-full pl-3 pr-10 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-500 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50 text-right placeholder:text-right font-mono text-sm"
+                            placeholder="يجب أن يتكون من 11 رقم"
+                            dir="rtl"
+                        />
+                    </div>
                 </div>
                 <div>
-                    <label htmlFor="address" className="block text-sm font-medium text-neutral-300 mb-2">العنوان بالتفصيل</label>
-                    <input
-                        ref={addressInputRef}
-                        type="text"
-                        name="address"
-                        id="address"
-                        value={customer.address}
-                        onChange={handleCustomerChange}
-                        required
-                        disabled={status === 'submitting'}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-500 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50"
-                    />
+                    <label htmlFor="address" className="block text-sm font-medium text-neutral-300 mb-1.5 flex items-center gap-1">
+                        <MapPinIcon className="w-4 h-4 text-green-400" />
+                        العنوان بالتفصيل
+                    </label>
+                    <div className="relative">
+                        <MapPinIcon className="absolute right-3 top-3 w-4 h-4 text-gray-500" />
+                        <input
+                            ref={addressInputRef}
+                            type="text"
+                            name="address"
+                            id="address"
+                            value={customer.address}
+                            onChange={handleCustomerChange}
+                            required
+                            disabled={status === 'submitting'}
+                            className="w-full pl-3 pr-10 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-500 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50 text-sm"
+                        />
+                    </div>
                 </div>
                 <div>
-                    <label htmlFor="notes" className="block text-sm font-medium text-neutral-300 mb-2">ملاحظات (اختياري)</label>
+                    <label htmlFor="notes" className="block text-sm font-medium text-neutral-300 mb-1.5 flex items-center gap-1">
+                        <ClipboardListIcon className="w-4 h-4 text-yellow-400" />
+                        ملاحظات (اختياري)
+                    </label>
                     <textarea
                         ref={notesInputRef}
                         id="notes"
@@ -276,7 +294,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                         onChange={(e) => setNotes(e.target.value)}
                         rows={3}
                         disabled={status === 'submitting'}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-500 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50"
+                        className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-500 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50 text-sm"
                     ></textarea>
                 </div>
 

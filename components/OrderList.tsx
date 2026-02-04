@@ -12,6 +12,7 @@ interface MerchantOrderCardProps {
 }
 
 const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, viewingMerchant, onUpdateOrder }) => {
+    const [showCollectModal, setShowCollectModal] = React.useState(false);
     const formattedDate = (() => {
         try {
             const createdAt = order.createdAt;
@@ -48,11 +49,19 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
 
     const isShoppingOrder = order.type === 'shopping_order';
 
-    // NEW: Handle Collection
+    // Determine if order is paid (either paid status OR vodafone cash)
+    const isPaid = order.paymentStatus === 'paid' || order.isVodafoneCash;
+
+    // Handle Collection with confirmation
     const handleCollect = () => {
+        setShowCollectModal(true);
+    };
+
+    const confirmCollect = () => {
         if (onUpdateOrder) {
             onUpdateOrder(order.id, { isCollected: true });
         }
+        setShowCollectModal(false);
     };
 
     return (
@@ -70,7 +79,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             #{order.id}
                         </span>
 
-                        {/* New: Merchant Custom Order Number */}
+                        {/* Show Custom Order Number only if NOT collected */}
                         {viewingMerchant?.canManageOrderDetails && order.customOrderNumber && !order.isCollected && (
                             <span className="font-mono text-xs text-blue-400 bg-blue-900/10 px-2 py-0.5 rounded-md border border-blue-900/30 font-bold tracking-wider">
                                 #{order.customOrderNumber}
@@ -98,26 +107,29 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </p>
                     </div>
 
-                    {/* New: Payment Status & Collection Button */}
-                    {viewingMerchant?.canManageOrderDetails && !order.isCollected && (
+                    {/* Payment Status & Collection - Only show if NOT paid and NOT collected */}
+                    {viewingMerchant?.canManageOrderDetails && !isPaid && !order.isCollected && (
                         <div className="mt-2 flex items-center gap-2 flex-wrap animate-fadeIn">
-                            {order.paymentStatus === 'paid' ? (
-                                <span className="text-[10px] font-bold bg-green-600/20 text-green-400 px-2 py-1 rounded-md border border-green-600/20">
-                                    مدفوع {order.isVodafoneCash ? '(فودافون كاش)' : ''}
-                                </span>
-                            ) : (
-                                <span className="text-[10px] font-bold bg-red-600/20 text-red-400 px-2 py-1 rounded-md border border-red-600/20">
-                                    غير مدفوع
-                                </span>
-                            )}
+                            <span className="text-[10px] font-bold bg-red-600/20 text-red-400 px-2 py-1 rounded-md border border-red-600/20">
+                                غير مدفوع
+                            </span>
 
                             <button
                                 onClick={handleCollect}
                                 className="text-[10px] font-bold bg-blue-600 text-white px-3 py-1 rounded-md shadow hover:bg-blue-700 transition-colors flex items-center gap-1"
                             >
                                 <CheckCircleIcon className="w-3 h-3" />
-                                تسليم للمندوب/تحصيل
+                                تحصيل
                             </button>
+                        </div>
+                    )}
+
+                    {/* Show "Paid" status if paid OR collected */}
+                    {viewingMerchant?.canManageOrderDetails && (isPaid || order.isCollected) && (
+                        <div className="mt-2 animate-fadeIn">
+                            <span className="text-[10px] font-bold bg-green-600/20 text-green-400 px-2 py-1 rounded-md border border-green-600/20">
+                                تم الدفع {order.isVodafoneCash ? '(فودافون كاش)' : ''}
+                            </span>
                         </div>
                     )}
 
@@ -135,7 +147,14 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             <UserIcon className="w-3 h-3" />
                             <span className="font-mono dir-ltr copyable-phone">{order.customer?.phone || ''}</span>
                         </p>
-                        {order.totalPrice && (
+                        {/* Show price only if NOT paid and NOT collected */}
+                        {viewingMerchant?.canManageOrderDetails && !isPaid && !order.isCollected && order.totalPrice && (
+                            <p className="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-1 rounded-lg border border-green-500/10">
+                                {order.totalPrice.toLocaleString('en-US')} ج.م
+                            </p>
+                        )}
+                        {/* For non-merchant users or if no special permissions, always show price */}
+                        {!viewingMerchant?.canManageOrderDetails && order.totalPrice && (
                             <p className="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-1 rounded-lg border border-green-500/10">
                                 {order.totalPrice.toLocaleString('en-US')} ج.م
                             </p>
@@ -174,6 +193,37 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     )}
                 </div>
             </div>
+
+            {/* Collection Confirmation Modal */}
+            {showCollectModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+                    <div className="bg-gray-800 rounded-2xl p-6 max-w-sm w-full border border-gray-700 shadow-2xl transform animate-scaleIn">
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center">
+                                <CheckCircleIcon className="w-10 h-10 text-blue-400" />
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-bold text-white text-center mb-2">تأكيد التحصيل</h3>
+                        <p className="text-gray-300 text-center mb-6 text-sm">
+                            هل تأكدت من استلام المبلغ من المندوب؟
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowCollectModal(false)}
+                                className="flex-1 bg-gray-700 text-white font-bold py-3 px-4 rounded-xl hover:bg-gray-600 transition-colors"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                onClick={confirmCollect}
+                                className="flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
+                            >
+                                تأكيد التحصيل
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
@@ -274,28 +324,23 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
             .sort((a, b) => getOrderDate(b).getTime() - getOrderDate(a).getTime()); // Newest first
     }, [dateFilteredOrders, showShoppingOnly, searchTerm]);
 
-    // Statistics calculations
+    // Statistics calculations - Updated Logic
+    // 1. إجمالي التوصيل: كل الطلبات (الكاش + المدفوع)
     const totalDelivery = finalFilteredOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-    const totalOrders = finalFilteredOrders.length;
 
-    // Calculate uncollected and collected orders summary (only if merchant has permission)
-    const uncollectedOrders = viewingMerchant?.canManageOrderDetails
-        ? finalFilteredOrders.filter(o => !o.isCollected)
-        : [];
-    const collectedOrders = viewingMerchant?.canManageOrderDetails
-        ? finalFilteredOrders.filter(o => o.isCollected)
-        : [];
+    // 2. في انتظار التحصيل: المبالغ التي لم يكتمل دفعها (isCollected = false)
+    const pendingCollection = viewingMerchant?.canManageOrderDetails
+        ? finalFilteredOrders
+            .filter(o => !o.isCollected)
+            .reduce((sum, o) => sum + (o.totalPrice || 0), 0)
+        : 0;
 
-    const uncollectedCount = uncollectedOrders.length;
-    const uncollectedTotalDelivery = uncollectedOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-
-    const collectedCount = collectedOrders.length;
-    const collectedTotalDelivery = collectedOrders.reduce((sum: number, o: any) => sum + (o.totalPrice || 0), 0);
-
-    // Calculate total cash (Vodafone Cash) for the day
-    const totalCash = finalFilteredOrders
-        .filter((o: any) => o.isVodafoneCash && o.cashAmount)
-        .reduce((sum: number, o: any) => sum + (o.cashAmount || 0), 0);
+    // 3. إجمالي الكاش: المبالغ المحولة على فودافون كاش فقط
+    const totalVodafoneCash = viewingMerchant?.canManageOrderDetails
+        ? finalFilteredOrders
+            .filter(o => o.isVodafoneCash)
+            .reduce((sum, o) => sum + (o.cashAmount || o.totalPrice || 0), 0)
+        : 0;
 
     // Counts for Badges
     const counts = useMemo(() => {
@@ -389,83 +434,42 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                 </div>
             </div>
 
-            {/* Summary Section */}
-            <div className="p-4 space-y-4">
-                {/* Total Summary */}
-                <div className="bg-[#1a1a1a] rounded-2xl p-6 border border-[#333] shadow-lg">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="text-center">
-                            <p className="text-sm text-gray-400 mb-1 font-medium">إجمالي الطلبات</p>
-                            <p className="text-3xl font-black text-white">{totalOrders}</p>
+            {/* Summary Section - Moved to top after filters */}
+            {viewingMerchant?.canManageOrderDetails && (
+                <div className="px-4 pt-3 pb-2">
+                    <div className="grid grid-cols-3 gap-2">
+                        {/* 1. إجمالي التوصيل */}
+                        <div className="bg-gradient-to-br from-green-900/20 to-emerald-900/20 rounded-xl p-3 border border-green-500/30">
+                            <div className="flex items-center gap-1 mb-1">
+                                <TruckIconV2 className="w-3.5 h-3.5 text-green-400" />
+                                <p className="text-[9px] text-green-300 font-bold">إجمالي التوصيل</p>
+                            </div>
+                            <p className="text-lg font-black text-green-400">{totalDelivery.toLocaleString('en-US')}</p>
+                            <p className="text-[8px] text-green-300/70">ج.م</p>
                         </div>
-                        <div className="text-center">
-                            <p className="text-sm text-gray-400 mb-1 font-medium">إجمالي التوصيل</p>
-                            <p className="text-3xl font-black text-green-400">{totalDelivery.toLocaleString('en-US')} ج.م</p>
+
+                        {/* 2. في انتظار التحصيل */}
+                        <div className="bg-gradient-to-br from-orange-900/20 to-red-900/20 rounded-xl p-3 border border-orange-500/30">
+                            <div className="flex items-center gap-1 mb-1">
+                                <ClockIcon className="w-3.5 h-3.5 text-orange-400" />
+                                <p className="text-[9px] text-orange-300 font-bold">في انتظار التحصيل</p>
+                            </div>
+                            <p className="text-lg font-black text-orange-400">{pendingCollection.toLocaleString('en-US')}</p>
+                            <p className="text-[8px] text-orange-300/70">ج.م</p>
+                        </div>
+
+                        {/* 3. إجمالي الكاش */}
+                        <div className="bg-gradient-to-br from-red-900/20 to-pink-900/20 rounded-xl p-3 border border-red-500/30">
+                            <div className="flex items-center gap-1 mb-1">
+                                <CheckCircleIcon className="w-3.5 h-3.5 text-red-400" />
+                                <p className="text-[9px] text-red-300 font-bold">إجمالي الكاش</p>
+                            </div>
+                            <p className="text-lg font-black text-red-400">{totalVodafoneCash.toLocaleString('en-US')}</p>
+                            <p className="text-[8px] text-red-300/70">فودافون كاش</p>
                         </div>
                     </div>
                 </div>
-
-                {/* Cash Total Card - Only shown if merchant has permission and there's cash */}
-                {viewingMerchant?.canManageOrderDetails && totalCash > 0 && (
-                    <div className="bg-gradient-to-br from-red-900/20 to-pink-900/20 rounded-2xl p-6 border-2 border-red-500/30 shadow-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                            <h3 className="text-lg font-bold text-red-400">إجمالي الكاش اليومي</h3>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-4xl font-black text-red-400">{totalCash.toLocaleString('en-US')}</p>
-                            <p className="text-sm text-red-300/70 mt-1">ج.م (فودافون كاش)</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Collection Summary - Only shown if merchant has permission */}
-                {viewingMerchant?.canManageOrderDetails && (uncollectedCount > 0 || collectedCount > 0) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Uncollected Orders Summary */}
-                        {uncollectedCount > 0 && (
-                            <div className="bg-gradient-to-br from-orange-900/20 to-red-900/20 rounded-2xl p-6 border-2 border-orange-500/30 shadow-lg animate-fadeIn">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                                    <h3 className="text-lg font-bold text-orange-400">لم يتم التحصيل</h3>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-black/30 rounded-xl p-4 text-center border border-orange-500/20">
-                                        <p className="text-xs text-orange-300 mb-2 font-medium">عدد الطلبات</p>
-                                        <p className="text-3xl font-black text-orange-400">{uncollectedCount}</p>
-                                    </div>
-                                    <div className="bg-black/30 rounded-xl p-4 text-center border border-orange-500/20">
-                                        <p className="text-xs text-orange-300 mb-2 font-medium">إجمالي المبالغ</p>
-                                        <p className="text-3xl font-black text-orange-400">{uncollectedTotalDelivery.toLocaleString('en-US')}</p>
-                                        <p className="text-xs text-orange-300/70 mt-1">ج.م</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Collected Orders Summary */}
-                        {collectedCount > 0 && (
-                            <div className="bg-gradient-to-br from-green-900/20 to-emerald-900/20 rounded-2xl p-6 border-2 border-green-500/30 shadow-lg animate-fadeIn">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <h3 className="text-lg font-bold text-green-400">تم التحصيل</h3>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-black/30 rounded-xl p-4 text-center border border-green-500/20">
-                                        <p className="text-xs text-green-300 mb-2 font-medium">عدد الطلبات</p>
-                                        <p className="text-3xl font-black text-green-400">{collectedCount}</p>
-                                    </div>
-                                    <div className="bg-black/30 rounded-xl p-4 text-center border border-green-500/20">
-                                        <p className="text-xs text-green-300 mb-2 font-medium">إجمالي المبالغ</p>
-                                        <p className="text-3xl font-black text-green-400">{collectedTotalDelivery.toLocaleString('en-US')}</p>
-                                        <p className="text-xs text-green-300/70 mt-1">ج.م</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+            )}
 
             {/* Orders List */}
             <div className="p-4 space-y-3 pb-24">
