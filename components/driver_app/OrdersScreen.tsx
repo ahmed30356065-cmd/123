@@ -85,7 +85,6 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ orders, users, onViewOrder,
         <div
           key={order.id}
           className="animate-fade-in-up hardware-accelerated"
-          className="animate-fade-in-up hardware-accelerated"
           // Removed artificial delay to meet "Lightning Speed" requirement
           style={{ animationDelay: '0ms' }}
         >

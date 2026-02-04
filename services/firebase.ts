@@ -669,10 +669,9 @@ export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> =
     if (!db) throw new Error("Firebase not initialized");
 
     try {
-        // 1. Scan ALL orders to find the highest ID
-        // This is "optimistic" and efficient for < 5000 docs.
-        // It bypasses the need for a central write-locked counter which requires permissions.
-        const snapshot = await db.collection('orders').get();
+        // 1. Scan LATEST 50 orders to find the highest ID
+        // fetching the whole collection is too slow. 50 is safe for sequentiality.
+        const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').limit(50).get();
         let maxId = 0;
 
         snapshot.forEach(doc => {

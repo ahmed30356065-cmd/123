@@ -527,16 +527,8 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                     <ChartBarIcon className="w-6 h-6" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-black text-white">سجل الطلبات (v2.3.1)</h3>
-                    <p className="text-[10px] text-red-400 font-mono">
-                        Prop: {orders.length} |
-                        DateFiltered: {dateFilteredOrders.length} |
-                        Final: {finalFilteredOrders.length} |
-                        Visible: {visibleOrders.length}
-                    </p>
-                    <p className="text-[10px] text-gray-400 font-mono">
-                        Filter: {filterMode} | Search: "{searchTerm}"
-                    </p>
+                    <h3 className="text-xl font-black text-white">سجل الطلبات</h3>
+                    <p className="text-xs text-gray-400 font-medium">عرض ومتابعة تاريخ الطلبات</p>
                 </div>
             </div>
 
@@ -640,7 +632,6 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
 
             {/* Orders List */}
             <div className="p-4 space-y-3 pb-24">
-                <p className="text-[10px] text-yellow-500 font-mono text-center">List Count Debug: {visibleOrders.length}</p>
                 {visibleOrders.length === 0 ? (
                     <div className="flex flex-col items-center justify-center text-center text-gray-500 py-20 bg-gray-800/20 rounded-3xl border border-dashed border-gray-700 mt-4">
                         <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-4 shadow-inner">

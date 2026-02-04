@@ -134,7 +134,6 @@ const MerchantPortal: React.FC<MerchantPortalProps> = ({
         <h1 className="text-xl font-bold font-sans">
           <span className="text-red-500">{firstWord}</span>
           <span className="text-white ml-1">{restOfName}</span>
-          <h3 className="text-sm font-black text-white mt-1">سجل الطلبات (v2.3) - {merchantOrders.length}</h3>
         </h1>
         <button onClick={() => setPage('incoming')} className="relative p-2"><BellIcon className={`w-6 h-6 ${incomingCount > 0 ? "text-yellow-400" : "text-gray-400"}`} />{incomingCount > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-bounce"></span>}</button>
       </header>

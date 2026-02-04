@@ -569,14 +569,19 @@ const App: React.FC = () => {
 
                         // 1. OPTIMISTIC UPDATE: Add to UI immediately
                         setOrders(prev => [...prev, newOrder]);
-                        logAction('create', 'الطلبات', `(Optimistic) adding order ${newId}`);
+                        logAction('create', 'الطلبات', `تم إضافة طلب جديد #${newId}`);
 
-                        // 2. Send to Server (Background)
-                        await firebaseService.updateData('orders', newId, newOrder);
-
-                        await firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
-                        await firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
-                        await firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${newId} متاح للتوصيل`, url: `/?target=order&id=${newId}` });
+                        // 2. Send to Server & Notifications (Background - Non-blocking)
+                        (async () => {
+                            try {
+                                await firebaseService.updateData('orders', newId, newOrder);
+                                firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
+                                firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${newId}`, url: '/?target=orders' });
+                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${newId} متاح للتوصيل`, url: `/?target=order&id=${newId}` });
+                            } catch (e) {
+                                console.error("Merchant addOrder background error:", e);
+                            }
+                        })();
                     }}
                     onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
                     seenMessageIds={[]} markMessageAsSeen={(id) => { }} hideMessage={(id) => { }} deletedMessageIds={[]} appTheme={appTheme}
