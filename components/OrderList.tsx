@@ -14,10 +14,10 @@ interface MerchantOrderCardProps {
     driver: { name: string; phone?: string | null };
     viewingMerchant?: User;
     onUpdateOrder?: (orderId: string, data: Partial<Order>) => void;
-    onDeleteOrder?: (orderId: string) => void;
+
 }
 
-const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, viewingMerchant, onUpdateOrder, onDeleteOrder }) => {
+const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, viewingMerchant, onUpdateOrder }) => {
     const [showCollectModal, setShowCollectModal] = React.useState(false);
     const formattedDate = (() => {
         try {
@@ -385,7 +385,7 @@ interface OrderListProps {
     users: User[];
     viewingMerchant?: User; // New prop to pass permission context
     onUpdateOrder?: (orderId: string, data: Partial<Order>) => void;
-    onDeleteOrder?: (orderId: string) => void;
+
 }
 
 const FilterChip: React.FC<{
@@ -412,7 +412,7 @@ const FilterChip: React.FC<{
     </button>
 );
 
-const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, onUpdateOrder, onDeleteOrder }) => {
+const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, onUpdateOrder }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Filter States
@@ -651,8 +651,8 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                                     phone: users.find(u => u.id === order.driverId)?.phone
                                 }}
                                 viewingMerchant={viewingMerchant}
-                                onDeleteOrder={onDeleteOrder}
                                 onUpdateOrder={onUpdateOrder}
+
                             />
                         ))}
                         <div ref={bottomRef} className="h-10 flex items-center justify-center">
