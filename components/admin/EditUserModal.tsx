@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useMemo } from 'react';
 import { User, SupervisorPermission, Role } from '../../types';
-import { ChevronLeftIcon, CameraIcon, UploadIcon, EyeIcon, EyeOffIcon, MapPinIcon, SettingsIcon, TruckIconV2, GridIcon, ShieldCheckIcon, UtensilsIcon, ClockIcon, ChartBarIcon, MessageSquareIcon, TicketIcon, HeadsetIcon, StoreIcon, UsersIcon, CheckCircleIcon } from '../icons';
+import { ChevronLeftIcon, CameraIcon, UploadIcon, EyeIcon, EyeOffIcon, MapPinIcon, SettingsIcon, TruckIconV2, GridIcon, ShieldCheckIcon, UtensilsIcon, ClockIcon, ChartBarIcon, MessageSquareIcon, TicketIcon, HeadsetIcon, StoreIcon, UsersIcon, CheckCircleIcon, ClipboardListIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
 interface EditUserModalProps {
@@ -114,6 +114,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
     const [storeCategory, setStoreCategory] = useState(user.storeCategory || 'restaurant');
     const [canShowDeliveryTime, setCanShowDeliveryTime] = useState(user.canShowDeliveryTime || false);
     const [canManageMenu, setCanManageMenu] = useState(user.canManageMenu !== false);
+    const [canManageOrderDetails, setCanManageOrderDetails] = useState(user.canManageOrderDetails || false);
 
     const [error, setError] = useState('');
     const [image, setImage] = useState<string | null>(user.storeImage || null);
@@ -251,6 +252,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
             updatedData.storeCategory = storeCategory;
             updatedData.canShowDeliveryTime = canShowDeliveryTime;
             updatedData.canManageMenu = canManageMenu;
+            updatedData.canManageOrderDetails = canManageOrderDetails;
         }
 
         if (role === 'supervisor') {
@@ -500,6 +502,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
                                         <label className="text-sm font-bold text-white">عرض وقت التوصيل (في السجل)</label>
                                     </div>
                                     <input type="checkbox" checked={canShowDeliveryTime} onChange={(e) => setCanShowDeliveryTime(e.target.checked)} className="h-5 w-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-[#252525] rounded-xl border border-[#333]">
+                                    <div className="flex items-center gap-2">
+                                        <ClipboardListIcon className="w-4 h-4 text-pink-400" />
+                                        <label className="text-sm font-bold text-white">تفاصيل الطلب (رقم/دفع/تحصيل)</label>
+                                    </div>
+                                    <input type="checkbox" checked={canManageOrderDetails} onChange={(e) => setCanManageOrderDetails(e.target.checked)} className="h-5 w-5 text-pink-600 bg-gray-700 border-gray-600 rounded focus:ring-pink-500" />
                                 </div>
                             </div>
                         </div>

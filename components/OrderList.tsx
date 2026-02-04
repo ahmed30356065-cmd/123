@@ -8,9 +8,10 @@ interface MerchantOrderCardProps {
     order: Order;
     driver: { name: string; phone?: string | null };
     viewingMerchant?: User;
+    onUpdateOrder?: (orderId: string, data: Partial<Order>) => void;
 }
 
-const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, viewingMerchant }) => {
+const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, viewingMerchant, onUpdateOrder }) => {
     const formattedDate = (() => {
         try {
             const createdAt = order.createdAt;
@@ -47,6 +48,13 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
 
     const isShoppingOrder = order.type === 'shopping_order';
 
+    // NEW: Handle Collection
+    const handleCollect = () => {
+        if (onUpdateOrder) {
+            onUpdateOrder(order.id, { isCollected: true });
+        }
+    };
+
     return (
         <div className={`bg-gray-800 rounded-2xl p-4 space-y-3 transition-all border shadow-sm hover:shadow-md relative overflow-hidden group ${isShoppingOrder ? 'border-purple-500/30' : 'border-gray-700'}`}>
             {isShoppingOrder && (
@@ -61,6 +69,14 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         <span className="font-mono text-xs text-red-400 bg-red-900/10 px-2 py-0.5 rounded-md border border-red-900/30 font-bold tracking-wider">
                             #{order.id}
                         </span>
+
+                        {/* New: Merchant Custom Order Number */}
+                        {viewingMerchant?.canManageOrderDetails && order.customOrderNumber && !order.isCollected && (
+                            <span className="font-mono text-xs text-blue-400 bg-blue-900/10 px-2 py-0.5 rounded-md border border-blue-900/30 font-bold tracking-wider">
+                                #{order.customOrderNumber}
+                            </span>
+                        )}
+
                         <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded-md">
                             <ClockIcon className="w-3 h-3 opacity-70" />
                             {formattedDate}
@@ -81,6 +97,29 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             {order.customer?.address || 'العنوان غير محدد'}
                         </p>
                     </div>
+
+                    {/* New: Payment Status & Collection Button */}
+                    {viewingMerchant?.canManageOrderDetails && !order.isCollected && (
+                        <div className="mt-2 flex items-center gap-2 flex-wrap animate-fadeIn">
+                            {order.paymentStatus === 'paid' ? (
+                                <span className="text-[10px] font-bold bg-green-600/20 text-green-400 px-2 py-1 rounded-md border border-green-600/20">
+                                    مدفوع {order.isVodafoneCash ? '(فودافون كاش)' : ''}
+                                </span>
+                            ) : (
+                                <span className="text-[10px] font-bold bg-red-600/20 text-red-400 px-2 py-1 rounded-md border border-red-600/20">
+                                    غير مدفوع
+                                </span>
+                            )}
+
+                            <button
+                                onClick={handleCollect}
+                                className="text-[10px] font-bold bg-blue-600 text-white px-3 py-1 rounded-md shadow hover:bg-blue-700 transition-colors flex items-center gap-1"
+                            >
+                                <CheckCircleIcon className="w-3 h-3" />
+                                تسليم للمندوب/تحصيل
+                            </button>
+                        </div>
+                    )}
 
                     {order.notes && (
                         <div className="mt-2 bg-red-900/10 p-2.5 rounded-lg border border-red-500/20">
@@ -143,6 +182,7 @@ interface OrderListProps {
     orders: Order[];
     users: User[];
     viewingMerchant?: User; // New prop to pass permission context
+    onUpdateOrder?: (orderId: string, data: Partial<Order>) => void;
 }
 
 const FilterChip: React.FC<{
@@ -169,7 +209,7 @@ const FilterChip: React.FC<{
     </button>
 );
 
-const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant }) => {
+const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, onUpdateOrder }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Filter States
@@ -233,6 +273,24 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant })
             )
             .sort((a, b) => getOrderDate(b).getTime() - getOrderDate(a).getTime()); // Newest first
     }, [dateFilteredOrders, showShoppingOnly, searchTerm]);
+
+    // Statistics calculations
+    const totalDelivery = finalFilteredOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+    const totalOrders = finalFilteredOrders.length;
+
+    // Calculate uncollected and collected orders summary (only if merchant has permission)
+    const uncollectedOrders = viewingMerchant?.canManageOrderDetails
+        ? finalFilteredOrders.filter(o => !o.isCollected)
+        : [];
+    const collectedOrders = viewingMerchant?.canManageOrderDetails
+        ? finalFilteredOrders.filter(o => o.isCollected)
+        : [];
+
+    const uncollectedCount = uncollectedOrders.length;
+    const uncollectedTotalDelivery = uncollectedOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+
+    const collectedCount = collectedOrders.length;
+    const collectedTotalDelivery = collectedOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
 
     // Counts for Badges
     const counts = useMemo(() => {
@@ -326,6 +384,70 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant })
                 </div>
             </div>
 
+            {/* Summary Section */}
+            <div className="p-4 space-y-4">
+                {/* Total Summary */}
+                <div className="bg-[#1a1a1a] rounded-2xl p-6 border border-[#333] shadow-lg">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center">
+                            <p className="text-sm text-gray-400 mb-1 font-medium">إجمالي الطلبات</p>
+                            <p className="text-3xl font-black text-white">{totalOrders}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm text-gray-400 mb-1 font-medium">إجمالي التوصيل</p>
+                            <p className="text-3xl font-black text-green-400">{totalDelivery.toLocaleString('en-US')} ج.م</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Collection Summary - Only shown if merchant has permission */}
+                {viewingMerchant?.canManageOrderDetails && (uncollectedCount > 0 || collectedCount > 0) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Uncollected Orders Summary */}
+                        {uncollectedCount > 0 && (
+                            <div className="bg-gradient-to-br from-orange-900/20 to-red-900/20 rounded-2xl p-6 border-2 border-orange-500/30 shadow-lg animate-fadeIn">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                                    <h3 className="text-lg font-bold text-orange-400">لم يتم التحصيل</h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-black/30 rounded-xl p-4 text-center border border-orange-500/20">
+                                        <p className="text-xs text-orange-300 mb-2 font-medium">عدد الطلبات</p>
+                                        <p className="text-3xl font-black text-orange-400">{uncollectedCount}</p>
+                                    </div>
+                                    <div className="bg-black/30 rounded-xl p-4 text-center border border-orange-500/20">
+                                        <p className="text-xs text-orange-300 mb-2 font-medium">إجمالي المبالغ</p>
+                                        <p className="text-3xl font-black text-orange-400">{uncollectedTotalDelivery.toLocaleString('en-US')}</p>
+                                        <p className="text-xs text-orange-300/70 mt-1">ج.م</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Collected Orders Summary */}
+                        {collectedCount > 0 && (
+                            <div className="bg-gradient-to-br from-green-900/20 to-emerald-900/20 rounded-2xl p-6 border-2 border-green-500/30 shadow-lg animate-fadeIn">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <h3 className="text-lg font-bold text-green-400">تم التحصيل</h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-black/30 rounded-xl p-4 text-center border border-green-500/20">
+                                        <p className="text-xs text-green-300 mb-2 font-medium">عدد الطلبات</p>
+                                        <p className="text-3xl font-black text-green-400">{collectedCount}</p>
+                                    </div>
+                                    <div className="bg-black/30 rounded-xl p-4 text-center border border-green-500/20">
+                                        <p className="text-xs text-green-300 mb-2 font-medium">إجمالي المبالغ</p>
+                                        <p className="text-3xl font-black text-green-400">{collectedTotalDelivery.toLocaleString('en-US')}</p>
+                                        <p className="text-xs text-green-300/70 mt-1">ج.م</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
             {/* Orders List */}
             <div className="p-4 space-y-3 pb-24">
                 {visibleOrders.length === 0 ? (
@@ -347,6 +469,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant })
                                     phone: users.find(u => u.id === order.driverId)?.phone
                                 }}
                                 viewingMerchant={viewingMerchant}
+                                onUpdateOrder={onUpdateOrder}
                             />
                         ))}
                         <div ref={bottomRef} className="h-10 flex items-center justify-center">

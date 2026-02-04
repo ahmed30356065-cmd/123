@@ -581,6 +581,7 @@ const App: React.FC = () => {
                     onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
                     seenMessageIds={[]} markMessageAsSeen={(id) => { }} hideMessage={(id) => { }} deletedMessageIds={[]} appTheme={appTheme}
                     onUpdateUser={(id, d) => firebaseService.updateData('users', id, d)}
+                    onUpdateOrder={(id, d) => firebaseService.updateData('orders', id, d)}
                     appConfig={appConfig}
                 />
             )}

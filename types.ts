@@ -77,6 +77,7 @@ export interface User {
   // Merchant Permissions
   canShowDeliveryTime?: boolean;
   canManageMenu?: boolean;
+  canManageOrderDetails?: boolean; // Added: Control "Payment/OrderNo" features
   // Decoration (Updated to allow strings for extended collection)
   specialFrame?: string;
   specialBadge?: string;
@@ -152,6 +153,12 @@ export interface Order {
   deliveredAt?: Date; // For reporting
   isArchived?: boolean; // For monthly reset
   archiveMonth?: string; // e.g., "فبراير 2024" - displayed with order ID after archiving
+
+  // New Fields for Merchant Feature
+  customOrderNumber?: string;
+  paymentStatus?: 'paid' | 'unpaid';
+  isVodafoneCash?: boolean;
+  isCollected?: boolean;
 }
 
 export interface Message {
