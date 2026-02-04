@@ -124,7 +124,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     </div>
 
                     {/* Payment Status & Collection - Enhanced Professional Layout - Show only if driver assigned */}
-                    {viewingMerchant?.canManageOrderDetails && (!isPaid || order.isVodafoneCash) && !order.isCollected && order.assignedTo && (
+                    {viewingMerchant && (!isPaid || order.isVodafoneCash) && !order.isCollected && order.assignedTo && (
                         <div className="mt-3 animate-fadeIn">
                             {/* Price Display - Prominent */}
                             <div className="bg-gradient-to-br from-red-600/20 to-red-800/20 border border-red-500/30 rounded-lg p-3 mb-2">

@@ -207,14 +207,7 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                                     </div>
                                 )}
 
-                                {productTotal > 0 && (
-                                    <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
-                                        <span className="text-xs text-gray-400">سعر الطلب</span>
-                                        <span className={`text-lg font-bold ${order.isVodafoneCash ? 'text-green-400' : 'text-white'}`}>
-                                            {order.isVodafoneCash ? 'تم الدفع (فودافون كاش)' : `${productTotal} ج.م`}
-                                        </span>
-                                    </div>
-                                )}
+
                             </>
                         )}
 
