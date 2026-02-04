@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, User, OrderStatus } from '../types';
 import OrderStatusBadge from './OrderStatusBadge';
-import { PhoneIcon, WhatsAppIcon, UserIcon, ClockIcon, ShoppingCartIcon, RocketIcon, CheckCircleIcon, TruckIconV2, BanknoteIcon, XCircleIcon, ChartBarIcon, SearchIcon, ClipboardListIcon, CalendarIcon, EmptyBoxIcon } from './icons';
+import { PhoneIcon, WhatsAppIcon, UserIcon, ClockIcon, ShoppingCartIcon, RocketIcon, CheckCircleIcon, TruckIconV2, BanknoteIcon, XCircleIcon, ChartBarIcon, SearchIcon, ClipboardListIcon, CalendarIcon, EmptyBoxIcon, VodafoneIcon } from './icons';
 import { sendExternalNotification } from '../services/firebase';
 
 interface MerchantOrderCardProps {
@@ -62,11 +62,13 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
             onUpdateOrder(order.id, { isCollected: true });
 
             // إرسال إشعار للمندوب عند تأكيد التحصيل
-            if (order.assignedTo && order.totalPrice) {
+            // إرسال إشعار للمندوب عند تأكيد التحصيل
+            if (order.assignedTo) {
                 try {
+                    const priceText = order.totalPrice ? `${order.totalPrice.toFixed(2)} ج.م` : '';
                     await sendExternalNotification('driver', {
-                        title: 'تأكيد استلام المبلغ',
-                        body: `تم تأكيد استلام مبلغ ${order.totalPrice.toFixed(2)} ج.م من الطلب ${order.customOrderNumber || order.id}`,
+                        title: '✅ تأكيد استلام المبلغ',
+                        body: `تم تأكيد استلام مبلغ ${priceText} للطلب #${order.customOrderNumber || order.id}`,
                         targetId: order.assignedTo
                     });
                     console.log('تم إرسال إشعار التحصيل للمندوب');
@@ -475,8 +477,10 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                     <div className="grid grid-cols-3 gap-2">
                         {/* 1. إجمالي التوصيل */}
                         <div className="bg-gradient-to-br from-green-900/20 to-emerald-900/20 rounded-xl p-3 border border-green-500/30">
-                            <div className="flex items-center gap-1 mb-1">
-                                <TruckIconV2 className="w-3.5 h-3.5 text-green-400" />
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <div className="w-5 h-5 rounded-full bg-green-900/40 flex items-center justify-center border border-green-500/30">
+                                    <TruckIconV2 className="w-3 h-3 text-green-400" />
+                                </div>
                                 <p className="text-[9px] text-green-300 font-bold">إجمالي التوصيل</p>
                             </div>
                             <p className="text-lg font-black text-green-400">{totalDelivery.toLocaleString('en-US')}</p>
@@ -485,8 +489,10 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
 
                         {/* 2. في انتظار التحصيل */}
                         <div className="bg-gradient-to-br from-orange-900/20 to-red-900/20 rounded-xl p-3 border border-orange-500/30">
-                            <div className="flex items-center gap-1 mb-1">
-                                <ClockIcon className="w-3.5 h-3.5 text-orange-400" />
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <div className="w-5 h-5 rounded-full bg-orange-900/40 flex items-center justify-center border border-orange-500/30">
+                                    <ClockIcon className="w-3 h-3 text-orange-400" />
+                                </div>
                                 <p className="text-[9px] text-orange-300 font-bold">في انتظار التحصيل</p>
                             </div>
                             <p className="text-lg font-black text-orange-400">{pendingCollection.toLocaleString('en-US')}</p>
@@ -495,8 +501,10 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
 
                         {/* 3. إجمالي الكاش */}
                         <div className="bg-gradient-to-br from-red-900/20 to-pink-900/20 rounded-xl p-3 border border-red-500/30">
-                            <div className="flex items-center gap-1 mb-1">
-                                <CheckCircleIcon className="w-3.5 h-3.5 text-red-400" />
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <div className="w-5 h-5 rounded-full overflow-hidden shadow-sm border border-red-500/30 bg-white">
+                                    <VodafoneIcon className="w-full h-full object-cover" />
+                                </div>
                                 <p className="text-[9px] text-red-300 font-bold">إجمالي الكاش</p>
                             </div>
                             <p className="text-lg font-black text-red-400">{totalVodafoneCash.toLocaleString('en-US')}</p>

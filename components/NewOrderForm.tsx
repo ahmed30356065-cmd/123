@@ -76,9 +76,22 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 orderData.isVodafoneCash = false;
             }
 
-            // Add payment amounts
-            if (paidAmount) orderData.paidAmount = parseFloat(paidAmount);
-            if (unpaidAmount) orderData.unpaidAmount = parseFloat(unpaidAmount);
+            // Add payment amounts and calculate totalPrice
+            if (paidAmount) {
+                const val = parseFloat(paidAmount);
+                orderData.paidAmount = val;
+                if (paymentOption === 'paid') orderData.totalPrice = val;
+            }
+            if (unpaidAmount) {
+                const val = parseFloat(unpaidAmount);
+                orderData.unpaidAmount = val;
+                if (paymentOption === 'unpaid') orderData.totalPrice = val;
+            }
+            if (cashAmount) {
+                const val = parseFloat(cashAmount);
+                orderData.cashAmount = val;
+                if (paymentOption === 'vodafone_cash') orderData.totalPrice = val;
+            }
         }
 
         // 3. Process
