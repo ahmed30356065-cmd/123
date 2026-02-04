@@ -730,3 +730,136 @@ export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> =
         return `${prefix}${Date.now()}`;
     }
 };
+
+// ==========================================
+// 🛡️ SECURE ID GENERATION (Collision Proof)
+// ==========================================
+export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<string> => {
+    if (!db) throw new Error("Firebase not initialized");
+    const counterRef = db.collection('settings').doc('counters');
+
+    try {
+        return await db.runTransaction(async (transaction) => {
+            const doc = await transaction.get(counterRef);
+            let nextId = 1;
+
+            if (!doc.exists) {
+                // FIRST RUN
+                const snapshot = await db!.collection('orders')
+                    .orderBy('createdAt', 'desc')
+                    .limit(50)
+                    .get();
+                let maxId = 0;
+                snapshot.forEach(d => {
+                    const id = d.id;
+                    if (id.startsWith(prefix)) {
+                        const num = parseInt(id.replace(prefix, '') || '0');
+                        if (!isNaN(num)) maxId = Math.max(maxId, num);
+                    }
+                });
+                nextId = maxId + 1;
+            } else {
+                const data = doc.data();
+                const current = (data && data[prefix]) ? data[prefix] : 0;
+                if (!current) {
+                    const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
+                    let max = 0;
+                    snapshot.forEach(d => {
+                        const num = parseInt(d.id.replace(prefix, '') || '0');
+                        if (!isNaN(num)) max = Math.max(max, num);
+                    });
+                    nextId = max + 1;
+                } else {
+                    nextId = current + 1;
+                }
+            }
+
+            // COLLISION CHECK & REPAIR
+            let retries = 0;
+            while (retries < 20) {
+                const checkPath = prefix + nextId;
+                const checkDoc = await transaction.get(db!.collection('orders').doc(checkPath));
+                if (!checkDoc.exists) break;
+                nextId++;
+                retries++;
+            }
+            if (retries >= 20) nextId += Math.floor(Math.random() * 100) + 50;
+
+            transaction.set(counterRef, { [prefix]: nextId }, { merge: true });
+            return `${prefix}${nextId}`;
+        });
+    } catch (error) {
+        console.error("Safe ID Gen Transaction failed:", error);
+        return `${prefix}${Date.now()}`;
+    }
+};
+
+// ==========================================
+// 📦 BATCH ID GENERATION (For Bulk Adds)
+// ==========================================
+export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Promise<string[]> => {
+    if (!db) throw new Error("Firebase not initialized");
+    if (count <= 0) return [];
+
+    const counterRef = db.collection('settings').doc('counters');
+
+    try {
+        return await db.runTransaction(async (transaction) => {
+            const doc = await transaction.get(counterRef);
+            let nextIdStart = 1;
+
+            if (!doc.exists) {
+                // Initialize checks (copy logic from single gen)
+                const snapshot = await db!.collection('orders')
+                    .orderBy('createdAt', 'desc')
+                    .limit(50)
+                    .get();
+                let maxId = 0;
+                snapshot.forEach(d => {
+                    const id = d.id;
+                    if (id.startsWith(prefix)) {
+                        const num = parseInt(id.replace(prefix, '') || '0');
+                        if (!isNaN(num)) maxId = Math.max(maxId, num);
+                    }
+                });
+                nextIdStart = maxId + 1;
+            } else {
+                const data = doc.data();
+                const current = (data && data[prefix]) ? data[prefix] : 0;
+                // Double check if 0
+                if (!current) {
+                    const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
+                    let max = 0;
+                    snapshot.forEach(d => {
+                        const num = parseInt(d.id.replace(prefix, '') || '0');
+                        if (!isNaN(num)) max = Math.max(max, num);
+                    });
+                    nextIdStart = max + 1;
+                } else {
+                    nextIdStart = current + 1;
+                }
+            }
+
+            const nextIdEnd = nextIdStart + count - 1;
+
+            // Reserve the range
+            transaction.set(counterRef, { [prefix]: nextIdEnd }, { merge: true });
+
+            // Generate the array
+            const ids: string[] = [];
+            for (let i = 0; i < count; i++) {
+                ids.push(`${prefix}${nextIdStart + i}`);
+            }
+            console.log(`[BatchID] Generated ${count} IDs: ${ids[0]} to ${ids[ids.length - 1]}`);
+            return ids;
+        });
+    } catch (error) {
+        console.error("Batch ID Gen failed:", error);
+        // Fallback to timestamp loop (risky but better than crash)
+        const ids: string[] = [];
+        for (let i = 0; i < count; i++) {
+            ids.push(`${prefix}${Date.now()}_${i}`);
+        }
+        return ids;
+    }
+};

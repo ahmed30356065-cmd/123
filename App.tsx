@@ -386,46 +386,42 @@ const App: React.FC = () => {
                     adminAddOrder={async (d) => {
                         const dataArray = Array.isArray(d) ? d : [d];
                         const newOrders: any[] = [];
-
-                        // REMOVED: Inline obsolete calculation. We now calculate inside loop.
-                        // let currentMax = orders.filter(o => o.id.startsWith('ORD-')).reduce((max, o) => Math.max(max, parseInt(o.id.replace('ORD-', '') || '0')), 0);
-
-                        // Prepare orders first
-                        // Prepare orders first
-                        // We use a specific prefix logic
                         const prefix = 'ORD-';
 
-                        // We must serialize this because generateUniqueId is atomic but efficient
-                        // However, for bulk add, we might want to reserve a block or just call it sequentially.
-                        // For simplicity and safety, we call it in parallel if the implementation supports it, 
-                        // but our implementation locks the doc. Sequential is safer.
+                        try {
+                            const count = dataArray.length;
+                            // 1. Generate IDs in Batch (Atomic & Safe)
+                            const newIds = await firebaseService.generateIdsBatch(prefix, count);
 
-                        for (const orderData of dataArray) {
-                            // Use SERVER-SIDE atomic generation
-                            const newId = await firebaseService.generateUniqueId('ORD-');
-                            const newOrder = {
-                                ...orderData,
-                                id: newId,
-                                status: OrderStatus.Pending,
-                                createdAt: new Date(),
-                                type: 'delivery_request'
-                            };
-                            newOrders.push(newOrder);
+                            // 2. Assign IDs and prepare objects
+                            dataArray.forEach((orderData, index) => {
+                                const newId = newIds[index];
+                                newOrders.push({
+                                    ...orderData,
+                                    id: newId,
+                                    status: OrderStatus.Pending,
+                                    createdAt: new Date(),
+                                    type: 'delivery_request'
+                                });
+                            });
+
+                            // 3. Notifications (Async - Non-blocking)
+                            newOrders.forEach(order => {
+                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${order.id} وهو متاح للتوصيل`, url: `/?target=order&id=${order.id}` });
+                            });
+
+                        } catch (e) {
+                            console.error("Batch add failed", e);
+                            showNotify('فشل إنشاء الطلبات', 'error');
                         }
 
-                        // 1. OPTIMISTIC UPDATE: Add to UI immediately
-                        setOrders(prev => [...prev, ...newOrders]);
-
-                        // 2. Save to DB
-                        await firebaseService.batchSaveData('orders', newOrders);
-
-                        // Then send notifications
-                        const notificationPromises = newOrders.map(order =>
-                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${order.id} وهو متاح للتوصيل`, url: `/?target=order&id=${order.id}` })
-                        );
-
-                        await Promise.all(notificationPromises);
-                        logAction('create', 'الطلبات', `تم إضافة ${newOrders.length} طلبات جديدة`);
+                        if (newOrders.length > 0) {
+                            // 4. Optimistic Update
+                            setOrders(prev => [...prev, ...newOrders]);
+                            // 5. Batch Save to DB
+                            await firebaseService.batchSaveData('orders', newOrders);
+                            logAction('create', 'الطلبات', `تم إضافة ${newOrders.length} طلبات جديدة (دفعة واحدة)`);
+                        }
                     }}
                     adminAddUser={async (u) => {
                         const id = generateNextUserId(users);
@@ -552,26 +548,32 @@ const App: React.FC = () => {
                         const newOrders: any[] = [];
 
                         for (const orderData of dataArray) {
-                            // Use SERVER-SIDE atomic generation (Fixes duplicates)
-                            const newId = await firebaseService.generateUniqueId('ORD-');
-                            newOrders.push({
-                                ...orderData,
-                                id: newId,
-                                status: OrderStatus.Pending,
-                                createdAt: new Date(),
-                                type: 'delivery_request'
-                            });
-                            // Notification is async, don't await block
-                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${newId} وهو متاح للتوصيل`, url: `/?target=order&id=${newId}` });
+                            try {
+                                // Use SERVER-SIDE atomic generation (Fixes duplicates)
+                                const newId = await firebaseService.generateUniqueIdSafe('ORD-');
+                                newOrders.push({
+                                    ...orderData,
+                                    id: newId,
+                                    status: OrderStatus.Pending,
+                                    createdAt: new Date(),
+                                    type: 'delivery_request'
+                                });
+                                // Notification is async, don't await block
+                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${newId} وهو متاح للتوصيل`, url: `/?target=order&id=${newId}` });
+                            } catch (e) {
+                                console.error("Supervisor add error:", e);
+                            }
                         }
 
-                        // Optimistic Update
-                        setOrders(prev => [...prev, ...newOrders]);
+                        if (newOrders.length > 0) {
+                            // Optimistic Update
+                            setOrders(prev => [...prev, ...newOrders]);
 
-                        // Batch Save
-                        await firebaseService.batchSaveData('orders', newOrders);
+                            // Batch Save
+                            await firebaseService.batchSaveData('orders', newOrders);
 
-                        logAction('create', 'الطلبات', `قام المشرف بإضافة ${newOrders.length} طلبات جديدة`);
+                            logAction('create', 'الطلبات', `قام المشرف بإضافة ${newOrders.length} طلبات جديدة`);
+                        }
                     }}
                     adminAddUser={async (u) => {
                         const id = generateNextUserId(users);
@@ -677,7 +679,7 @@ const App: React.FC = () => {
                 <MerchantPortal merchant={currentUser} users={users} orders={orders} messages={messages}
                     addOrder={async (d) => {
                         // Use Safe Server ID
-                        const newId = await firebaseService.generateUniqueId('ORD-');
+                        const newId = await firebaseService.generateUniqueIdSafe('ORD-');
                         const newOrder: Order = {
                             ...d, id: newId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
                         };
@@ -711,7 +713,7 @@ const App: React.FC = () => {
                     onPlaceOrder={async (d: any) => {
                         const isShopping = d.type === 'shopping_order';
                         // Use Safe Server ID
-                        const newId = await firebaseService.generateUniqueId(isShopping ? 'S-' : 'ORD-');
+                        const newId = await firebaseService.generateUniqueIdSafe(isShopping ? 'S-' : 'ORD-');
 
                         await firebaseService.updateData('orders', newId, { ...d, id: newId });
 
