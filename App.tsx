@@ -679,50 +679,31 @@ const App: React.FC = () => {
             {currentUser.role === 'merchant' && (
                 <MerchantPortal merchant={currentUser} users={users} orders={orders} messages={messages}
                     addOrder={async (d) => {
-                        // 1. Calculate Local ID (INSTANT & ACCURATE with Global Counter)
-                        const prefix = 'ORD-';
-                        let maxId = 0;
+                        try {
+                            // 1. Get Safe ID from Server (Wait for it)
+                            const finalId = await firebaseService.generateUniqueIdSafe('ORD-');
 
-                        // Try Global Counter First (Best for New Merchants)
-                        if (globalCounters && globalCounters[prefix]) {
-                            maxId = globalCounters[prefix];
-                        } else {
-                            // Fallback: Scan local orders (might be incomplete for merchant)
-                            const relevantOrders = orders.filter(o => o.id.startsWith(prefix) && !o.isArchived);
-                            maxId = relevantOrders.reduce((max, o) => {
-                                const num = parseInt(o.id.replace(prefix, '') || '0');
-                                // Filter out timestamps (large numbers) to preserve sequence
-                                return (!isNaN(num) && num < 1000000) ? Math.max(max, num) : max;
-                            }, 0);
+                            const newOrder: Order = {
+                                ...d, id: finalId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
+                            };
+
+                            // 2. Write to Server (Blocking)
+                            await firebaseService.updateData('orders', finalId, newOrder);
+
+                            // 3. Update UI (Success only)
+                            setOrders(prev => [newOrder, ...prev]); // Add to top
+                            logAction('create', 'الطلبات', `تم إضافة طلب جديد #${finalId}`);
+
+                            // 4. Notifications (Fire & Forget)
+                            firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
+                            firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
+                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${finalId} متاح للتوصيل`, url: `/?target=order&id=${finalId}` });
+
+                        } catch (e) {
+                            console.error("Merchant addOrder error:", e);
+                            showNotify('فشل في إضافة الطلب. تأكد من الاتصال بالإنترنت.', 'error');
+                            throw e; // Re-throw so form knows it failed
                         }
-
-                        const localId = `${prefix}${maxId + 1}`;
-
-                        const newOrder: Order = {
-                            ...d, id: localId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
-                        };
-
-                        // 2. OPTIMISTIC UPDATE: Add to UI immediately
-                        setOrders(prev => [...prev, newOrder]);
-                        logAction('create', 'الطلبات', `تم إضافة طلب جديد #${localId} (مبدئي)`);
-
-                        // 3. Send to Server & Notifications (Background - Non-blocking)
-                        (async () => {
-                            try {
-                                // Use Safe Server ID (Might differ from localId if collision)
-                                const finalId = await firebaseService.generateUniqueIdSafe('ORD-');
-                                const finalOrder = { ...newOrder, id: finalId };
-
-                                await firebaseService.updateData('orders', finalId, finalOrder);
-
-                                firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
-                                firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
-                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${finalId} متاح للتوصيل`, url: `/?target=order&id=${finalId}` });
-                            } catch (e) {
-                                console.error("Merchant addOrder background error:", e);
-                                showNotify('حدث خطأ في مزامنة الطلب مع السيرفر', 'error');
-                            }
-                        })();
                     }}
                     onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
                     seenMessageIds={[]} markMessageAsSeen={(id) => { }} hideMessage={(id) => { }} deletedMessageIds={[]} appTheme={appTheme}

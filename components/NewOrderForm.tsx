@@ -149,7 +149,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
     };
 
     return (
-        <div className="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700 relative overflow-hidden transition-all duration-300">
+        <div className="bg-gray-800 p-2 rounded-xl shadow-lg border border-gray-700 relative overflow-hidden transition-all duration-300">
 
             {/* Success Overlay Animation */}
             <div
@@ -168,11 +168,11 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 </div>
             </h2>
 
-            <form onSubmit={handleSubmit} className={`space-y-4 transition-opacity duration-300 ${status === 'success' ? 'opacity-0' : 'opacity-100'}`}>
+            <form onSubmit={handleSubmit} className={`space-y-2 transition-opacity duration-300 ${status === 'success' ? 'opacity-0' : 'opacity-100'}`}>
 
                 {/* Extra Fields Section - Only if Enabled */}
                 {merchant?.canManageOrderDetails && (
-                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50 space-y-4 animate-fadeIn">
+                    <div className="bg-gray-700/30 p-2 rounded-xl border border-gray-600/50 space-y-2 animate-fadeIn">
                         {/* Header Removed */}
 
                         <div>
@@ -182,7 +182,9 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                             </label>
                             <input
                                 ref={orderNumInputRef}
-                                type="text"
+                                type="tel"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 id="orderNum"
                                 value={customOrderNumber}
                                 onChange={(e) => setCustomOrderNumber(e.target.value)}
@@ -244,6 +246,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                                     placeholder="0.00"
                                     step="0.01"
                                     min="0"
+                                    inputMode="decimal"
                                 />
                             </div>
                         )}
@@ -261,6 +264,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                                     placeholder="0.00"
                                     step="0.01"
                                     min="0"
+                                    inputMode="decimal"
                                 />
                             </div>
                         )}
@@ -278,6 +282,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                                     placeholder="0.00"
                                     step="0.01"
                                     min="0"
+                                    inputMode="decimal"
                                 />
                             </div>
                         )}
@@ -347,7 +352,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
 
                 {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
-                <div className="pt-2 pb-24">
+                <div className="pt-2 pb-4">
                     <button
                         type="submit"
                         disabled={status === 'submitting'}
