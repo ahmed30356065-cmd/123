@@ -527,7 +527,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                     <ChartBarIcon className="w-6 h-6" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-black text-white">سجل الطلبات (v2.2)</h3>
+                    <h3 className="text-xl font-black text-white">سجل الطلبات (v2.3) - {orders.length}</h3>
                     <p className="text-xs text-gray-400 font-medium">عرض ومتابعة تاريخ الطلبات</p>
                 </div>
             </div>
