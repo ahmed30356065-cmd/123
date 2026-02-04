@@ -182,25 +182,30 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                             <>
                                 <div className="flex items-center justify-between mb-3 relative z-10">
                                     <div className="flex items-center gap-2">
-                                        <ShoppingCartIcon className="w-4 h-4 text-yellow-500" />
+                                        <ClipboardListIcon className="w-4 h-4 text-purple-500" />
                                         <h4 className="text-xs font-bold text-gray-300">
                                             {(order.items && order.items.length > 0) ? 'قائمة المنتجات' : 'تفاصيل الطلب'}
                                         </h4>
                                     </div>
-                                    <span className="text-xs font-bold text-gray-400 bg-black/20 px-2 py-0.5 rounded">{order.items?.length || 0} صنف</span>
+                                    <span className={`text-xs font-bold ${order.isVodafoneCash ? 'text-green-400' : 'text-white'} bg-black/20 px-2 py-0.5 rounded`}>
+                                        {order.isVodafoneCash ? 'تم الدفع (فودافون)' : `${productTotal} ج.م`}
+                                    </span>
                                 </div>
 
-                                <div className="space-y-3 relative z-10">
-                                    {order.items?.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-center bg-[#1A1A1A] p-2 rounded-lg border border-white/5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-6 h-6 rounded bg-gray-700 flex items-center justify-center text-xs font-bold text-white">{item.quantity}x</div>
-                                                <span className="text-sm text-gray-200">{item.name}</span>
+                                {/* Show details only if allowed */}
+                                {(merchant?.canManageOrderDetails !== false) && (
+                                    <div className="space-y-3 relative z-10">
+                                        {order.items?.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-center bg-[#1A1A1A] p-2 rounded-lg border border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-6 h-6 rounded bg-gray-700 flex items-center justify-center text-xs font-bold text-white">{item.quantity}x</div>
+                                                    <span className="text-sm text-gray-200">{item.name}</span>
+                                                </div>
+                                                <span className="text-sm font-mono text-gray-400">{item.price}</span>
                                             </div>
-                                            <span className="text-sm font-mono text-gray-400">{item.price}</span>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                )}
 
                                 {productTotal > 0 && (
                                     <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
