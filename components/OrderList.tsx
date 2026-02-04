@@ -169,19 +169,11 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     {/* Status for Vodafone Cash - Always "Paid" */}
                     {viewingMerchant && order.isVodafoneCash && (
                         <div className="mt-3 animate-fadeIn">
-                            <div className="bg-red-600/20 border border-red-500/30 rounded-lg p-3 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-1.5 bg-red-600/20 rounded-lg">
-                                        <VodafoneIcon className="w-5 h-5 text-red-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-medium text-red-400">طريقة الدفع</p>
-                                        <p className="text-sm font-bold text-white">فودافون كاش ({Math.floor(order.cashAmount || order.totalPrice || 0)})</p>
-                                    </div>
-                                </div>
-                                <span className="text-[10px] font-bold bg-green-600/20 text-green-400 px-2 py-1 rounded border border-green-500/20">
-                                    تم الدفع
-                                </span>
+                            <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-3 flex items-center justify-center gap-2">
+                                <CheckCircleIcon className="w-5 h-5 text-green-400" />
+                                <p className="text-sm font-bold text-green-400">
+                                    تم الدفع (فودافون كاش)
+                                </p>
                             </div>
                         </div>
                     )}
