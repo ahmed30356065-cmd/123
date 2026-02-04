@@ -39,6 +39,7 @@ const App: React.FC = () => {
     const {
         users, orders, messages, payments, sliderImages, auditLogs, passwordResetRequests,
         sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
+        globalCounters, // Exposed for Optimistic ID generation
         isLoading, currentUser, setCurrentUser, appTheme, setAppTheme,
         setOrders, isOrdersLoaded // Exposed for Optimistic Updates and Sync Check
     } = useAppData(showNotify);
@@ -678,14 +679,22 @@ const App: React.FC = () => {
             {currentUser.role === 'merchant' && (
                 <MerchantPortal merchant={currentUser} users={users} orders={orders} messages={messages}
                     addOrder={async (d) => {
-                        // 1. Calculate Local ID (INSTANT)
+                        // 1. Calculate Local ID (INSTANT & ACCURATE with Global Counter)
                         const prefix = 'ORD-';
-                        // Only consider active orders for ID calculation to match server logic roughly
-                        const relevantOrders = orders.filter(o => o.id.startsWith(prefix) && !o.isArchived);
-                        const maxId = relevantOrders.reduce((max, o) => {
-                            const num = parseInt(o.id.replace(prefix, '') || '0');
-                            return !isNaN(num) ? Math.max(max, num) : max;
-                        }, 0);
+                        let maxId = 0;
+
+                        // Try Global Counter First (Best for New Merchants)
+                        if (globalCounters && globalCounters[prefix]) {
+                            maxId = globalCounters[prefix];
+                        } else {
+                            // Fallback: Scan local orders (might be incomplete for merchant)
+                            const relevantOrders = orders.filter(o => o.id.startsWith(prefix) && !o.isArchived);
+                            maxId = relevantOrders.reduce((max, o) => {
+                                const num = parseInt(o.id.replace(prefix, '') || '0');
+                                return !isNaN(num) ? Math.max(max, num) : max;
+                            }, 0);
+                        }
+
                         const localId = `${prefix}${maxId + 1}`;
 
                         const newOrder: Order = {

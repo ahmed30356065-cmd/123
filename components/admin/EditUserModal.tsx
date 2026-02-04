@@ -507,7 +507,13 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
                                     <input type="checkbox" checked={canShowDeliveryTime} onChange={(e) => setCanShowDeliveryTime(e.target.checked)} className="h-5 w-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" />
                                 </div>
 
-                                <input type="checkbox" checked={canManageOrderDetails} onChange={(e) => setCanManageOrderDetails(e.target.checked)} className="h-5 w-5 text-pink-600 bg-gray-700 border-gray-600 rounded focus:ring-pink-500" />
+                                <div className="flex items-center justify-between p-3 bg-[#252525] rounded-xl border border-[#333]">
+                                    <div className="flex items-center gap-2">
+                                        <ClipboardListIcon className="w-4 h-4 text-pink-400" />
+                                        <label className="text-sm font-bold text-white">إدارة تفاصيل الطلب (الأسعار)</label>
+                                    </div>
+                                    <input type="checkbox" checked={canManageOrderDetails} onChange={(e) => setCanManageOrderDetails(e.target.checked)} className="h-5 w-5 text-pink-600 bg-gray-700 border-gray-600 rounded focus:ring-pink-500" />
+                                </div>
                             </div>
 
                             <div className="flex items-center justify-between p-3 bg-[#252525] rounded-xl border border-[#333]">

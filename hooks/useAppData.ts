@@ -61,6 +61,8 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
 
     // Configs
     const [sliderConfig, setSliderConfig] = useState<SliderConfig>({ isEnabled: true });
+    // Global Counters (for ID generation)
+    const [globalCounters, setGlobalCounters] = useState<any>({});
     const [pointsConfig, setPointsConfig] = useState<{ pointsPerCurrency: number; currencyPerPoint: number; isPointsEnabled?: boolean }>({
         pointsPerCurrency: 1,
         currencyPerPoint: 0.1,
@@ -303,6 +305,9 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
             if (sConf) setSliderConfig(sConf as SliderConfig);
             else setSliderConfig({ isEnabled: true });
 
+            const counters = data.find(s => s.id === 'counters');
+            if (counters) setGlobalCounters(counters);
+
             const pConf = data.find(s => s.id === 'points_config');
             if (pConf) {
                 setPointsConfig(prev => ({
@@ -420,6 +425,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
     return {
         users, orders, messages, payments, sliderImages, auditLogs, passwordResetRequests,
         sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
+        globalCounters, // Exposed for Optimistic ID generation
         isLoading, setIsLoading, isOrdersLoaded,
         currentUser, setCurrentUser,
         appTheme, setAppTheme,
