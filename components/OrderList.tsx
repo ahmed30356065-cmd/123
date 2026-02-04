@@ -133,8 +133,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             #{order.id}
                         </span>
 
-                        {/* Show Custom Order Number - Always visible for merchant */}
-                        {viewingMerchant?.canManageOrderDetails && order.customOrderNumber && (
+                        {/* Show Custom Order Number - Always visible if exists */}
+                        {order.customOrderNumber && (
                             <span className="font-mono text-xs text-blue-400 bg-blue-900/10 px-2 py-0.5 rounded-md border border-blue-900/30 font-bold tracking-wider">
                                 #{order.customOrderNumber}
                             </span>
