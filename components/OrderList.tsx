@@ -199,19 +199,20 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    )}
 
-                            {/* Collect Button - Show only if assigned and valid for collection */}
-                            {!order.isCollected && (order.assignedTo || order.driverId) && (
-                                <div className="flex justify-start">
-                                    <button
-                                        onClick={handleCollect}
-                                        className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 font-bold text-sm"
-                                    >
-                                        <CheckCircleIcon className="w-4 h-4" />
-                                        تأكيد التحصيل
-                                    </button>
-                                </div>
-                            )}
+                    {/* Collect Button - Show for ALL merchants if assigned */}
+                    {/* Independent of Advanced Financial Permission */}
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && !order.isCollected && !order.isVodafoneCash && (order.assignedTo || order.driverId) && (
+                        <div className="mt-3 flex justify-start animate-fadeIn">
+                            <button
+                                onClick={handleCollect}
+                                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 font-bold text-sm"
+                            >
+                                <CheckCircleIcon className="w-4 h-4" />
+                                تأكيد التحصيل
+                            </button>
                         </div>
                     )}
 
