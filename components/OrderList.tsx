@@ -171,37 +171,29 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </span>
 
                         {/* Payment Status Badges - Relocated to Header */}
-                        {(!viewingMerchant || viewingMerchant.canManageOrderDetails) && (
-                            order.isCollected ? (
-                                <span className="text-[10px] text-blue-400 font-bold px-2 py-0.5 bg-blue-900/10 border border-blue-500/20 rounded-md flex items-center gap-1">
-                                    <CheckCircleIcon className="w-3 h-3 text-blue-500" />
-                                    تم التحصيل
-                                </span>
-                            ) : order.isVodafoneCash ? (
-                                <span className="text-[10px] text-green-400 font-bold px-2 py-0.5 bg-green-600/10 border border-green-500/20 rounded-md flex items-center gap-1">
-                                    <CheckCircleIcon className="w-3 h-3 text-green-500" />
-                                    مدفوع (فودافون)
-                                </span>
-                            ) : (isPaid && (order.assignedTo || order.driverId)) ? (
-                                <span className="text-[10px] text-green-400 font-bold px-2 py-0.5 bg-green-600/10 border border-green-500/20 rounded-md flex items-center gap-1">
-                                    <CheckCircleIcon className="w-3 h-3 text-green-500" />
-                                    تم الدفع
-                                </span>
-                            ) : null
-                        )}
+                        {order.isCollected ? (
+                            <span className="text-[10px] text-blue-400 font-bold px-2 py-0.5 bg-blue-900/10 border border-blue-500/20 rounded-md flex items-center gap-1">
+                                <CheckCircleIcon className="w-3 h-3 text-blue-500" />
+                                تم التحصيل
+                            </span>
+                        ) : order.isVodafoneCash ? (
+                            <span className="text-[10px] text-green-400 font-bold px-2 py-0.5 bg-green-600/10 border border-green-500/20 rounded-md flex items-center gap-1">
+                                <CheckCircleIcon className="w-3 h-3 text-green-500" />
+                                مدفوع (فودافون)
+                            </span>
+                        ) : (isPaid && (order.assignedTo || order.driverId)) ? (
+                            <span className="text-[10px] text-green-400 font-bold px-2 py-0.5 bg-green-600/10 border border-green-500/20 rounded-md flex items-center gap-1">
+                                <CheckCircleIcon className="w-3 h-3 text-green-500" />
+                                تم الدفع
+                            </span>
+                        ) : null}
                         {deliveryTime && (
                             <span className="text-[10px] text-green-400 font-bold flex items-center gap-1 bg-green-900/20 px-2 py-0.5 rounded-md border border-green-500/20 animate-fadeIn">
                                 <CheckCircleIcon className="w-3 h-3" />
                                 تم: {deliveryTime}
                             </span>
                         )}
-                        {/* Merchant Collected Badge - Small & In Header */}
-                        {viewingMerchant && order.isCollected && (
-                            <span className="text-[10px] text-blue-400 font-bold flex items-center gap-1 bg-blue-900/20 px-2 py-0.5 rounded-md border border-blue-500/20 animate-fadeIn">
-                                <CheckCircleIcon className="w-3 h-3" />
-                                تم التحصيل
-                            </span>
-                        )}
+
                     </div>
 
                     <div className="flex items-start gap-2">
