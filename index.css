@@ -8,10 +8,11 @@
   }
 
   @font-face {
-    font-family: 'ArabicAdd';
-    src: url('/fonts/ArabicAdd.ttf') format('truetype');
+    font-family: 'ArabicUI';
+    src: url('/fonts/ArabicUI.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
+    font-display: swap;
   }
 
   @font-face {
@@ -23,7 +24,7 @@
   body {
     background-color: #111827;
     color: #ffffff;
-    font-family: 'NumFont', 'ArabicAdd', system-ui, sans-serif !important;
+    font-family: 'NumFont', 'ArabicUI', system-ui, sans-serif !important;
     -webkit-tap-highlight-color: transparent;
     /* Remove blue tap box */
     -webkit-touch-callout: none;
