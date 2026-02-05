@@ -130,11 +130,9 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
             <div className="flex justify-between items-start">
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        {/* Show IDs - ONLY if NOT collected */}
-                        {/* Show IDs - Logic: Show unless (Collected) OR (Paid & Accepted) */}
-                        {/* But ALWAYS show for Admins (viewingMerchant is undefined) */}
-                        {/* Or if user has advanced financial permission */}
-                        {(!order.isCollected && !((isPaid) && (order.assignedTo || order.driverId))) || (!viewingMerchant || hasFinancialPerm) ? (
+                        {/* Show IDs - Hide when: (Paid OR VodafoneCash) AND Assigned, OR Collected */}
+                        {/* ALWAYS show for Admins or users with financial permission */}
+                        {(!order.isCollected && !((isPaid || order.isVodafoneCash) && (order.assignedTo || order.driverId))) || (!viewingMerchant || hasFinancialPerm) ? (
                             <>
                                 <span className="font-mono text-xs text-red-400 bg-red-900/10 px-2 py-0.5 rounded-md border border-red-900/30 font-bold tracking-wider flex items-center h-6">
                                     #{order.id}
@@ -176,9 +174,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </p>
                     </div>
 
-                    {/* Price and Payment Status - Show ONLY if NOT collected AND NOT Vodafone Cash AND has permission */}
-                    {/* Price and Payment Status - Show ONLY if NOT collected AND NOT (Paid & Accepted) (unless Admin/FinPerm) */}
-                    {viewingMerchant && viewingMerchant.canManageOrderDetails && hasFinancialPerm && !order.isCollected && !order.isVodafoneCash && !(isPaid && (order.assignedTo || order.driverId)) && (
+                    {/* Price and Payment Status - Hide when: (Paid OR VodafoneCash) AND Assigned, OR Collected */}
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && hasFinancialPerm && !order.isCollected && !((isPaid || order.isVodafoneCash) && (order.assignedTo || order.driverId)) && (
                         <div className="mt-3 animate-fadeIn space-y-3">
                             {/* Price Display */}
                             {isPaid ? (
@@ -214,9 +211,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </div>
                     )}
 
-                    {/* Collect Button - Show for ALL merchants if assigned */}
-                    {/* Independent of Advanced Financial Permission */}
-                    {viewingMerchant && viewingMerchant.canManageOrderDetails && !order.isCollected && (order.assignedTo || order.driverId) && (
+                    {/* Collect Button - Show ONLY for unpaid orders that are assigned */}
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && !order.isCollected && order.paymentStatus === 'unpaid' && !order.isVodafoneCash && (order.assignedTo || order.driverId) && (
                         <div className="mt-3 flex justify-start animate-fadeIn">
                             <button
                                 onClick={handleCollect}

@@ -84,8 +84,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                             <button
                                 onClick={() => setStatus('paid')}
                                 className={`py-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${status === 'paid'
-                                        ? 'bg-emerald-600 text-white shadow-lg'
-                                        : 'text-gray-400 hover:text-white'
+                                    ? 'bg-emerald-600 text-white shadow-lg'
+                                    : 'text-gray-400 hover:text-white'
                                     }`}
                             >
                                 <CheckCircleIcon className="w-4 h-4" />
@@ -94,8 +94,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                             <button
                                 onClick={() => setStatus('unpaid')}
                                 className={`py-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${status === 'unpaid'
-                                        ? 'bg-red-600 text-white shadow-lg'
-                                        : 'text-gray-400 hover:text-white'
+                                    ? 'bg-red-600 text-white shadow-lg'
+                                    : 'text-gray-400 hover:text-white'
                                     }`}
                             >
                                 <XIcon className="w-4 h-4" />
@@ -108,8 +108,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                     <div
                         onClick={() => setIsVodafoneCash(!isVodafoneCash)}
                         className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between group ${isVodafoneCash
-                                ? 'bg-purple-900/20 border-purple-500/50'
-                                : 'bg-[#111] border-gray-700 hover:border-gray-500'
+                            ? 'bg-purple-900/20 border-purple-500/50'
+                            : 'bg-[#111] border-gray-700 hover:border-gray-500'
                             }`}
                     >
                         <div className="flex items-center gap-3">
@@ -126,28 +126,29 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                         </div>
                     </div>
 
-                    {/* Amounts */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-emerald-400 mb-2">المدفوع (Paid)</label>
-                            <input
-                                type="number"
-                                value={paidAmount}
-                                onChange={(e) => setPaidAmount(e.target.value)}
-                                className={`${commonInputStyle} focus:ring-emerald-500 focus:border-emerald-500`}
-                                placeholder="0"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-red-400 mb-2">المتبقي (Remaining)</label>
-                            <input
-                                type="number"
-                                value={unpaidAmount}
-                                onChange={(e) => setUnpaidAmount(e.target.value)}
-                                className={`${commonInputStyle} focus:ring-red-500 focus:border-red-500`}
-                                placeholder="0"
-                            />
-                        </div>
+                    {/* Single Amount Field */}
+                    <div>
+                        <label className="block text-xs font-bold text-cyan-400 mb-2">المبلغ الإجمالي (Total Amount)</label>
+                        <input
+                            type="number"
+                            value={paidAmount}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setPaidAmount(val);
+                                // Auto-update based on status
+                                if (status === 'paid') {
+                                    setUnpaidAmount('0');
+                                } else {
+                                    setUnpaidAmount(val);
+                                    setPaidAmount('0');
+                                }
+                            }}
+                            className={`${commonInputStyle} focus:ring-cyan-500 focus:border-cyan-500`}
+                            placeholder="0"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-2 text-center">
+                            {status === 'paid' ? '✓ سيتم تسجيل المبلغ كمدفوع بالكامل' : '⚠ سيتم تسجيل المبلغ كمتبقي'}
+                        </p>
                     </div>
 
                 </div>
