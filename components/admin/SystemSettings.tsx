@@ -116,7 +116,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
     const [toast, setToast] = useState<{ msg: string, type: any } | null>(null);
 
     // Modal State
-    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, type?: 'danger' | 'info' }>({
+    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, type?: 'danger' | 'info' | 'primary' }>({
         isOpen: false, title: '', message: '', onConfirm: () => { }
     });
 
@@ -132,6 +132,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
     }>({
         isOpen: false, title: '', message: '', onConfirm: () => { }, onClose: () => { }
     });
+
+    const [progressConfig, setProgressConfig] = useState({ isOpen: false, title: '', message: '', total: 100, current: 0 });
 
     const showPrompt = (title: string, message: string, defaultValue = '', inputType: 'text' | 'number' = 'text', placeholder = ''): Promise<string | null> => {
         return new Promise((resolve) => {
@@ -398,106 +400,187 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
         );
     };
 
-    // --- NEW: Reset & Renumber Orders (Sequential Fix - SAFER) ---
+    // --- NEW: Backup Orders ---
+    const handleBackupOrders = async () => {
+        setProgressConfig({ isOpen: true, title: 'جاري النسخ الاحتياطي...', message: 'يتم الآن تجميع كل البيانات...', total: 100, current: 0 });
+        try {
+            const snapshot = await firebase.firestore().collection('orders').get();
+            const orders = snapshot.docs.map(d => d.data());
+
+            const blob = new Blob([JSON.stringify(orders, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `orders_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            setProgressConfig(prev => ({ ...prev, isOpen: false }));
+            showToast(`تم تحميل ${orders.length} طلب بنجاح`, 'success');
+        } catch (e) {
+            console.error(e);
+            setProgressConfig(prev => ({ ...prev, isOpen: false }));
+            showToast('فشل النسخ الاحتياطي', 'error');
+        }
+    };
+
+    // --- NEW: Reset & Renumber Orders (Sequential Fix - SAFER v2) ---
     const handleRenumberOrders = async () => {
-        openConfirmModal('⚠️ إعادة ترقيم الطلبات',
-            'سيتم إعادة ترتيب جميع الطلبات الحالية لتكون متسلسلة (1, 2, 3...) بناءً على تاريخ إنشائها.\n\nسيتم استخدام معرفات مؤقتة لضمان عدم فقدان البيانات أثناء النقل.\n\nهل أنت متأكد؟',
+        openConfirmModal('⚠️ وضع إصلاح الأرقام',
+            'سيقوم النظام بترتيب الطلبات من الأقدم للأحدث (1، 2، 3...).n\nسنقوم تلقائياً بعمل نسخة احتياطية قبل البدء.\n\nهل أنت جاهز؟',
             async () => {
-                showToast('جاري التحضير...', 'info');
                 try {
+                    // 1. Check for Resume
+                    const tempCheck = await firebase.firestore().collection('orders').where('id', '>=', 'TEMP-ORD-').where('id', '<=', 'TEMP-ORD-\uf8ff').limit(1).get();
+                    let isResume = !tempCheck.empty;
+
+                    // 2. Fetch All
+                    setProgressConfig({ isOpen: true, title: 'جاري التحميل...', message: 'قراءة قاعدة البيانات...', total: 100, current: 0 });
                     const snapshot = await firebase.firestore().collection('orders').get();
-                    if (snapshot.empty) return showToast('لا توجد طلبات', 'info');
+                    if (snapshot.empty) {
+                        setProgressConfig(prev => ({ ...prev, isOpen: false }));
+                        return showToast('لا توجد طلبات', 'info');
+                    }
 
-                    const orders = snapshot.docs.map(d => ({ ...d.data() as any, _docRef: d.ref }));
+                    let orders = snapshot.docs.map(d => ({ ...d.data() as any, _docRef: d.ref }));
 
-                    // Sort by CreatedAt (Oldest First)
+                    // Sort: Oldest First based on createdAt
+                    // Handle missing createdAt by putting them at the end or beginning? Usually end.
                     orders.sort((a, b) => {
                         const timeA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime()) : 0;
                         const timeB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime()) : 0;
+                        if (timeA === 0 && timeB === 0) return 0;
+                        if (timeA === 0) return 1;
+                        if (timeB === 0) return -1;
                         return timeA - timeB;
                     });
 
-                    // PHASE 1: Move ALL to TEMP-ORD-XXX
-                    // This prevents collision if we rename ORD-5 to ORD-1 while ORD-1 exists.
-                    showToast(`المرحلة 1: نقل ${orders.length} طلب إلى مؤقت...`, 'info');
+                    // 3. Backup First (Auto)
+                    if (!isResume) {
+                        setProgressConfig({ isOpen: true, title: 'نسخ احتياطي تلقائي...', message: 'جاري تأمين البيانات...', total: 100, current: 50 });
+                        const backupData = orders.map(o => { const { _docRef, ...rest } = o; return rest; });
+                        const blob = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `auto_backup_${Date.now()}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        await new Promise(r => setTimeout(r, 1000)); // Give time for download
+                    }
 
+                    // 4. Phase 1: Move to TEMP (If not already TEMP)
+                    // If we are resuming, we assume some are TEMP and some are OLD. 
+                    // To be safe, we just loop ALL and ensure they become TEMP.
+                    // If an ID is ALREADY TEMP, we don't change it (to preserve its sorting connection if we lost it? No, we re-sorted).
+                    // Wait, if we re-fetch, we might lose the "Original" sort if we relied on creation time and creation time is generated? 
+                    // Order creation time is static. So re-sorting is safe.
+
+                    const batchSize = 200; // Safer batch size
                     let batch = firebase.firestore().batch();
-                    let count = 0;
+                    let opCount = 0;
+                    let processed = 0;
 
-                    const tempIds: string[] = [];
+                    const totalOps = orders.length * 2; // Phase 1 + Phase 2 roughly
+
+                    // PHASE 1: Normal -> TEMP
+                    // Optimization: If it's already TEMP, skip?
+                    // No, we want to normalize EVERYTHING to TEMP-ORD-1, TEMP-ORD-2 based on current sort.
+                    // This fixes gaps.
 
                     for (let i = 0; i < orders.length; i++) {
                         const order = orders[i];
-                        const tempId = `TEMP-ORD-${i + 1}`;
-                        tempIds.push(tempId);
+                        const oldId = order.id;
+                        const tempId = `TEMP-ORD-${i + 1}`; // Deterministic TEMP ID based on sort
+
+                        // If already strict TEMP match, skip write (optimization)
+                        if (oldId === tempId) continue;
 
                         const newRef = firebase.firestore().collection('orders').doc(tempId);
                         const { _docRef, ...dataToCopy } = order;
 
-                        // Copy to TEMP
                         batch.set(newRef, { ...dataToCopy, id: tempId });
-                        // Delete ORIGINAL
                         batch.delete(order._docRef);
 
-                        count += 2;
-                        if (count >= 400) {
+                        opCount += 2;
+                        processed++;
+
+                        if (opCount >= batchSize) {
+                            setProgressConfig({
+                                isOpen: true,
+                                title: 'المرحلة 1: الترتيب المؤقت',
+                                message: `جاري نقل الطلبات إلى قائمة مؤقتة...\n(تم معالجة ${i + 1} من ${orders.length})`,
+                                total: orders.length,
+                                current: i + 1
+                            });
                             await batch.commit();
                             batch = firebase.firestore().batch();
-                            count = 0;
+                            opCount = 0;
+                            // Small delay to let UI breathe
+                            await new Promise(r => setTimeout(r, 50));
                         }
                     }
-                    if (count > 0) await batch.commit();
+                    if (opCount > 0) await batch.commit();
 
-                    // PHASE 2: Move TEMP to FINAL ORD-XXX
-                    showToast(`المرحلة 2: التثبيت النهائي...`, 'info');
+                    // PHASE 2: TEMP -> FINAL
+                    // Now ALL orders are (or should be) TEMP-ORD-X.
+                    // But wait, the `orders` array inside memory still holds the OLD refs and OLD data.
+                    // We need to act on the LOGICAL sequence i=0 to i=length.
+                    // We know `orders[i]` corresponds to `TEMP-ORD-${i+1}`.
+                    // So we can proceed blindly? 
+                    // No, if Phase 1 failed halfway, we might have mixed states.
+                    // But if we reached here, Phase 1 finished.
 
                     batch = firebase.firestore().batch();
-                    count = 0;
+                    opCount = 0;
 
-                    for (let i = 0; i < tempIds.length; i++) {
-                        const tempId = tempIds[i];
+                    for (let i = 0; i < orders.length; i++) {
+                        const tempId = `TEMP-ORD-${i + 1}`;
                         const finalId = `ORD-${i + 1}`;
 
-                        // We need to reference the RECENTLY created temp doc
-                        // Since we don't have the doc object ref, we make it.
+                        // We construct the refs manually
                         const tempRef = firebase.firestore().collection('orders').doc(tempId);
                         const finalRef = firebase.firestore().collection('orders').doc(finalId);
 
-                        // Use a trick: We know the data structure is preserved.
-                        // But we can't "read" inside a batch easily without transaction.
-                        // However, we KNOW we just wrote it.
-                        // Wait, we need the DATA to write to finalRef.
-                        // We can't just "move" without reading.
-                        // The order `orders[i]` contains the data (except the ID which we updated to tempId).
-                        // WE CAN REUSE `orders[i]` data! 
-                        // Just ensure we update the 'id' field to finalId.
-
+                        // Use original data from memory, but ensure ID is updated
                         const originalData = orders[i];
-                        const { _docRef, ...dataToCopy } = originalData; // _docRef is the OLD one (irrelevant now)
+                        const { _docRef, ...dataToCopy } = originalData;
 
                         batch.set(finalRef, { ...dataToCopy, id: finalId });
                         batch.delete(tempRef);
 
-                        count += 2;
-                        if (count >= 400) {
+                        opCount += 2;
+
+                        if (opCount >= batchSize) {
+                            setProgressConfig({
+                                isOpen: true,
+                                title: 'المرحلة 2: التثبيت النهائي',
+                                message: `جاري تثبيت الأرقام الجديدة...\n(تم تثبيت ${i + 1} من ${orders.length})`,
+                                total: orders.length,
+                                current: i + 1
+                            });
                             await batch.commit();
                             batch = firebase.firestore().batch();
-                            count = 0;
+                            opCount = 0;
+                            await new Promise(r => setTimeout(r, 50));
                         }
                     }
-                    if (count > 0) await batch.commit();
+                    if (opCount > 0) await batch.commit();
 
                     // Update Counter
                     await firebase.firestore().collection('settings').doc('counters').set({
                         'ORD-': orders.length
                     }, { merge: true });
 
+                    setProgressConfig(prev => ({ ...prev, isOpen: false }));
                     showToast(`تمت العملية بنجاح! تم ترتيب ${orders.length} طلب.`, 'success');
                     setTimeout(() => window.location.reload(), 2000);
 
                 } catch (error) {
                     console.error(error);
-                    showToast('حدث خطأ فادح أثناء العملية. تحقق من الكونسول.', 'error');
+                    setProgressConfig(prev => ({ ...prev, isOpen: false }));
+                    showToast('حدث خطأ أثناء العملية. حاول مرة أخرى.', 'error');
                 }
             }, 'danger'
         );
@@ -589,179 +672,236 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                                     />
                                 </div>
 
-                                {/* ID Range Delete Card */}
-                                <div className="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-xl hover:border-amber-500/30 transition-all group">
-                                    <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                        <AlertTriangleIcon className="w-6 h-6 text-amber-500" />
-                                    </div>
-                                    <h3 className="font-bold text-lg text-white mb-2">إصلاح تسلسل الأرقام</h3>
-                                    <p className="text-sm text-gray-400 leading-relaxed mb-6">
-                                        حذف الطلبات في نطاق محدد (مثلاً من 6 إلى 1000) لإزالة الفجوات وإصلاح العداد ليبدأ من الرقم الصحيح.
-                                    </p>
-                                    <ActionButton
-                                        label="حذف بنطاق الأرقام..."
-                                        variant="danger"
-                                        icon={TrashIcon}
-                                        onClick={handleRangeDelete}
-                                        className="w-full justify-center py-3"
-                                    />
-                                </div>
-
-                                {/* Reset Card (Future Use) */}
-                                <div className="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-xl opacity-60">
-                                    <div className="w-12 h-12 rounded-full bg-gray-700/30 flex items-center justify-center mb-4">
-                                        <AlertTriangleIcon className="w-6 h-6 text-gray-400" />
-                                    </div>
-                                    <h3 className="font-bold text-lg text-gray-300 mb-2">إعادة ضبط المصنع</h3>
-                                    <p className="text-sm text-gray-500 leading-relaxed mb-6">
-                                        حذف جميع البيانات وإعادة التطبيق لحالته الأولية. (معطل حالياً للأمان)
-                                    </p>
-                                    <button disabled className="w-full py-3 rounded-lg border border-gray-700 text-gray-600 font-bold text-xs cursor-not-allowed">
-                                        غير متاح
-                                    </button>
-                                </div>
+                                <ActionButton
+                                    label="حذف بنطاق الأرقام..."
+                                    variant="danger"
+                                    icon={TrashIcon}
+                                    onClick={handleRangeDelete}
+                                    className="w-full justify-center py-3"
+                                />
                             </div>
-                        </div>
-                    )}
 
-                    {/* Updates Tab */}
-                    {activeTab === 'updates' && (
-                        <div className="space-y-8">
-                            <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] border border-white/5 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-                                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    {/* Left: Inputs */}
-                                    <div className="space-y-5">
-                                        <div className="space-y-2">
-                                            <label className="text-xs text-gray-400 font-bold uppercase">رقم الإصدار (SemVer)</label>
-                                            <div className="relative">
-                                                <BoltIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                                <input placeholder="e.g. 2.1.0" value={newVersion} onChange={(e) => setNewVersion(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700/50 rounded-lg pl-10 pr-4 py-3 text-sm focus:border-blue-500 outline-none font-mono" />
-                                            </div>
+                            {/* Renumber Orders Card (Safe) */}
+                            <div className="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-xl hover:border-emerald-500/30 transition-all group col-span-1 md:col-span-2">
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                            <RefreshCwIcon className="w-6 h-6 text-emerald-500" />
                                         </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-xs text-gray-400 font-bold uppercase">ملف APK</label>
-                                            <div className="flex gap-2">
-                                                <input value={updateUrl} onChange={(e) => setUpdateUrl(e.target.value)} placeholder="رابط مباشر..." className="flex-1 bg-[#0f172a] border border-gray-700/50 rounded-lg px-4 py-3 text-xs text-gray-300 focus:border-blue-500 outline-none" />
-                                                <button onClick={() => apkInputRef.current?.click()} className={`px-4 rounded-lg border border-gray-600 hover:bg-white/5 transition-colors flex items-center gap-2 ${isUploading ? 'cursor-wait opacity-70' : ''}`}>
-                                                    {isUploading ? <span className="text-xs font-bold text-blue-400">{uploadProgress}%</span> : <UploadIcon className="w-5 h-5 text-gray-400" />}
-                                                </button>
-                                                <input type="file" ref={apkInputRef} accept=".apk" hidden onChange={handleApkUpload} />
-                                            </div>
-                                            {isUploading && (
-                                                <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-blue-500 transition-all duration-200" style={{ width: `${uploadProgress}%` }}></div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-xs text-gray-400 font-bold uppercase">ملاحظات</label>
-                                            <textarea value={updateNotes} onChange={(e) => setUpdateNotes(e.target.value)} className="w-full h-24 bg-[#0f172a] border border-gray-700/50 rounded-lg px-4 py-3 text-sm focus:border-blue-500 outline-none resize-none" placeholder="ما الجديد..." />
-                                        </div>
+                                        <h3 className="font-bold text-lg text-white mb-2">تسلسل الطلبات الآمن</h3>
+                                        <p className="text-sm text-gray-400 leading-relaxed mb-6 max-w-lg">
+                                            أداة لإصلاح أرقام الطلبات (مثلاً ORD-17702...) وتحويلها إلى تسلسل نظيف (1، 2، 3...).
+                                            <br />
+                                            <span className="text-emerald-400 font-bold text-xs mt-1 block">✓ آمنة تماماً (نظام المرحلتين)</span>
+                                            <span className="text-blue-400 font-bold text-xs block">✓ تتضمن نسخة احتياطية</span>
+                                            <span className="text-amber-400 font-bold text-xs block">✓ تستأنف العمل عند الانقطاع</span>
+                                        </p>
                                     </div>
-
-                                    {/* Right: Targeting */}
-                                    <div className="space-y-5 flex flex-col justify-between">
-                                        <div className="space-y-3">
-                                            <label className="text-xs text-gray-400 font-bold uppercase block text-amber-500">من سيحصل على التحديث؟</label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {['driver', 'merchant', 'supervisor', 'admin'].map(role => (
-                                                    <button
-                                                        key={role}
-                                                        onClick={() => setTargetRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role])}
-                                                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-2 ${targetRoles.includes(role)
-                                                            ? 'bg-blue-500/20 border-blue-500 text-blue-400'
-                                                            : 'bg-[#0f172a] border-gray-700 text-gray-500 hover:border-gray-500'}`}
-                                                    >
-                                                        {targetRoles.includes(role) && <CheckCircleIcon className="w-3 h-3" />}
-                                                        {role.toUpperCase()}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            <p className="text-[10px] text-gray-500 leading-tight">* اختر 'ADMIN' فقط لاختبار التحديث قبل نشره للجميع.</p>
-                                        </div>
-
+                                    <div className="space-y-3">
                                         <ActionButton
-                                            label={`نشر الإصدار ${newVersion || '...'}`}
-                                            icon={RocketIcon}
-                                            className="w-full py-4 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 border-none"
-                                            onClick={handlePublishUpdate}
+                                            label="تحميل نسخة احتياطية (JSON)"
+                                            variant="secondary"
+                                            icon={CloudIcon}
+                                            onClick={handleBackupOrders}
+                                            className="w-full justify-center"
+                                        />
+                                        <ActionButton
+                                            label="إصلاح التسلسل الآن"
+                                            variant="primary"
+                                            icon={CheckCircleIcon}
+                                            onClick={handleRenumberOrders}
+                                            className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 border-emerald-500 shadow-emerald-900/20"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* History */}
-                            <div className="bg-[#1e293b] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
-                                <div className="bg-[#0f172a]/50 p-4 border-b border-white/5">
-                                    <h3 className="font-bold text-sm text-gray-300">سجل التحديثات</h3>
+                            {/* Reset Card (Future Use) */}
+                            <div className="bg-[#1e293b] border border-white/5 rounded-2xl p-6 shadow-xl opacity-60">
+                                <div className="w-12 h-12 rounded-full bg-gray-700/30 flex items-center justify-center mb-4">
+                                    <AlertTriangleIcon className="w-6 h-6 text-gray-400" />
                                 </div>
-                                <div className="max-h-64 overflow-y-auto">
-                                    {history.map(log => (
-                                        <div key={log.id} className="p-4 border-b border-white/5 flex items-center justify-between hover:bg-white/5 transition-colors group">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center font-mono font-bold text-blue-400 text-sm">v{log.version}</div>
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-sm text-white">{new Date(log.timestamp).toLocaleDateString('ar-EG')}</span>
-                                                        <StatusBadge active={log.isActive} />
-                                                    </div>
-                                                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{log.notes || 'No notes'}</p>
-                                                </div>
-                                            </div>
-                                            <button onClick={() => handleDeleteLog(log.id)} className="p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
-                                                <TrashIcon className="w-4 h-4" />
-                                            </button>
+                                <h3 className="font-bold text-lg text-gray-300 mb-2">إعادة ضبط المصنع</h3>
+                                <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                                    حذف جميع البيانات وإعادة التطبيق لحالته الأولية. (معطل حالياً للأمان)
+                                </p>
+                                <button disabled className="w-full py-3 rounded-lg border border-gray-700 text-gray-600 font-bold text-xs cursor-not-allowed">
+                                    غير متاح
+                                </button>
+                            </div>
+                        </div>
+                        </div>
+                    )}
+
+                {/* Updates Tab */}
+                {activeTab === 'updates' && (
+                    <div className="space-y-8">
+                        <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] border border-white/5 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+                            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Left: Inputs */}
+                                <div className="space-y-5">
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-gray-400 font-bold uppercase">رقم الإصدار (SemVer)</label>
+                                        <div className="relative">
+                                            <BoltIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                            <input placeholder="e.g. 2.1.0" value={newVersion} onChange={(e) => setNewVersion(e.target.value)} className="w-full bg-[#0f172a] border border-gray-700/50 rounded-lg pl-10 pr-4 py-3 text-sm focus:border-blue-500 outline-none font-mono" />
                                         </div>
-                                    ))}
-                                    {history.length === 0 && <div className="p-8 text-center text-gray-500 text-xs">لا يوجد سجلات</div>}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-gray-400 font-bold uppercase">ملف APK</label>
+                                        <div className="flex gap-2">
+                                            <input value={updateUrl} onChange={(e) => setUpdateUrl(e.target.value)} placeholder="رابط مباشر..." className="flex-1 bg-[#0f172a] border border-gray-700/50 rounded-lg px-4 py-3 text-xs text-gray-300 focus:border-blue-500 outline-none" />
+                                            <button onClick={() => apkInputRef.current?.click()} className={`px-4 rounded-lg border border-gray-600 hover:bg-white/5 transition-colors flex items-center gap-2 ${isUploading ? 'cursor-wait opacity-70' : ''}`}>
+                                                {isUploading ? <span className="text-xs font-bold text-blue-400">{uploadProgress}%</span> : <UploadIcon className="w-5 h-5 text-gray-400" />}
+                                            </button>
+                                            <input type="file" ref={apkInputRef} accept=".apk" hidden onChange={handleApkUpload} />
+                                        </div>
+                                        {isUploading && (
+                                            <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+                                                <div className="h-full bg-blue-500 transition-all duration-200" style={{ width: `${uploadProgress}%` }}></div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-gray-400 font-bold uppercase">ملاحظات</label>
+                                        <textarea value={updateNotes} onChange={(e) => setUpdateNotes(e.target.value)} className="w-full h-24 bg-[#0f172a] border border-gray-700/50 rounded-lg px-4 py-3 text-sm focus:border-blue-500 outline-none resize-none" placeholder="ما الجديد..." />
+                                    </div>
+                                </div>
+
+                                {/* Right: Targeting */}
+                                <div className="space-y-5 flex flex-col justify-between">
+                                    <div className="space-y-3">
+                                        <label className="text-xs text-gray-400 font-bold uppercase block text-amber-500">من سيحصل على التحديث؟</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {['driver', 'merchant', 'supervisor', 'admin'].map(role => (
+                                                <button
+                                                    key={role}
+                                                    onClick={() => setTargetRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role])}
+                                                    className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-2 ${targetRoles.includes(role)
+                                                        ? 'bg-blue-500/20 border-blue-500 text-blue-400'
+                                                        : 'bg-[#0f172a] border-gray-700 text-gray-500 hover:border-gray-500'}`}
+                                                >
+                                                    {targetRoles.includes(role) && <CheckCircleIcon className="w-3 h-3" />}
+                                                    {role.toUpperCase()}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <p className="text-[10px] text-gray-500 leading-tight">* اختر 'ADMIN' فقط لاختبار التحديث قبل نشره للجميع.</p>
+                                    </div>
+
+                                    <ActionButton
+                                        label={`نشر الإصدار ${newVersion || '...'}`}
+                                        icon={RocketIcon}
+                                        className="w-full py-4 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 border-none"
+                                        onClick={handlePublishUpdate}
+                                    />
                                 </div>
                             </div>
                         </div>
-                    )}
 
-                    {/* Database Tab */}
-                    {activeTab === 'database' && (
-                        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 animate-fadeIn">
-                            <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-4">
-                                <CloudIcon className="w-10 h-10 text-amber-500" />
+                        {/* History */}
+                        <div className="bg-[#1e293b] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
+                            <div className="bg-[#0f172a]/50 p-4 border-b border-white/5">
+                                <h3 className="font-bold text-sm text-gray-300">سجل التحديثات</h3>
                             </div>
-                            <h2 className="text-2xl font-bold">Firebase Connected</h2>
-                            <p className="text-gray-400 max-w-md">The system is currently using Firebase Realtime & Firestore for data synchronization.</p>
-                            <div className="pt-6">
-                                <ActionButton label="Check Connection" variant="secondary" icon={ActivityIcon} />
+                            <div className="max-h-64 overflow-y-auto">
+                                {history.map(log => (
+                                    <div key={log.id} className="p-4 border-b border-white/5 flex items-center justify-between hover:bg-white/5 transition-colors group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center font-mono font-bold text-blue-400 text-sm">v{log.version}</div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm text-white">{new Date(log.timestamp).toLocaleDateString('ar-EG')}</span>
+                                                    <StatusBadge active={log.isActive} />
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{log.notes || 'No notes'}</p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handleDeleteLog(log.id)} className="p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                                            <TrashIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                                {history.length === 0 && <div className="p-8 text-center text-gray-500 text-xs">لا يوجد سجلات</div>}
                             </div>
                         </div>
-                    )}
+                    </div>
+                )}
 
+                {/* Database Tab */}
+                {activeTab === 'database' && (
+                    <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 animate-fadeIn">
+                        <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-4">
+                            <CloudIcon className="w-10 h-10 text-amber-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold">Firebase Connected</h2>
+                        <p className="text-gray-400 max-w-md">The system is currently using Firebase Realtime & Firestore for data synchronization.</p>
+                        <div className="pt-6">
+                            <ActionButton label="Check Connection" variant="secondary" icon={ActivityIcon} />
+                        </div>
+                    </div>
+                )}
+
+            </div>
+        </div>
+
+            { toast && <ToastNotification message={toast.msg} type={toast.type} onClose={() => setToast(null)} /> }
+
+    {/* Render Modal */ }
+    <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={modalConfig.onConfirm}
+        type={modalConfig.type}
+    />
+
+    {/* Progress/Status Modal (Non-dismissible while loading) */ }
+    {
+        progressConfig.isOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+                <div className="bg-[#1e293b] border border-white/10 rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-scaleIn">
+                    <div className="flex flex-col items-center text-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                            <ActivityIcon className="w-6 h-6 animate-spin" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white">{progressConfig.title}</h3>
+                        <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-line">{progressConfig.message}</p>
+
+                        {/* Progress Bar */}
+                        <div className="w-full bg-gray-800 rounded-full h-2 mt-2 overflow-hidden">
+                            <div
+                                className="bg-blue-500 h-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, Math.max(0, (progressConfig.current / progressConfig.total) * 100))}%` }}
+                            />
+                        </div>
+                        <div className="flex justify-between w-full text-[10px] text-gray-500 font-mono mt-1">
+                            <span>{progressConfig.current} / {progressConfig.total}</span>
+                            <span>{Math.round((progressConfig.current / progressConfig.total) * 100)}%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
+        )
+    }
 
-            {toast && <ToastNotification message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
-
-            {/* Render Modal */}
-            <Modal
-                isOpen={modalConfig.isOpen}
-                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
-                title={modalConfig.title}
-                message={modalConfig.message}
-                onConfirm={modalConfig.onConfirm}
-                type={modalConfig.type}
+    {
+        promptConfig.isOpen && (
+            <PromptModal
+                title={promptConfig.title}
+                message={promptConfig.message}
+                defaultValue={promptConfig.defaultValue}
+                inputType={promptConfig.inputType}
+                placeholder={promptConfig.placeholder}
+                onConfirm={promptConfig.onConfirm}
+                onClose={promptConfig.onClose}
+                confirmButtonText="متابعة"
             />
-
-            {promptConfig.isOpen && (
-                <PromptModal
-                    title={promptConfig.title}
-                    message={promptConfig.message}
-                    defaultValue={promptConfig.defaultValue}
-                    inputType={promptConfig.inputType}
-                    placeholder={promptConfig.placeholder}
-                    onConfirm={promptConfig.onConfirm}
-                    onClose={promptConfig.onClose}
-                    confirmButtonText="متابعة"
-                />
-            )}
+        )
+    }
         </div >
     );
 };

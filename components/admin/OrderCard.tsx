@@ -275,15 +275,48 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                         )}
                     </div>
 
-                    {/* Right Column: Price Info */}
-                    <div className="flex items-center gap-2 border-r border-gray-700 pr-6 pl-1">
-                        <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-                            <DollarSignIcon className="w-4 h-4 text-amber-500" />
+                    {/* Right Column: Financials & Payment Status */}
+                    <div className="flex flex-col gap-3 border-r border-gray-700 pr-4 pl-1 justify-center">
+                        {/* Delivery Fee */}
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+                                <DollarSignIcon className="w-4 h-4 text-amber-500" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] text-gray-500">سعر التوصيل</p>
+                                <p className="text-amber-400 text-xs font-bold">{order.deliveryFee ? `${order.deliveryFee.toLocaleString('en-US')} ج.م` : '-'}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-[9px] text-gray-500">سعر التوصيل</p>
-                            <p className="text-amber-400 text-xs font-bold">{order.deliveryFee ? `${order.deliveryFee.toLocaleString('en-US')} ج.م` : '-'}</p>
-                        </div>
+
+                        {/* Payment Status Container */}
+                        {(order.paymentStatus || order.paidAmount !== undefined) && (
+                            <div className={`p-2 rounded-lg border flex flex-col gap-1 ${order.paymentStatus === 'paid'
+                                    ? 'bg-emerald-500/10 border-emerald-500/20'
+                                    : 'bg-red-500/10 border-red-500/20'
+                                }`}>
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className={`text-[10px] font-black ${order.paymentStatus === 'paid' ? 'text-emerald-400' : 'text-red-400'
+                                        }`}>
+                                        {order.paymentStatus === 'paid' ? 'خالص' : 'غير مدفوع / جزئي'}
+                                    </span>
+                                    {order.isVodafoneCash && <span className="text-[9px] text-purple-400 font-bold bg-purple-500/10 px-1 rounded border border-purple-500/20">كاش</span>}
+                                </div>
+
+                                {order.paidAmount !== undefined && order.paidAmount > 0 && (
+                                    <div className="flex justify-between items-center text-[10px]">
+                                        <span className="text-gray-400">مدفوع:</span>
+                                        <span className="text-emerald-400 font-mono font-bold">{order.paidAmount.toLocaleString()}</span>
+                                    </div>
+                                )}
+
+                                {order.unpaidAmount !== undefined && order.unpaidAmount > 0 && (
+                                    <div className="flex justify-between items-center text-[10px]">
+                                        <span className="text-gray-400">متبقي:</span>
+                                        <span className="text-red-400 font-mono font-bold">{order.unpaidAmount.toLocaleString()}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
