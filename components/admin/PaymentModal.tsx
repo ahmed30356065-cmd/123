@@ -42,6 +42,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
             isVodafoneCash: status === 'vodafone',
             paidAmount: paidAmount ? parseFloat(paidAmount) : 0,
             unpaidAmount: unpaidAmount ? parseFloat(unpaidAmount) : 0,
+            isCollected: status === 'vodafone' ? false : false // Explicitly un-collect on any change from here
         };
         onSave(order.id, updates);
         onClose();

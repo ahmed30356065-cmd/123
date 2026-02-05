@@ -79,6 +79,23 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                 #{order.customOrderNumber}
                             </div>
                         )}
+                        {/* Payment Status Badges - Added to Header */}
+                        {order.isCollected ? (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/20">
+                                <CheckCircleIcon className="w-3 h-3" />
+                                تم التحصيل
+                            </span>
+                        ) : order.isVodafoneCash ? (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/20">
+                                <CheckCircleIcon className="w-3 h-3" />
+                                فودافون كاش
+                            </span>
+                        ) : order.paymentStatus === 'paid' ? (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                                <CheckCircleIcon className="w-3 h-3" />
+                                مدفوع
+                            </span>
+                        ) : null}
                         {isShoppingOrder && (
                             <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/20">
                                 <RocketIcon className="w-3 h-3" />
@@ -297,6 +314,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                         {/* Payment Status Container */}
                         {(order.paymentStatus || order.paidAmount !== undefined) && (
                             <button
+                                <button
                                 onClick={(e) => {
                                     if (onOpenPaymentModal) {
                                         e.stopPropagation();
@@ -304,31 +322,14 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                     }
                                 }}
                                 disabled={!onOpenPaymentModal}
-                                className={`p-2 rounded-lg border flex flex-col gap-1 w-full text-right transition-all ${order.paymentStatus === 'paid'
-                                    ? 'bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20'
-                                    : 'bg-red-500/10 border-red-500/20 hover:bg-red-500/20'
-                                    } ${onOpenPaymentModal ? 'cursor-pointer active:scale-95' : ''}`}>
-                                <div className="flex items-center justify-between gap-4">
-                                    <span className={`text-[10px] font-black ${order.paymentStatus === 'paid' ? 'text-emerald-400' : 'text-red-400'
-                                        }`}>
-                                        {order.paymentStatus === 'paid' ? 'خالص' : 'غير مدفوع / جزئي'}
-                                    </span>
-                                    {order.isVodafoneCash && <span className="text-[9px] text-purple-400 font-bold bg-purple-500/10 px-1 rounded border border-purple-500/20">كاش</span>}
-                                </div>
-
-                                {order.paidAmount !== undefined && order.paidAmount > 0 && (
-                                    <div className="flex justify-between items-center text-[10px]">
-                                        <span className="text-gray-400">مدفوع:</span>
-                                        <span className="text-emerald-400 font-mono font-bold">{order.paidAmount.toLocaleString()}</span>
-                                    </div>
-                                )}
-
-                                {order.unpaidAmount !== undefined && order.unpaidAmount > 0 && (
-                                    <div className="flex justify-between items-center text-[10px]">
-                                        <span className="text-gray-400">متبقي:</span>
-                                        <span className="text-red-400 font-mono font-bold">{order.unpaidAmount.toLocaleString()}</span>
-                                    </div>
-                                )}
+                                className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 min-w-[80px] transition-all
+                                    ${order.unpaidAmount && order.unpaidAmount > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-700/30 border-gray-600/30 hover:bg-gray-700/50'}
+                                `}
+                            >
+                                <DollarSignIcon className={`w-4 h-4 ${order.paymentStatus === 'paid' || order.isCollected ? 'text-emerald-400' : 'text-gray-400'}`} />
+                                <span className="text-[10px] font-bold text-gray-300">
+                                    {order.unpaidAmount && order.unpaidAmount > 0 ? `${order.unpaidAmount} متبقي` : 'Manage Payment'}
+                                </span>
                             </button>
                         )}
                     </div>

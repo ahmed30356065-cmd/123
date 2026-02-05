@@ -74,15 +74,20 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
         } else if (statusType === 'unpaid') {
             updates.paymentStatus = 'unpaid';
             updates.isVodafoneCash = false;
-            updates.isCollected = false;
+            updates.isCollected = false; // Explicitly un-collect
         } else if (statusType === 'vodafone') {
             updates.paymentStatus = 'paid';
             updates.isVodafoneCash = true;
             updates.isCollected = false;
         } else if (statusType === 'collected') {
             updates.isCollected = true;
+            // collected implies paid usually, but we keep paymentStatus as is or set to paid? 
+            // Let's set to paid to be safe, or keep as is if user wants to track separately. 
+            // Setting to 'paid' is safer for logic downstream.
+            updates.paymentStatus = 'paid';
         }
         onUpdateOrder(order.id, updates);
+        // setShowPaymentModal(false); // Optional: close modal? User might want to edit price too.
     };
 
     // Delivery Time Logic (Requires Permission)
@@ -228,24 +233,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         <div className="mt-3 flex items-center justify-between animate-fadeIn border-t border-gray-700/50 pt-3">
                             {/* Status Display */}
                             <div className="flex items-center gap-2">
-                                {order.isCollected ? (
-                                    <span className="text-[10px] text-blue-400 font-bold px-2 py-1 bg-blue-900/20 border border-blue-500/20 rounded-md">
-                                        تم التحصيل
-                                    </span>
-                                ) : order.isVodafoneCash ? (
-                                    <span className="text-[10px] text-red-400 font-bold px-2 py-1 bg-red-900/20 border border-red-500/20 rounded-md flex items-center gap-1">
-                                        <VodafoneIcon className="w-3 h-3 rounded-full" />
-                                        فودافون كاش
-                                    </span>
-                                ) : order.paymentStatus === 'paid' ? (
-                                    <span className="text-[10px] text-green-400 font-bold px-2 py-1 bg-green-900/20 border border-green-500/20 rounded-md">
-                                        مدفوع (نقدي)
-                                    </span>
-                                ) : (
-                                    <span className="text-[10px] text-gray-400 font-bold px-2 py-1 bg-gray-700/30 border border-gray-600/30 rounded-md">
-                                        غير مدفوع
-                                    </span>
-                                )}
+                                {/* Status removed to prevent duplication with Header badges */}
                             </div>
 
                             <button
