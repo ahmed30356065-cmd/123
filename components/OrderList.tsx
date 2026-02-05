@@ -175,8 +175,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     </div>
 
                     {/* Price and Payment Status - Hide when: (Paid OR VodafoneCash) AND Assigned, OR Collected */}
-                    {/* Show only if merchant has permission AND order is not collected AND NOT ((paid/vodafone) AND assigned) */}
-                    {viewingMerchant && viewingMerchant.canManageOrderDetails && !order.isCollected && !((isPaid || order.isVodafoneCash) && (order.assignedTo || order.driverId)) && (
+                    {/* Show only if merchant has permission AND order is not collected AND NOT ((paid/vodafone) AND (assigned OR InTransit)) */}
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && !order.isCollected && !((isPaid || order.isVodafoneCash) && (order.assignedTo || order.driverId || order.status === OrderStatus.InTransit)) && (
                         <div className="mt-3 animate-fadeIn space-y-3">
                             {/* Price Display */}
                             {isPaid ? (
