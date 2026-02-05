@@ -744,10 +744,10 @@ export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<strin
             let nextId = 1;
 
             if (!doc.exists) {
-                // FIRST RUN
+                // FIRST RUN - Scan last 10 orders only for speed
                 const snapshot = await db!.collection('orders')
                     .orderBy('createdAt', 'desc')
-                    .limit(50)
+                    .limit(10)
                     .get();
                 let maxId = 0;
                 snapshot.forEach(d => {
@@ -758,35 +758,22 @@ export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<strin
                     }
                 });
                 nextId = maxId + 1;
-                nextId = maxId + 1;
             } else {
                 const data = doc.data();
                 const current = (data && data[prefix]) ? data[prefix] : 0;
 
-                // OPTIMIZATION: If we have a stored counter, trust it!
-                // Skip the expensive existence check for the target doc to speed up the transaction.
-                // The probability of the counter being out of sync with an existing doc is low if only this method is used.
+                // OPTIMIZATION: Trust the counter if it exists
                 if (current > 0) {
                     nextId = current + 1;
                 } else {
-                    // Only fallback to scanning if counter is missing/zero
-                    const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
+                    // Fallback: scan last 10 orders only
+                    const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(10).get();
                     let max = 0;
                     snapshot.forEach(d => {
                         const num = parseInt(d.id.replace(prefix, '') || '0');
                         if (!isNaN(num)) max = Math.max(max, num);
                     });
                     nextId = max + 1;
-
-                    // Sanity Check only when guessing from scan
-                    let retries = 0;
-                    while (retries < 5) {
-                        const checkPath = prefix + nextId;
-                        const checkDoc = await transaction.get(db!.collection('orders').doc(checkPath));
-                        if (!checkDoc.exists) break;
-                        nextId++;
-                        retries++;
-                    }
                 }
             }
 
@@ -796,13 +783,12 @@ export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<strin
         });
     } catch (error) {
         console.error("Safe ID Gen Transaction failed, trying Safe Fallback (Query):", error);
-        // FALLBACK: Query the latest ID directly. 
-        // Allows offline support via Firebase Cache and prevents Timestamp IDs.
+        // FALLBACK: Query the latest ID directly
         try {
-            // 1. Query Last Order
+            // Query Last 10 Orders only for speed
             const snapshot = await db!.collection('orders')
                 .orderBy('createdAt', 'desc')
-                .limit(20) // Scan last 20 to find max valid ID
+                .limit(10)
                 .get();
 
             let maxId = 0;
@@ -815,11 +801,11 @@ export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<strin
                 }
             });
 
-            // 2. Increment
+            // Increment
             const nextId = maxId + 1;
             const finalId = `${prefix}${nextId}`;
 
-            // 3. Try repair counter (fire and forget)
+            // Try repair counter (fire and forget)
             db!.collection('settings').doc('counters').set({ [prefix]: nextId }, { merge: true }).catch(() => { });
 
             return finalId;
@@ -846,9 +832,10 @@ export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Pr
 
             if (!doc.exists) {
                 // Initialize checks (copy logic from single gen)
+                // OPTIMIZED: Limit scan to 15
                 const snapshot = await db!.collection('orders')
                     .orderBy('createdAt', 'desc')
-                    .limit(50)
+                    .limit(15)
                     .get();
                 let maxId = 0;
                 snapshot.forEach(d => {
@@ -864,7 +851,8 @@ export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Pr
                 const current = (data && data[prefix]) ? data[prefix] : 0;
                 // Double check if 0
                 if (!current) {
-                    const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
+                    // OPTIMIZED: Limit scan to 15
+                    const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(15).get();
                     let max = 0;
                     snapshot.forEach(d => {
                         const num = parseInt(d.id.replace(prefix, '') || '0');
@@ -902,9 +890,10 @@ export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Pr
         try {
             // 🛡️ ACCURACY: Read Max ID directly from Orders
             // Smart Logic: Ignore "Timestamp" IDs (usually > 10 digits) to preserve the clean sequence.
+            // OPTIMIZED: Limit scan to 20
             const snapshot = await db!.collection('orders')
                 .orderBy('createdAt', 'desc')
-                .limit(50)
+                .limit(20)
                 .get();
 
             let maxId = 0;

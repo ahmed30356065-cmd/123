@@ -8,6 +8,7 @@ import {
     RefreshCwIcon, BanknoteIcon, PencilIcon, RocketIcon, ClipboardListIcon, CalendarIcon, VodafoneIcon, EmptyBoxIcon, WhatsAppIcon
 } from './icons';
 import { sendExternalNotification } from '../services/firebase';
+import useAndroidBack from '../hooks/useAndroidBack';
 
 interface MerchantOrderCardProps {
     order: Order;
@@ -20,6 +21,19 @@ interface MerchantOrderCardProps {
 const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, viewingMerchant, onUpdateOrder }) => {
     const [showCollectModal, setShowCollectModal] = React.useState(false);
     const [showPaymentModal, setShowPaymentModal] = React.useState(false);
+
+    // Close payment modal with Android back button
+    useAndroidBack(() => {
+        if (showPaymentModal) {
+            setShowPaymentModal(false);
+            return true; // Handled
+        }
+        if (showCollectModal) {
+            setShowCollectModal(false);
+            return true; // Handled
+        }
+        return false; // Not handled
+    }, [showPaymentModal, showCollectModal]);
     const formattedDate = (() => {
         try {
             const createdAt = order.createdAt;
