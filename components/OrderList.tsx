@@ -558,10 +558,10 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
     // 1. إجمالي التوصيل: كل الطلبات (الكاش + المدفوع)
     const totalDelivery = finalFilteredOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
 
-    // 2. في انتظار التحصيل: المبالغ التي لم يكتمل دفعها (isCollected = false) و (ليست فودافون كاش)
+    // 2. في انتظار التحصيل: المبالغ التي لم يكتمل دفعها (isCollected = false) و (ليست مدفوعة أو فودافون كاش)
     const pendingCollection = viewingMerchant?.canManageOrderDetails
         ? finalFilteredOrders
-            .filter(o => !o.isCollected)
+            .filter(o => !o.isCollected && o.paymentStatus !== 'paid' && !o.isVodafoneCash)
             .reduce((sum, o) => sum + (o.totalPrice || 0), 0)
         : 0;
 
