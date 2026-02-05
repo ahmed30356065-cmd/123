@@ -314,7 +314,6 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                         {/* Payment Status Container */}
                         {(order.paymentStatus || order.paidAmount !== undefined) && (
                             <button
-                                <button
                                 onClick={(e) => {
                                     if (onOpenPaymentModal) {
                                         e.stopPropagation();
