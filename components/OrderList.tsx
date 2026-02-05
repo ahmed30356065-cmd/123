@@ -225,12 +225,12 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     )}
 
 
-                    {/* Status for Vodafone Cash - Always "Paid" */}
+                    {/* Status for Vodafone Cash - Always "Paid" - Compact Style */}
                     {viewingMerchant && viewingMerchant.canManageOrderDetails && order.isVodafoneCash && (
-                        <div className="mt-3 animate-fadeIn">
-                            <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-3 flex items-center justify-center gap-2">
-                                <CheckCircleIcon className="w-5 h-5 text-green-400" />
-                                <p className="text-sm font-bold text-green-400">
+                        <div className="flex justify-end mt-2 animate-fadeIn">
+                            <div className="bg-green-600/10 border border-green-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                                <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                <p className="text-xs font-bold text-green-400">
                                     تم الدفع (فودافون كاش)
                                 </p>
                             </div>
@@ -240,10 +240,10 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
 
 
                     {viewingMerchant && viewingMerchant.canManageOrderDetails && isPaid && !order.isCollected && !order.isVodafoneCash && (order.assignedTo || order.driverId) && (
-                        <div className="mt-3 animate-fadeIn">
-                            <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-3 flex items-center justify-center gap-2">
-                                <CheckCircleIcon className="w-5 h-5 text-green-400" />
-                                <p className="text-lg font-bold text-green-400">
+                        <div className="flex justify-end mt-2 animate-fadeIn">
+                            <div className="bg-green-600/10 border border-green-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                                <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                <p className="text-xs font-bold text-green-400">
                                     تم الدفع
                                 </p>
                             </div>
