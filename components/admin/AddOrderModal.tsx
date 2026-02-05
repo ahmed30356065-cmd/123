@@ -471,8 +471,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
                                     key={cat}
                                     onClick={() => setSelectedCategory(cat)}
                                     className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${selectedCategory === cat
-                                            ? 'bg-red-600 text-white border-red-600 shadow-md'
-                                            : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
+                                        ? 'bg-red-600 text-white border-red-600 shadow-md'
+                                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
                                         }`}
                                 >
                                     {cat === 'all' ? 'الكل' : cat}
@@ -489,8 +489,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
                                         key={m.id}
                                         onClick={() => handleSelectMerchant(m.id)}
                                         className={`w-full flex items-center p-3 rounded-xl border transition-all active:scale-[0.98] ${merchantId === m.id
-                                                ? 'bg-red-900/10 border-red-500 shadow-lg shadow-red-900/10 ring-1 ring-red-500/30'
-                                                : 'bg-[#1e1e1e] border-gray-800 hover:border-gray-600 hover:bg-[#252525]'
+                                            ? 'bg-red-900/10 border-red-500 shadow-lg shadow-red-900/10 ring-1 ring-red-500/30'
+                                            : 'bg-[#1e1e1e] border-gray-800 hover:border-gray-600 hover:bg-[#252525]'
                                             }`}
                                     >
                                         <div className="relative">
