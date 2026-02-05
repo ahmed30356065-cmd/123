@@ -216,7 +216,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
 
                     {/* Collect Button - Show for ALL merchants if assigned */}
                     {/* Independent of Advanced Financial Permission */}
-                    {viewingMerchant && viewingMerchant.canManageOrderDetails && !order.isCollected && !order.isVodafoneCash && (order.assignedTo || order.driverId) && (
+                    {viewingMerchant && viewingMerchant.canManageOrderDetails && !order.isCollected && (order.assignedTo || order.driverId) && (
                         <div className="mt-3 flex justify-start animate-fadeIn">
                             <button
                                 onClick={handleCollect}
@@ -565,7 +565,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
     // 2. في انتظار التحصيل: المبالغ التي لم يكتمل دفعها (isCollected = false) و (ليست فودافون كاش)
     const pendingCollection = viewingMerchant?.canManageOrderDetails
         ? finalFilteredOrders
-            .filter(o => !o.isCollected && !o.isVodafoneCash)
+            .filter(o => !o.isCollected)
             .reduce((sum, o) => sum + (o.totalPrice || 0), 0)
         : 0;
 

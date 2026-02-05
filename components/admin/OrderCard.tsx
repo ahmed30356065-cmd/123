@@ -11,10 +11,11 @@ interface OrderCardProps {
     onEdit?: (order: Order) => void;
     onDelete?: (order: Order) => void;
     onOpenStatusModal?: (order: Order) => void;
+    onOpenPaymentModal?: (order: Order) => void;
 }
 
 // استخدام React.memo بشكل صارم لمنع إعادة الرندر
-const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, onDelete, onOpenStatusModal }) => {
+const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, onDelete, onOpenStatusModal, onOpenPaymentModal }) => {
     const driver = useMemo(() => users.find(u => u.id === order.driverId), [users, order.driverId]);
     const merchantUser = useMemo(() => users.find(u => u.id === order.merchantId), [users, order.merchantId]);
     const customerUser = useMemo(() => users.find(u => u.phone === order.customer?.phone), [users, order.customer?.phone]);
@@ -73,6 +74,11 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                         <OrderIdDisplay order={order} className="font-mono text-xl font-black text-red-500 tracking-tighter" showHash={false} />
+                        {order.customOrderNumber && (
+                            <div className="bg-white/10 text-white px-2 py-0.5 rounded text-sm font-bold font-mono border border-white/10">
+                                #{order.customOrderNumber}
+                            </div>
+                        )}
                         {isShoppingOrder && (
                             <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/20">
                                 <RocketIcon className="w-3 h-3" />
@@ -290,10 +296,18 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
 
                         {/* Payment Status Container */}
                         {(order.paymentStatus || order.paidAmount !== undefined) && (
-                            <div className={`p-2 rounded-lg border flex flex-col gap-1 ${order.paymentStatus === 'paid'
-                                    ? 'bg-emerald-500/10 border-emerald-500/20'
-                                    : 'bg-red-500/10 border-red-500/20'
-                                }`}>
+                            <button
+                                onClick={(e) => {
+                                    if (onOpenPaymentModal) {
+                                        e.stopPropagation();
+                                        onOpenPaymentModal(order);
+                                    }
+                                }}
+                                disabled={!onOpenPaymentModal}
+                                className={`p-2 rounded-lg border flex flex-col gap-1 w-full text-right transition-all ${order.paymentStatus === 'paid'
+                                    ? 'bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20'
+                                    : 'bg-red-500/10 border-red-500/20 hover:bg-red-500/20'
+                                    } ${onOpenPaymentModal ? 'cursor-pointer active:scale-95' : ''}`}>
                                 <div className="flex items-center justify-between gap-4">
                                     <span className={`text-[10px] font-black ${order.paymentStatus === 'paid' ? 'text-emerald-400' : 'text-red-400'
                                         }`}>
@@ -315,7 +329,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                         <span className="text-red-400 font-mono font-bold">{order.unpaidAmount.toLocaleString()}</span>
                                     </div>
                                 )}
-                            </div>
+                            </button>
                         )}
                     </div>
                 </div>

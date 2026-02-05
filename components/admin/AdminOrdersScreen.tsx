@@ -27,6 +27,7 @@ interface AdminOrdersScreenProps {
     adminAddOrder: (newOrder: { customer: Customer; notes?: string; merchantId: string; } | { customer: Customer; notes?: string; merchantId: string; }[]) => void;
     permissions?: SupervisorPermission[];
     onOpenStatusModal?: (order: Order) => void;
+    onOpenPaymentModal?: (order: Order) => void;
     onNavigateToAdd?: () => void;
     onBulkAssign?: (driverId: string, deliveryFee: number) => void;
     onBulkStatusUpdate?: (status: OrderStatus) => void;
@@ -62,7 +63,7 @@ const FilterCard: React.FC<{
     </button>
 );
 
-const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders, users, deleteOrder, editOrder, onNavigateToAdd, permissions, onOpenStatusModal, onBulkAssign, onBulkStatusUpdate, onBulkDelete, appName, currentUser, viewMode = 'default' }) => {
+const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders, users, deleteOrder, editOrder, onNavigateToAdd, permissions, onOpenStatusModal, onOpenPaymentModal, onBulkAssign, onBulkStatusUpdate, onBulkDelete, appName, currentUser, viewMode = 'default' }) => {
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -259,6 +260,7 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
             const lowerTerm = searchTerm.toLowerCase();
             result = result.filter(o =>
                 (o.id && o.id.toString().includes(lowerTerm)) ||
+                (o.customOrderNumber && o.customOrderNumber.toString().toLowerCase().includes(lowerTerm)) ||
                 (o.customer?.phone && o.customer.phone.includes(lowerTerm)) ||
                 (o.customer?.address && o.customer.address.toLowerCase().includes(lowerTerm)) ||
                 (o.notes && o.notes.toLowerCase().includes(lowerTerm))
@@ -401,6 +403,7 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
                             onEdit={canManage ? setEditingOrder : undefined}
                             onDelete={canDelete ? setDeletingOrder : undefined}
                             onOpenStatusModal={onOpenStatusModal}
+                            onOpenPaymentModal={onOpenPaymentModal}
                         />
                     ))
                 ) : (

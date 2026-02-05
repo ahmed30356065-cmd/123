@@ -22,6 +22,7 @@ import AuditLogsScreen from './AuditLogsScreen';
 import LoyaltyScreen from './LoyaltyScreen';
 import AdminSupportScreen from './AdminSupportScreen';
 import GamesManager from './GamesManager';
+import PaymentModal from './PaymentModal';
 import useAndroidBack from '../../hooks/useAndroidBack';
 import * as firebaseService from '../../services/firebase';
 import PullToRefresh from '../common/PullToRefresh';
@@ -41,7 +42,12 @@ interface AdminPanelProps {
         merchantId: string,
         merchantName: string, // Updated Type
         driverId?: string | null, // Updated Type
-        deliveryFee?: number | null // Updated Type
+        deliveryFee?: number | null, // Updated Type
+        status?: OrderStatus,
+        paymentStatus?: 'paid' | 'unpaid',
+        paidAmount?: number,
+        unpaidAmount?: number,
+        isVodafoneCash?: boolean
     }) => void;
     assignDriverAndSetStatus: (orderId: string, driverId: string, deliveryFee: number, status: OrderStatus.InTransit | OrderStatus.Delivered) => void;
     adminAddOrder: (newOrder: { customer: Customer; notes?: string; merchantId: string; } | { customer: Customer; notes?: string; merchantId: string; }[]) => void;
@@ -119,6 +125,30 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     const [unreadSupportChats, setUnreadSupportChats] = useState<SupportChat[]>([]);
 
     // Navigation visibility state
+    const [bulkDriverId, setBulkDriverId] = useState('');
+    const [bulkFee, setBulkFee] = useState('');
+
+    const [editingPaymentOrder, setEditingPaymentOrder] = useState<Order | null>(null);
+
+    const handleUpdatePayment = (orderId: string, updates: any) => {
+        // We use editOrder to push updates
+        // Note: editOrder in props needs to support these new fields.
+        // We updated the interface above.
+        const order = props.orders.find(o => o.id === orderId);
+        if (!order) return;
+
+        props.editOrder(orderId, {
+            customer: order.customer, // Required by signature
+            merchantId: order.merchantId, // Required by signature
+            merchantName: order.merchantName, // Required by signature
+            ...updates
+        });
+    };
+
+    const handleOpenPaymentModal = (order: Order) => {
+        setEditingPaymentOrder(order);
+    };
+
     const [isNavVisible, setIsNavVisible] = useState(true);
     const lastScrollY = useRef(0);
 
@@ -580,6 +610,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                             deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
                             editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
                             adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                            onOpenPaymentModal={handleOpenPaymentModal}
                             onNavigateToAdd={handleNavigateToAdd}
                             onBulkAssign={handleBulkAssign}
                             onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -596,6 +627,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                             deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
                             editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
                             adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                            onOpenPaymentModal={handleOpenPaymentModal}
                             onNavigateToAdd={handleNavigateToAdd}
                             onBulkAssign={handleBulkAssign}
                             onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -612,6 +644,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                             deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
                             editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
                             adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                            onOpenPaymentModal={handleOpenPaymentModal}
                             onNavigateToAdd={handleNavigateToAdd}
                             onBulkAssign={handleBulkAssign}
                             onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -648,6 +681,15 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             {statusChangeOrder && <ChangeStatusModal order={statusChangeOrder} onClose={() => setStatusChangeOrder(null)} onSelectStatus={(o, s) => { setStatusChangeOrder(null); setTimeout(() => { if (s === OrderStatus.InTransit) setAssigningDriverOrder(o); else setStatusConfirmation({ order: o, newStatus: s }); }, 150); }} onTransferOrder={(o) => { setStatusChangeOrder(null); setTimeout(() => { setTransferOrder(o); }, 100); }} />}
             {assigningDriverOrder && <AssignDriverModal order={assigningDriverOrder} drivers={drivers} targetStatus={OrderStatus.InTransit} onClose={() => setAssigningDriverOrder(null)} onSave={(d, f) => { props.assignDriverAndSetStatus(assigningDriverOrder.id, d, f, OrderStatus.InTransit); setAssigningDriverOrder(null); }} />}
             {transferOrder && <AssignDriverModal order={transferOrder} drivers={drivers} targetStatus={OrderStatus.InTransit} onClose={() => setTransferOrder(null)} onSave={(d, f) => { props.assignDriverAndSetStatus(transferOrder.id, d, f, OrderStatus.InTransit); setTransferOrder(null); }} />}
+
+            {editingPaymentOrder && (
+                <PaymentModal
+                    order={editingPaymentOrder}
+                    onClose={() => setEditingPaymentOrder(null)}
+                    onSave={handleUpdatePayment}
+                />
+            )}
+
             {statusConfirmation && <ConfirmationModal title={`تأكيد تغيير الحالة`} message={`هل تؤكد تغيير حالة الطلب؟`} onClose={() => setStatusConfirmation(null)} onConfirm={handleConfirmStatusChange} confirmVariant={statusConfirmation.newStatus === OrderStatus.Delivered ? 'success' : 'primary'} />}
             {deleteConfirmation && <ConfirmationModal title={deleteConfirmation.type === 'all' ? "حذف الكل ⚠️" : "تأكيد الحذف"} message={deleteConfirmation.message} onClose={() => setDeleteConfirmation(null)} onConfirm={executeDelete} confirmVariant="danger" confirmButtonText="نعم، حذف نهائي" cancelButtonText="تراجع" />}
         </div>
