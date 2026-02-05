@@ -282,12 +282,12 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             <span className="font-mono dir-ltr copyable-phone">{order.customer?.phone || ''}</span>
                         </p>
 
-                        {/* For non-merchants (Admin), always show price. 
-                            For Merchants: ONLY show if they have permission AND don't have the advanced panel (to avoid duplication).
-                            Hide when: Collected OR ((Paid OR VodafoneCash) AND (Assigned OR InTransit))
-                            Show when: Order is Pending (not assigned, not InTransit) regardless of payment status
+                        {/* Price Display Logic:
+                            - Show for Admin (no viewingMerchant) OR Merchants with details permission
+                            - Hide if Collected
+                            - Hide if (Paid OR Vodafone) AND (Assigned OR Driver) AND Status NOT Pending
                         */}
-                        {(!viewingMerchant || (viewingMerchant.canManageOrderDetails && !viewingMerchant.canManageAdvancedFinancials)) && order.totalPrice !== undefined && !order.isCollected && !((isPaid || order.isVodafoneCash) && (order.assignedTo || order.driverId) && order.status !== OrderStatus.Pending) && (
+                        {(!viewingMerchant || viewingMerchant.canManageOrderDetails) && order.totalPrice !== undefined && !order.isCollected && !((isPaid || order.isVodafoneCash) && (order.assignedTo || order.driverId) && order.status !== OrderStatus.Pending) && (
                             <p className="text-xs text-gray-400 flex items-center gap-1 bg-gray-700/30 px-2 py-1 rounded-lg animate-fadeIn">
                                 <BanknoteIcon className="w-3 h-3" />
                                 <span className="font-bold text-red-400">{Number(order.totalPrice).toLocaleString('en-US')} ج.م</span>
