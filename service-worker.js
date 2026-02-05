@@ -7,14 +7,14 @@
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
-const CACHE_NAME = 'delinow-core-v6'; // Version bumped for new logic
+const CACHE_NAME = 'delinow-core-v7'; // Version bumped to force update
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/index.css',
-  '/index.tsx',
   '/manifest.json',
-  '/vite.svg',
+  '/app-icon.png',
+  '/public/fonts/ArabicUI.ttf',
   'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js',
   'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js',
@@ -51,10 +51,10 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((response) => {
       return response || fetch(event.request).then((fetchRes) => {
         if (event.request.destination === 'image' || url.hostname.includes('gstatic') || url.hostname.includes('fonts.googleapis.com')) {
-            return caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, fetchRes.clone());
-                return fetchRes;
-            });
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, fetchRes.clone());
+            return fetchRes;
+          });
         }
         return fetchRes;
       });
@@ -69,15 +69,15 @@ self.addEventListener('message', (event) => {
       try {
         firebase.initializeApp(event.data.config);
         const messaging = firebase.messaging();
-        
+
         messaging.onBackgroundMessage((payload) => {
           console.log('[SW] Background message received:', payload);
-          
+
           // استخراج البيانات بدقة سواء جاءت في notification أو data
           const title = payload.notification?.title || payload.data?.title || 'GOO NOW';
           const body = payload.notification?.body || payload.data?.body || 'لديك إشعار جديد';
           const icon = '/vite.svg';
-          
+
           const notificationOptions = {
             body: body,
             icon: icon,
@@ -100,15 +100,15 @@ self.addEventListener('message', (event) => {
 // معالجة النقر على الإشعار لفتح التطبيق وتوجيه المستخدم
 self.addEventListener('notificationclick', (event) => {
   console.log('[SW] Notification click received.');
-  
+
   event.notification.close();
 
   // الحصول على الرابط من بيانات الإشعار
   let targetUrl = event.notification.data?.url || '/';
-  
+
   // التأكد من أن الرابط كامل
   if (!targetUrl.startsWith('http')) {
-      targetUrl = self.registration.scope.replace(/\/$/, '') + targetUrl;
+    targetUrl = self.registration.scope.replace(/\/$/, '') + targetUrl;
   }
 
   event.waitUntil(
@@ -117,11 +117,11 @@ self.addEventListener('notificationclick', (event) => {
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
         if (client.url.includes(self.registration.scope) && 'focus' in client) {
-             // توجيه النافذة الموجودة للرابط الجديد
-             if (targetUrl !== client.url) {
-                 client.navigate(targetUrl);
-             }
-             return client.focus();
+          // توجيه النافذة الموجودة للرابط الجديد
+          if (targetUrl !== client.url) {
+            client.navigate(targetUrl);
+          }
+          return client.focus();
         }
       }
       // 2. إذا لم توجد نافذة مفتوحة، افتح واحدة جديدة
