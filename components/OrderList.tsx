@@ -174,43 +174,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                         </p>
                     </div>
 
-                    {/* Price and Payment Status - Hide when: (Paid OR VodafoneCash) AND Assigned, OR Collected */}
-                    {/* Show only if merchant has permission AND order is not collected AND NOT ((paid/vodafone) AND (assigned OR InTransit)) */}
-                    {viewingMerchant && viewingMerchant.canManageOrderDetails && !order.isCollected && !((isPaid || order.isVodafoneCash) && (order.assignedTo || order.driverId || order.status === OrderStatus.InTransit)) && (
-                        <div className="mt-3 animate-fadeIn space-y-3">
-                            {/* Price Display */}
-                            {isPaid ? (
-                                /* Compact Paid Status - Left Aligned */
-                                <div className="flex justify-end mt-2 animate-fadeIn">
-                                    <div className="bg-green-600/10 border border-green-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
-                                        <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                                        <div>
-                                            <p className="text-[10px] font-bold text-green-400">تم الدفع</p>
-                                            <p className="text-xs font-bold text-white leading-none">{Number(order.totalPrice || 0).toLocaleString('en-US')} ج.م</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                /* Large Unpaid Card - Original Style */
-                                <div className="bg-gradient-to-br from-red-600/20 to-red-800/20 border border-red-500/30 rounded-lg p-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="bg-red-600/30 p-2 rounded-lg">
-                                                <BanknoteIcon className="w-5 h-5 text-red-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-medium text-red-400/80">المبلغ المطلوب</p>
-                                                <p className="text-lg font-bold text-white">{Number(order.totalPrice || 0).toLocaleString('en-US')} ج.م</p>
-                                            </div>
-                                        </div>
-                                        <span className="text-xs font-bold px-2.5 py-1.5 rounded-md border bg-red-600/30 text-red-300 border-red-500/30">
-                                            في انتظار الدفع
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
+
 
                     {/* Collect Button - Show ONLY for unpaid orders that are assigned */}
                     {viewingMerchant && viewingMerchant.canManageOrderDetails && !order.isCollected && order.paymentStatus === 'unpaid' && !order.isVodafoneCash && (order.assignedTo || order.driverId) && (

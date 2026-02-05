@@ -9,8 +9,7 @@ interface PaymentModalProps {
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) => {
-    const [status, setStatus] = useState<'paid' | 'unpaid'>(order.paymentStatus || 'unpaid');
-    const [isVodafoneCash, setIsVodafoneCash] = useState(order.isVodafoneCash || false);
+    const [status, setStatus] = useState<'paid' | 'unpaid' | 'vodafone'>(order.isVodafoneCash ? 'vodafone' : (order.paymentStatus || 'unpaid'));
 
     // Amounts
     const [paidAmount, setPaidAmount] = useState<string>(order.paidAmount?.toString() || '');
@@ -39,12 +38,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
 
     const handleSave = () => {
         const updates = {
-            paymentStatus: status,
-            isVodafoneCash: isVodafoneCash,
+            paymentStatus: status === 'vodafone' ? 'paid' : status,
+            isVodafoneCash: status === 'vodafone',
             paidAmount: paidAmount ? parseFloat(paidAmount) : 0,
             unpaidAmount: unpaidAmount ? parseFloat(unpaidAmount) : 0,
-            // If paid, we assume collected? Maybe separate.
-            // If fully paid, maybe mark as collected? User didn't ask, keep it simple.
         };
         onSave(order.id, updates);
         onClose();
@@ -77,23 +74,23 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                         <p className="text-[10px] text-gray-500 mt-1 font-mono">#{order.id}</p>
                     </div>
 
-                    {/* Status Toggle */}
+                    {/* Payment Status - 3 Options */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 mb-3">الحالة العامة</label>
-                        <div className="grid grid-cols-2 gap-3 bg-[#111] p-1.5 rounded-xl border border-gray-700">
+                        <label className="block text-xs font-bold text-gray-400 mb-3">حالة الدفع</label>
+                        <div className="grid grid-cols-3 gap-2 bg-[#111] p-1.5 rounded-xl border border-gray-700">
                             <button
                                 onClick={() => setStatus('paid')}
-                                className={`py-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${status === 'paid'
+                                className={`py-3 rounded-lg text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${status === 'paid'
                                     ? 'bg-emerald-600 text-white shadow-lg'
                                     : 'text-gray-400 hover:text-white'
                                     }`}
                             >
                                 <CheckCircleIcon className="w-4 h-4" />
-                                خالص (Paid)
+                                مدفوع
                             </button>
                             <button
                                 onClick={() => setStatus('unpaid')}
-                                className={`py-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${status === 'unpaid'
+                                className={`py-3 rounded-lg text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${status === 'unpaid'
                                     ? 'bg-red-600 text-white shadow-lg'
                                     : 'text-gray-400 hover:text-white'
                                     }`}
@@ -101,28 +98,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                                 <XIcon className="w-4 h-4" />
                                 غير مدفوع
                             </button>
-                        </div>
-                    </div>
-
-                    {/* Vodafone Cash Toggle */}
-                    <div
-                        onClick={() => setIsVodafoneCash(!isVodafoneCash)}
-                        className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between group ${isVodafoneCash
-                            ? 'bg-purple-900/20 border-purple-500/50'
-                            : 'bg-[#111] border-gray-700 hover:border-gray-500'
-                            }`}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isVodafoneCash ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-500'}`}>
-                                <DollarSignIcon className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <p className={`font-bold text-sm ${isVodafoneCash ? 'text-white' : 'text-gray-300'}`}>فودافون كاش</p>
-                                <p className="text-[10px] text-gray-500">تفعيل إذا تم الدفع عبر المحفظة</p>
-                            </div>
-                        </div>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${isVodafoneCash ? 'border-purple-500 bg-purple-500' : 'border-gray-600'}`}>
-                            {isVodafoneCash && <CheckCircleIcon className="w-4 h-4 text-white" />}
+                            <button
+                                onClick={() => setStatus('vodafone')}
+                                className={`py-3 rounded-lg text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${status === 'vodafone'
+                                    ? 'bg-purple-600 text-white shadow-lg'
+                                    : 'text-gray-400 hover:text-white'
+                                    }`}
+                            >
+                                <DollarSignIcon className="w-4 h-4" />
+                                فودافون
+                            </button>
                         </div>
                     </div>
 
@@ -136,7 +121,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                                 const val = e.target.value;
                                 setPaidAmount(val);
                                 // Auto-update based on status
-                                if (status === 'paid') {
+                                if (status === 'paid' || status === 'vodafone') {
                                     setUnpaidAmount('0');
                                 } else {
                                     setUnpaidAmount(val);
@@ -147,7 +132,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                             placeholder="0"
                         />
                         <p className="text-[10px] text-gray-500 mt-2 text-center">
-                            {status === 'paid' ? '✓ سيتم تسجيل المبلغ كمدفوع بالكامل' : '⚠ سيتم تسجيل المبلغ كمتبقي'}
+                            {status === 'paid' || status === 'vodafone' ? '✓ سيتم تسجيل المبلغ كمدفوع بالكامل' : '⚠ سيتم تسجيل المبلغ كمتبقي'}
                         </p>
                     </div>
 
