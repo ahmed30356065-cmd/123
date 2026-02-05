@@ -547,11 +547,16 @@ const App: React.FC = () => {
                     adminAddOrder={async (d) => {
                         const dataArray = Array.isArray(d) ? d : [d];
                         const newOrders: any[] = [];
+                        const prefix = 'ORD-';
 
-                        for (const orderData of dataArray) {
-                            try {
-                                // Use SERVER-SIDE atomic generation (Fixes duplicates)
-                                const newId = await firebaseService.generateUniqueIdSafe('ORD-');
+                        try {
+                            const count = dataArray.length;
+                            // 1. Generate IDs in Batch (Atomic & Safe) - Much Faster
+                            const newIds = await firebaseService.generateIdsBatch(prefix, count);
+
+                            // 2. Assign IDs and prepare objects
+                            dataArray.forEach((orderData, index) => {
+                                const newId = newIds[index];
                                 newOrders.push({
                                     ...orderData,
                                     id: newId,
@@ -559,20 +564,26 @@ const App: React.FC = () => {
                                     createdAt: new Date(),
                                     type: 'delivery_request'
                                 });
-                                // Notification is async, don't await block
-                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${newId} وهو متاح للتوصيل`, url: `/?target=order&id=${newId}` });
-                            } catch (e) {
-                                console.error("Supervisor add error:", e);
-                            }
+                            });
+
+                            // 3. Notifications (Async - Non-blocking)
+                            // Use setTimeout to move out of critical path
+                            setTimeout(() => {
+                                newOrders.forEach(order => {
+                                    firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${order.id} وهو متاح للتوصيل`, url: `/?target=order&id=${order.id}` });
+                                });
+                            }, 50);
+
+                        } catch (e) {
+                            console.error("Supervisor Batched Add Failed", e);
+                            showNotify('فشل إنشاء الطلبات، يرجى المحاولة مرة أخرى', 'error');
                         }
 
                         if (newOrders.length > 0) {
-                            // Optimistic Update
+                            // 4. Optimistic Update
                             setOrders(prev => [...prev, ...newOrders]);
-
-                            // Batch Save
+                            // 5. Batch Save to DB
                             await firebaseService.batchSaveData('orders', newOrders);
-
                             logAction('create', 'الطلبات', `قام المشرف بإضافة ${newOrders.length} طلبات جديدة`);
                         }
                     }}

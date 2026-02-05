@@ -139,7 +139,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 setCashAmount('');
 
                 setStatus('idle');
-            }, 700);
+            }, 300);
 
         } catch (e) {
             console.error("NewOrderForm Error:", e);

@@ -168,6 +168,28 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
           onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined}
         />
       ) : null;
+      case 'shopping': return (userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) ? (
+        <AdminOrdersScreen
+          {...props}
+          permissions={userPermissions}
+          viewMode="shopping"
+          onNavigateToAdd={() => setView('add_order')}
+          onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined}
+          onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined}
+          onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined}
+        />
+      ) : null;
+      case 'special': return (userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) ? (
+        <AdminOrdersScreen
+          {...props}
+          permissions={userPermissions}
+          viewMode="special"
+          onNavigateToAdd={() => setView('add_order')}
+          onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined}
+          onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined}
+          onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined}
+        />
+      ) : null;
       case 'reports': return userPermissions.includes('view_reports') ? <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} /> : null;
       case 'add_order': return <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={async (data) => { await props.adminAddOrder(data); }} />;
       case 'notifications': return (
@@ -215,11 +237,12 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
           sendNotification={firebaseService.sendExternalNotification}
           currentUser={props.user}
         /> : null;
-      default: return null;
     }
   };
 
   const availableViews = [
+    { id: 'shopping', condition: userPermissions.includes('view_orders') || userPermissions.includes('manage_orders') },
+    { id: 'special', condition: userPermissions.includes('view_orders') || userPermissions.includes('manage_orders') },
     { id: 'orders', condition: userPermissions.includes('view_orders') || userPermissions.includes('manage_orders') },
     { id: 'users', condition: userPermissions.includes('view_users') || userPermissions.includes('manage_users') },
     { id: 'wallet', condition: userPermissions.includes('view_wallet') },
