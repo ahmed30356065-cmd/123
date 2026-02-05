@@ -24,7 +24,8 @@
   body {
     background-color: #111827;
     color: #ffffff;
-    font-family: 'NumFont', 'ArabicUI', system-ui, sans-serif !important;
+    /* Prioritize Cairo for guaranteed Arabic support */
+    font-family: 'NumFont', 'Cairo', 'ArabicUI', system-ui, sans-serif !important;
     -webkit-tap-highlight-color: transparent;
     /* Remove blue tap box */
     -webkit-touch-callout: none;
