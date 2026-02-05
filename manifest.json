@@ -1,6 +1,6 @@
 {
-  "short_name": "DeliNow",
-  "name": "GOO NOW Logistics & Delivery",
+  "short_name": "GOO NOW",
+  "name": "GOO NOW",
   "description": "تطبيق التوصيل المتكامل للتجار والمناديب والعملاء",
   "start_url": "/",
   "display": "standalone",

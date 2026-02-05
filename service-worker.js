@@ -7,7 +7,7 @@
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
-const CACHE_NAME = 'delinow-core-v8'; // Version bumped again for Cairo font fix
+const CACHE_NAME = 'delinow-core-v9'; // Version bumped for name change
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
