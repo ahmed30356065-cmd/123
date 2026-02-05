@@ -239,29 +239,30 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     )}
 
 
-                    {/* Status for Vodafone Cash - Always "Paid" - Compact Style */}
-                    {viewingMerchant && viewingMerchant.canManageOrderDetails && order.isVodafoneCash && (
-                        <div className="flex justify-end mt-2 animate-fadeIn">
-                            <div className="bg-green-600/10 border border-green-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
-                                <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                                <p className="text-xs font-bold text-green-400">
-                                    تم الدفع (فودافون كاش)
-                                </p>
+                    {/* Unified Payment Status Badges - Consolidated Location */}
+                    {(!viewingMerchant || viewingMerchant.canManageOrderDetails) && (
+                        order.isCollected ? (
+                            <div className="flex justify-end mt-2 animate-fadeIn">
+                                <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-4 h-4 text-blue-500" />
+                                    <p className="text-xs font-bold text-blue-400">تم التحصيل</p>
+                                </div>
                             </div>
-                        </div>
-                    )}
-
-
-
-                    {viewingMerchant && viewingMerchant.canManageOrderDetails && isPaid && !order.isCollected && !order.isVodafoneCash && (order.assignedTo || order.driverId) && (
-                        <div className="flex justify-end mt-2 animate-fadeIn">
-                            <div className="bg-green-600/10 border border-green-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
-                                <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                                <p className="text-xs font-bold text-green-400">
-                                    تم الدفع
-                                </p>
+                        ) : order.isVodafoneCash ? (
+                            <div className="flex justify-end mt-2 animate-fadeIn">
+                                <div className="bg-green-600/10 border border-green-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                    <p className="text-xs font-bold text-green-400">تم الدفع (فودافون كاش)</p>
+                                </div>
                             </div>
-                        </div>
+                        ) : (isPaid && (order.assignedTo || order.driverId)) ? (
+                            <div className="flex justify-end mt-2 animate-fadeIn">
+                                <div className="bg-green-600/10 border border-green-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                    <p className="text-xs font-bold text-green-400">تم الدفع</p>
+                                </div>
+                            </div>
+                        ) : null
                     )}
 
                     {/* Show "Paid" status if paid OR collected */}
