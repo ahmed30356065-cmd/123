@@ -680,29 +680,36 @@ const App: React.FC = () => {
                 <MerchantPortal merchant={currentUser} users={users} orders={orders} messages={messages}
                     addOrder={async (d) => {
                         try {
-                            // 1. Get Safe ID from Server (Wait for it)
+                            // 1. Get Safe ID (Fastest possible check)
+                            // We still await this to prevent ID collisions, but it's now optimized (limit 15)
                             const finalId = await firebaseService.generateUniqueIdSafe('ORD-');
 
                             const newOrder: Order = {
                                 ...d, id: finalId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
                             };
 
-                            // 2. Write to Server (Blocking)
-                            await firebaseService.updateData('orders', finalId, newOrder);
+                            // 2. Optimistic UI Update (Immediate)
+                            setOrders(prev => [newOrder, ...prev]);
 
-                            // 3. Update UI (Success only)
-                            setOrders(prev => [newOrder, ...prev]); // Add to top
+                            // 3. Write to Server (Non-blocking / Background)
+                            firebaseService.updateData('orders', finalId, newOrder).catch(e => {
+                                console.error("Async save failed", e);
+                                showNotify('تحذير: قد يكون هناك مشكلة في حفظ الطلب، تحقق من الانترنت', 'error');
+                            });
+
                             logAction('create', 'الطلبات', `تم إضافة طلب جديد #${finalId}`);
 
                             // 4. Notifications (Fire & Forget)
-                            firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
-                            firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
-                            firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${finalId} متاح للتوصيل`, url: `/?target=order&id=${finalId}` });
+                            setTimeout(() => {
+                                firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
+                                firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
+                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${finalId} متاح للتوصيل`, url: `/?target=order&id=${finalId}` });
+                            }, 50);
 
                         } catch (e) {
                             console.error("Merchant addOrder error:", e);
                             showNotify('فشل في إضافة الطلب. تأكد من الاتصال بالإنترنت.', 'error');
-                            throw e; // Re-throw so form knows it failed
+                            throw e;
                         }
                     }}
                     onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}

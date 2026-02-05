@@ -164,6 +164,26 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             <ClockIcon className="w-3 h-3 opacity-70" />
                             {formattedDate}
                         </span>
+
+                        {/* Payment Status Badges - Relocated to Header */}
+                        {(!viewingMerchant || viewingMerchant.canManageOrderDetails) && (
+                            order.isCollected ? (
+                                <span className="text-[10px] text-blue-400 font-bold px-2 py-0.5 bg-blue-900/10 border border-blue-500/20 rounded-md flex items-center gap-1">
+                                    <CheckCircleIcon className="w-3 h-3 text-blue-500" />
+                                    تم التحصيل
+                                </span>
+                            ) : order.isVodafoneCash ? (
+                                <span className="text-[10px] text-green-400 font-bold px-2 py-0.5 bg-green-600/10 border border-green-500/20 rounded-md flex items-center gap-1">
+                                    <CheckCircleIcon className="w-3 h-3 text-green-500" />
+                                    مدفوع (فودافون)
+                                </span>
+                            ) : (isPaid && (order.assignedTo || order.driverId)) ? (
+                                <span className="text-[10px] text-green-400 font-bold px-2 py-0.5 bg-green-600/10 border border-green-500/20 rounded-md flex items-center gap-1">
+                                    <CheckCircleIcon className="w-3 h-3 text-green-500" />
+                                    تم الدفع
+                                </span>
+                            ) : null
+                        )}
                         {deliveryTime && (
                             <span className="text-[10px] text-green-400 font-bold flex items-center gap-1 bg-green-900/20 px-2 py-0.5 rounded-md border border-green-500/20 animate-fadeIn">
                                 <CheckCircleIcon className="w-3 h-3" />
@@ -239,31 +259,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     )}
 
 
-                    {/* Unified Payment Status Badges - Consolidated Location */}
-                    {(!viewingMerchant || viewingMerchant.canManageOrderDetails) && (
-                        order.isCollected ? (
-                            <div className="flex justify-end mt-2 animate-fadeIn">
-                                <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
-                                    <CheckCircleIcon className="w-4 h-4 text-blue-500" />
-                                    <p className="text-xs font-bold text-blue-400">تم التحصيل</p>
-                                </div>
-                            </div>
-                        ) : order.isVodafoneCash ? (
-                            <div className="flex justify-end mt-2 animate-fadeIn">
-                                <div className="bg-green-600/10 border border-green-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
-                                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                                    <p className="text-xs font-bold text-green-400">تم الدفع (فودافون كاش)</p>
-                                </div>
-                            </div>
-                        ) : (isPaid && (order.assignedTo || order.driverId)) ? (
-                            <div className="flex justify-end mt-2 animate-fadeIn">
-                                <div className="bg-green-600/10 border border-green-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2">
-                                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                                    <p className="text-xs font-bold text-green-400">تم الدفع</p>
-                                </div>
-                            </div>
-                        ) : null
-                    )}
+
 
                     {/* Show "Paid" status if paid OR collected */}
 
