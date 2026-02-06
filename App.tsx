@@ -582,13 +582,7 @@ const App: React.FC = () => {
                                 });
                             });
 
-                            // 3. Notifications (Async - Non-blocking)
-                            // Use setTimeout to move out of critical path and allow DB propagation
-                            setTimeout(() => {
-                                newOrders.forEach(order => {
-                                    firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${order.id} وهو متاح للتوصيل`, url: `/?target=order&id=${order.id}` });
-                                });
-                            }, 2000); // Increased to 2s to ensure data sync before notification
+                            // 3. Notifications moved to after successful save below
 
                         } catch (e) {
                             console.error("Supervisor Batched Add Failed", e);
@@ -598,9 +592,15 @@ const App: React.FC = () => {
                         if (newOrders.length > 0) {
                             // 4. Optimistic Update
                             setOrders(prev => [...prev, ...newOrders]);
-                            // 5. Batch Save to DB
+
+                            // 5. Batch Save to DB (Wait for confirmation)
                             await firebaseService.batchSaveData('orders', newOrders);
                             logAction('create', 'الطلبات', `قام المشرف بإضافة ${newOrders.length} طلبات جديدة`);
+
+                            // 6. Notifications (Immediate after Success)
+                            newOrders.forEach(order => {
+                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${order.id} وهو متاح للتوصيل`, url: `/?target=order&id=${order.id}` });
+                            });
                         }
                     }}
                     adminAddUser={async (u) => {
@@ -753,20 +753,18 @@ const App: React.FC = () => {
                             // 2. Optimistic UI Update (Immediate)
                             setOrders(prev => [newOrder, ...prev]);
 
-                            // 3. Write to Server (Non-blocking / Background)
-                            firebaseService.updateData('orders', finalId, newOrder).catch(e => {
-                                console.error("Async save failed", e);
-                                showNotify('تحذير: قد يكون هناك مشكلة في حفظ الطلب، تحقق من الانترنت', 'error');
-                            });
-
-                            logAction('create', 'الطلبات', `تم إضافة طلب جديد #${finalId}`);
-
-                            // 4. Notifications (Fire & Forget)
-                            setTimeout(() => {
-                                firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
-                                firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
-                                firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${finalId} متاح للتوصيل`, url: `/?target=order&id=${finalId}` });
-                            }, 2000); // Increased to 2s to ensure data sync
+                            // 3. Write to Server
+                            firebaseService.updateData('orders', finalId, newOrder)
+                                .then(() => {
+                                    // 4. Notifications (Immediate after Success)
+                                    firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
+                                    firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
+                                    firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${finalId} متاح للتوصيل`, url: `/?target=order&id=${finalId}` });
+                                })
+                                .catch(e => {
+                                    console.error("Async save failed", e);
+                                    showNotify('تحذير: قد يكون هناك مشكلة في حفظ الطلب، تحقق من الانترنت', 'error');
+                                });
 
                         } catch (e) {
                             console.error("Merchant addOrder error:", e);
@@ -792,12 +790,12 @@ const App: React.FC = () => {
 
                         await firebaseService.updateData('orders', newId, { ...d, id: newId });
 
-                        // Delay notifications to ensure Driver App has synced
-                        setTimeout(async () => {
-                            await firebaseService.sendExternalNotification('admin', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
-                            await firebaseService.sendExternalNotification('supervisor', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
-                            await firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `يوجد طلب جديد #${newId} في الانتظار`, url: `/?target=order&id=${newId}` });
-                        }, 2000);
+                        await firebaseService.updateData('orders', newId, { ...d, id: newId });
+
+                        // Notifications (Immediate after Await)
+                        firebaseService.sendExternalNotification('admin', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
+                        firebaseService.sendExternalNotification('supervisor', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
+                        firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `يوجد طلب جديد #${newId} في الانتظار`, url: `/?target=order&id=${newId}` });
 
                         if (!isShopping && d.merchantId && d.merchantId !== 'delinow') {
                             // Merchant notification logic...
