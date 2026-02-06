@@ -31,15 +31,43 @@ interface MerchantPortalProps {
   onUpdateTheme?: (config: any) => void;
   initialRoute?: { target: string; id?: string } | null;
   appConfig?: AppConfig;
+  getNewId: () => Promise<string>;
 }
 
 type MerchantPage = 'home' | 'history' | 'menu' | 'incoming' | 'messages' | 'profile';
 
 const MerchantPortal: React.FC<MerchantPortalProps> = ({
-  merchant, orders, users, addOrder, messages, seenMessageIds, markMessageAsSeen, hideMessage, deletedMessageIds, onUpdateUser, onUpdateOrderStatus, onUpdateOrder, onLogout, appTheme, onUpdateTheme, initialRoute, appConfig
+  merchant, orders, users, addOrder, messages, seenMessageIds, markMessageAsSeen, hideMessage, deletedMessageIds, onUpdateUser, onUpdateOrderStatus, onUpdateOrder, onLogout, appTheme, onUpdateTheme, initialRoute, appConfig, getNewId
 }) => {
   const [page, setPage] = useState<MerchantPage>('home');
   const [messageToShow, setMessageToShow] = useState<Message | null>(null);
+
+  // Optimistic ID Pre-fetching
+  const [preFetchedId, setPreFetchedId] = useState<string | null>(null);
+  const isFetchingId = React.useRef(false);
+
+  const handleInteraction = async () => {
+    // Only fetch if we don't have one and aren't fetching
+    if (!preFetchedId && !isFetchingId.current) {
+      isFetchingId.current = true;
+      try {
+        console.log("[MerchantPortal] Pre-fetching ID...");
+        const id = await getNewId();
+        setPreFetchedId(id);
+        isFetchingId.current = false;
+      } catch (e) {
+        console.error("Failed to pre-fetch ID", e);
+        isFetchingId.current = false;
+      }
+    }
+  };
+
+  // Reset ID after successful submission (This requires the child to signal success, 
+  // but since addOrder is called here, we can hijack it)
+  const handleAddOrder = async (d: any) => {
+    await addOrder(d, preFetchedId); // Pass the pre-fetched ID
+    setPreFetchedId(null); // Clear for next time
+  };
 
   const canManageMenu = merchant.canManageMenu !== false; // Default true
 
@@ -92,7 +120,7 @@ const MerchantPortal: React.FC<MerchantPortalProps> = ({
     switch (page) {
       case 'home': return (
         <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">
-          <NewOrderForm addOrder={addOrder} merchant={merchant} />
+          <NewOrderForm addOrder={handleAddOrder} merchant={merchant} onInteraction={handleInteraction} />
           {incomingCount > 0 && (
             <button onClick={() => setPage('incoming')} className="w-full bg-purple-600/20 border border-purple-500 text-purple-200 p-4 rounded-xl flex justify-between items-center animate-pulse">
               <span className="font-bold">لديك {incomingCount} طلبات جديدة</span>

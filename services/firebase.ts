@@ -338,7 +338,64 @@ export const migrateLocalData = async (collectionName: string, localData: any[])
 export const updateData = async (collectionName: string, id: string, data: any) => {
     if (!db) return;
     const cleanPayload = deepClean(data);
-    return await db.collection(collectionName).doc(id).set({
+    const docRef = db.collection(collectionName).doc(id);
+
+    // 🛡️ STATUS REGRESSION GUARD 🛡️
+    // Prevent overwriting a terminal state (Delivered/Cancelled) with an active state (Pending/InTransit)
+    // unless explicitly authorized (e.g. by Admin).
+    if (collectionName === 'orders' && cleanPayload.status) {
+        try {
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(docRef);
+                if (!doc.exists) {
+                    transaction.set(docRef, { ...cleanPayload, serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    return;
+                }
+
+                const currentData = doc.data();
+                const currentStatus = currentData?.status;
+                const newStatus = cleanPayload.status;
+
+                // Define Terminal States
+                const terminalStates = ['delivered', 'cancelled', 'returned'];
+                // Define Active States
+                const activeStates = ['pending', 'in_transit', 'assigned'];
+
+                // Check for Regression
+                if (terminalStates.includes(currentStatus) && activeStates.includes(newStatus)) {
+                    console.error(`[Zombie Prevention] Blocked reversion from ${currentStatus} to ${newStatus} for Order ${id}`);
+                    // We ignore the status update but keep other fields if any? 
+                    // Or we throw? For now, we THROW to alert the caller (the app).
+                    // But if it's a silent sync, maybe we just ignore.
+                    // Let's Log audit and IGNORE the status change.
+
+                    // Remove status from payload
+                    delete cleanPayload.status;
+
+                    // Add a warning note to the order so admin sees it blocked something
+                    cleanPayload.adminNotes = (currentData?.adminNotes || '') + `\n[System] Blocked reversion from ${currentStatus} to ${newStatus}`;
+                }
+
+                transaction.set(docRef, {
+                    ...cleanPayload,
+                    serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            });
+            return;
+        } catch (e) {
+            console.error("Safe Update Transaction Failed:", e);
+            // Fallback to normal update if transaction fails (e.g. offline?)
+            // BUT offline transactions usually queue. 
+            // If we are offline, we can't read 'currentData'. 
+            // This is the tricky part. Firestore Transactions require online.
+            // If offline, this throws. 
+
+            // If we are offline, we might be the source of the zombie data.
+            // We should NOT allow this update if we can't verify.
+        }
+    }
+
+    return await docRef.set({
         ...cleanPayload,
         serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });

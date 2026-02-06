@@ -17,6 +17,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
     const [paidAmount, setPaidAmount] = useState('');
     const [unpaidAmount, setUnpaidAmount] = useState('');
     const [cashAmount, setCashAmount] = useState('');
+    const [deliveryDiscount, setDeliveryDiscount] = useState(''); // New Discount Field
 
     const [error, setError] = useState('');
     const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
@@ -98,6 +99,7 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 }
             }
 
+
             // Add payment amounts and calculate totalPrice
             if (paidAmount) {
                 const val = parseFloat(paidAmount);
@@ -113,6 +115,21 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 const val = parseFloat(cashAmount);
                 orderData.cashAmount = val;
                 if (paymentOption === 'vodafone_cash') orderData.totalPrice = val;
+            }
+
+            // Apply Discount if exists
+            if (deliveryDiscount && parseFloat(deliveryDiscount) > 0) {
+                const discount = parseFloat(deliveryDiscount);
+                const currentTotal = orderData.totalPrice || 0;
+
+                if (discount > currentTotal) {
+                    setError(`قيمة الخصم (${discount}) أكبر من المبلغ الإجمالي (${currentTotal})`);
+                    setStatus('idle');
+                    return;
+                }
+
+                orderData.totalPrice = Math.max(0, currentTotal - discount);
+                orderData.discount = discount; // Optional: if backend supports saving discount value
             }
         }
 
@@ -136,7 +153,11 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                 setPaymentOption('unpaid'); // Reset to default
                 setPaidAmount('');
                 setUnpaidAmount('');
+                setPaymentOption('unpaid'); // Reset to default
+                setPaidAmount('');
+                setUnpaidAmount('');
                 setCashAmount('');
+                setDeliveryDiscount('');
 
                 setStatus('idle');
             }, 300);
@@ -286,6 +307,28 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                                 />
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Discount Field - New */}
+                {merchant?.canManageOrderDetails && (
+                    <div className="bg-gray-700/30 p-2 rounded-xl border border-gray-600/50 animate-fadeIn mt-2">
+                        <label htmlFor="discount" className="block text-xs font-bold text-yellow-400 mb-1.5 flex items-center gap-1">
+                            <BanknoteIcon className="w-3.5 h-3.5" />
+                            خصم التوصيل (ج.م)
+                        </label>
+                        <input
+                            type="number"
+                            id="discount"
+                            value={deliveryDiscount}
+                            onChange={(e) => setDeliveryDiscount(e.target.value)}
+                            disabled={status === 'submitting'}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-yellow-400 placeholder:text-gray-600 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none disabled:opacity-50 text-center text-sm font-bold"
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                            inputMode="decimal"
+                        />
                     </div>
                 )}
 

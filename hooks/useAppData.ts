@@ -113,8 +113,12 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
 
                 if (role === 'admin' || role === 'supervisor') {
                     setOrders(cOrders);
+                    setIsOrdersLoaded(true);
+                } else {
+                    // 🛡️ ZOMBIE FIX: For Drivers/Merchants, DO NOT load stale cache!
+                    // Wait for network.
+                    console.log("[Cache] Skipping stale orders cache for non-admin role to prevent zombie data.");
                 }
-                setIsOrdersLoaded(true);
             }
 
             if (cMsgs.length) setMessages(cMsgs);
@@ -243,7 +247,22 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
             const updateDriverOrders = () => {
                 const merged = [...Array.from(pendingOrdersMap.values()), ...Array.from(myOrdersMap.values())];
                 // Deduplicate just in case an order is both (rare race condition)
-                const unique = Array.from(new Map(merged.map(item => [item.id, item])).values());
+                let unique = Array.from(new Map(merged.map(item => [item.id, item])).values());
+
+                // 🌟 sticky UPDATE LOGIC: Override server data with pending optimistic data
+                unique = unique.map(order => {
+                    const pending = pendingWrites.current.get(order.id);
+                    if (pending) {
+                        // If we have a pending update, FORCE the pending status locally
+                        // This ignores the stale server status
+                        if (Date.now() - pending.timestamp < 5000) {
+                            return { ...order, status: pending.status };
+                        } else {
+                            pendingWrites.current.delete(order.id); // Expired
+                        }
+                    }
+                    return order;
+                });
 
                 // Sort by date (Newest first for UI usually, but DriverApp sorts manually)
                 setOrders(unique);
@@ -422,6 +441,19 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         return () => clearTimeout(timer);
     }, [isLoading]);
 
+    // STICKY UPDATES LOGIC (Prevent Flicker)
+    const pendingWrites = useRef<Map<string, { status: any, timestamp: number }>>(new Map());
+
+    const registerOptimisticUpdate = (id: string, status: any) => {
+        pendingWrites.current.set(id, { status, timestamp: Date.now() });
+        // Auto-cleanup after 5 seconds (fallback)
+        setTimeout(() => {
+            if (pendingWrites.current.has(id)) {
+                pendingWrites.current.delete(id);
+            }
+        }, 5000);
+    };
+
     return {
         users, orders, messages, payments, sliderImages, auditLogs, passwordResetRequests,
         sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
@@ -429,6 +461,8 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         isLoading, setIsLoading, isOrdersLoaded,
         currentUser, setCurrentUser,
         appTheme, setAppTheme,
-        setOrders, setUsers // Exposed for Optimistic Updates
+        setOrders, setUsers, // Exposed for Optimistic Updates
+        registerOptimisticUpdate, // Exposed to App.tsx
+        pendingWrites // Exposed if needed, but preferably internal use validation
     };
 };

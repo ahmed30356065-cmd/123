@@ -69,6 +69,42 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
         }
     }, [props.initialRoute, props.orders]);
 
+    // REAL-TIME AUTO-CLOSE: If selected order is taken by another driver, close it immediately
+    useEffect(() => {
+        if (selectedOrder) {
+            const upToDateOrder = props.orders.find(o => o.id === selectedOrder.id);
+
+            // Case 1: Order deleted
+            if (!upToDateOrder) {
+                setSelectedOrder(null);
+                props.showNotification('عذراً، لم يعد هذا الطلب متاحاً', 'info');
+                return;
+            }
+
+            // Case 2: Taken by another driver
+            if (upToDateOrder.driverId && upToDateOrder.driverId !== props.driver.id) {
+                setSelectedOrder(null);
+                props.showNotification('عذراً، تم قبول الطلب بواسطة مندوب آخر', 'info');
+                return;
+            }
+
+            // Case 3: Status changed to something not accessible (e.g. Cancelled)
+            // If I am just viewing it as "New", and it gets cancelled
+            if (upToDateOrder.status === OrderStatus.Cancelled) {
+                setSelectedOrder(null);
+                props.showNotification('تم إلغاء هذا الطلب', 'info');
+                return;
+            }
+
+            // Optional: Update the view with latest data (e.g. if notes changed)
+            // Only update if data actually changed to avoid render loops, or just rely on re-render.
+            // Since selectedOrder is local state, we might want to sync it if we want live updates inside the view.
+            if (JSON.stringify(selectedOrder) !== JSON.stringify(upToDateOrder)) {
+                setSelectedOrder(upToDateOrder);
+            }
+        }
+    }, [props.orders, selectedOrder, props.driver.id]);
+
     useEffect(() => { setAndroidRole('driver', props.driver.id); }, [props.driver.id]);
 
     useEffect(() => {

@@ -117,7 +117,12 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
     const [canShowDeliveryTime, setCanShowDeliveryTime] = useState(user.canShowDeliveryTime || false);
     const [canManageMenu, setCanManageMenu] = useState(user.canManageMenu !== false);
     const [canManageOrderDetails, setCanManageOrderDetails] = useState(user.canManageOrderDetails || false);
+
     const [canManageAdvancedFinancials, setCanManageAdvancedFinancials] = useState(user.canManageAdvancedFinancials || false);
+
+    // Fixed Delivery Fee
+    const [isFixedDeliveryFeeEnabled, setIsFixedDeliveryFeeEnabled] = useState(user.isFixedDeliveryFeeEnabled || false);
+    const [fixedDeliveryFee, setFixedDeliveryFee] = useState(user.fixedDeliveryFee?.toString() || '');
 
     const [error, setError] = useState('');
     const [image, setImage] = useState<string | null>(user.storeImage || null);
@@ -255,7 +260,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
             updatedData.canShowDeliveryTime = canShowDeliveryTime;
             updatedData.canManageMenu = canManageMenu;
             updatedData.canManageOrderDetails = canManageOrderDetails;
+            updatedData.canManageOrderDetails = canManageOrderDetails;
             updatedData.canManageAdvancedFinancials = canManageAdvancedFinancials;
+            updatedData.isFixedDeliveryFeeEnabled = isFixedDeliveryFeeEnabled;
+            if (isFixedDeliveryFeeEnabled && fixedDeliveryFee) {
+                updatedData.fixedDeliveryFee = parseFloat(fixedDeliveryFee);
+            } else {
+                updatedData.fixedDeliveryFee = 0;
+            }
         }
 
         if (role === 'supervisor') {
@@ -522,6 +534,38 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
                                     <label className="text-sm font-bold text-white">لوحة المدفوعات المتقدمة</label>
                                 </div>
                                 <input type="checkbox" checked={canManageAdvancedFinancials} onChange={(e) => setCanManageAdvancedFinancials(e.target.checked)} className="h-5 w-5 text-emerald-600 bg-gray-700 border-gray-600 rounded focus:ring-emerald-500" />
+                            </div>
+
+                            {/* Fixed Delivery Fee Setting */}
+                            <div className="p-3 bg-[#252525] rounded-xl border border-[#333] space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <TruckIconV2 className="w-4 h-4 text-cyan-400" />
+                                        <label className="text-sm font-bold text-white">تثبيت قيمة التوصيل</label>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={isFixedDeliveryFeeEnabled}
+                                        onChange={(e) => setIsFixedDeliveryFeeEnabled(e.target.checked)}
+                                        className="h-5 w-5 text-cyan-600 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"
+                                    />
+                                </div>
+
+                                {isFixedDeliveryFeeEnabled && (
+                                    <div className="animate-fadeIn pt-2 border-t border-gray-700">
+                                        <label className="block text-xs font-bold text-gray-400 mb-1.5">قيمة التوصيل الثابتة (ج.م)</label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={fixedDeliveryFee}
+                                                onChange={(e) => setFixedDeliveryFee(e.target.value)}
+                                                className="w-full bg-[#1a1a1a] border border-gray-600 rounded-lg py-2 px-3 text-white text-center font-bold focus:border-cyan-500 outline-none"
+                                                placeholder="0"
+                                            />
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-bold">ج.م</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

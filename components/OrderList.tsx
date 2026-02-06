@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'; // Force Rebuild 2
+import { createPortal } from 'react-dom';
 import { Order, User, OrderStatus } from '../types';
 import OrderStatusBadge from './OrderStatusBadge';
 import {
@@ -177,9 +178,9 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                 تم التحصيل
                             </span>
                         ) : order.isVodafoneCash ? (
-                            <span className="text-[10px] text-green-400 font-bold px-2 py-0.5 bg-green-600/10 border border-green-500/20 rounded-md flex items-center gap-1">
-                                <CheckCircleIcon className="w-3 h-3 text-green-500" />
-                                مدفوع (فودافون)
+                            <span className="text-[10px] text-red-400 font-bold px-2 py-0.5 bg-red-600/10 border border-red-500/20 rounded-md flex items-center gap-1">
+                                <CheckCircleIcon className="w-3 h-3 text-red-500" />
+                                كاش
                             </span>
                         ) : (isPaid && (order.assignedTo || order.driverId)) ? (
                             <span className="text-[10px] text-green-400 font-bold px-2 py-0.5 bg-green-600/10 border border-green-500/20 rounded-md flex items-center gap-1">
@@ -265,10 +266,17 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                             - Hide if (Paid OR Vodafone) AND (Assigned OR Driver) AND Status NOT Pending
                         */}
                         {(!viewingMerchant || viewingMerchant.canManageOrderDetails) && order.totalPrice !== undefined && !order.isCollected && !((isPaid || order.isVodafoneCash) && (order.assignedTo || order.driverId) && order.status !== OrderStatus.Pending) && (
-                            <p className="text-xs text-gray-400 flex items-center gap-1 bg-gray-700/30 px-2 py-1 rounded-lg animate-fadeIn">
-                                <BanknoteIcon className="w-3 h-3" />
-                                <span className="font-bold text-red-400">{Number(order.totalPrice).toLocaleString('en-US')} ج.م</span>
-                            </p>
+                            <div className="flex flex-col items-end gap-0.5 bg-gray-700/30 px-2 py-1 rounded-lg animate-fadeIn border border-gray-600/30">
+                                <div className="flex items-center gap-1">
+                                    <BanknoteIcon className="w-3 h-3 text-red-400" />
+                                    <span className="font-bold text-red-400 text-xs">{Number(order.totalPrice).toLocaleString('en-US')} ج.م</span>
+                                </div>
+                                {order.deliveryFee && order.deliveryFee > 0 && (
+                                    <span className="text-[9px] text-gray-500 font-mono block leading-none">
+                                        (إجمالي: {(Number(order.totalPrice) + Number(order.deliveryFee)).toLocaleString('en-US')})
+                                    </span>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -307,7 +315,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
 
             {/* Collection Confirmation Modal */}
             {
-                showCollectModal && (
+                showCollectModal && createPortal(
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
                         <div className="bg-gray-800 rounded-2xl p-6 max-w-sm w-full border border-gray-700 shadow-2xl transform animate-scaleIn">
                             <div className="flex items-center justify-center mb-4">
@@ -334,7 +342,8 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )
             }
 
@@ -390,7 +399,7 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                                         غير مدفوع
                                     </button>
                                     <button onClick={() => handleStatusUpdate('vodafone')} className={`text-xs font-bold py-3 rounded-xl border transition-all ${order.isVodafoneCash ? 'bg-red-800 text-white border-red-600 shadow-lg' : 'bg-gray-700/50 text-gray-400 border-gray-600 hover:bg-gray-700'}`}>
-                                        فودافون كاش
+                                        كاش
                                     </button>
                                     <button onClick={() => handleStatusUpdate('collected')} className={`text-xs font-bold py-3 rounded-xl border transition-all ${order.isCollected ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-gray-700/50 text-gray-400 border-gray-600 hover:bg-gray-700'}`}>
                                         تم التحصيل

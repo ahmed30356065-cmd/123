@@ -19,7 +19,8 @@ interface MerchantPortalProps {
   merchant: User;
   orders: Order[];
   users: User[];
-  addOrder: (orderData: { customer: Customer, notes?: string }) => void;
+  addOrder: (orderData: { customer: Customer, notes?: string }, preFetchedId?: string) => Promise<void> | void;
+  getNewId?: () => Promise<string>;
   messages: Message[];
   seenMessageIds: string[];
   markMessageAsSeen: (messageId: string) => void;
@@ -34,10 +35,29 @@ interface MerchantPortalProps {
 type MerchantPage = 'home' | 'history' | 'menu' | 'incoming' | 'messages' | 'profile';
 
 const MerchantPortal: React.FC<MerchantPortalProps> = ({
-  merchant, orders, users, addOrder, messages, seenMessageIds, markMessageAsSeen, hideMessage, deletedMessageIds, onUpdateUser, onUpdateOrderStatus, onUpdateOrder, onLogout
+  merchant, orders, users, addOrder, messages, seenMessageIds, markMessageAsSeen, hideMessage, deletedMessageIds, onUpdateUser, onUpdateOrderStatus, onUpdateOrder, onLogout, getNewId
 }) => {
   const [page, setPage] = useState<MerchantPage>('home');
   const [messageToShow, setMessageToShow] = useState<Message | null>(null);
+
+  // Optimistic ID Pre-fetching
+  const idPromise = React.useRef<Promise<string> | null>(null);
+
+  const prefetchId = () => {
+    if (!idPromise.current && getNewId) {
+      console.log("Pre-fetching Order ID...");
+      idPromise.current = getNewId();
+    }
+  };
+
+  const handleAddOrder = async (orderData: any) => {
+    let finalId: string | undefined = undefined;
+    if (idPromise.current) {
+      finalId = await idPromise.current;
+      idPromise.current = null; // Consume it
+    }
+    await addOrder(orderData, finalId);
+  };
 
   useEffect(() => { setAndroidRole('merchant', merchant.id); }, [merchant.id]);
 
@@ -60,7 +80,7 @@ const MerchantPortal: React.FC<MerchantPortalProps> = ({
         <button onClick={() => setPage('incoming')} className="relative p-2"><BellIcon className="w-6 h-6" />{incomingCount > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-bounce"></span>}</button>
       </header>
       <div className="flex-1 overflow-y-auto pb-24 p-4 hardware-accelerated">
-        {page === 'home' && <div className="max-w-2xl mx-auto space-y-6"><NewOrderForm addOrder={addOrder} /></div>}
+        {page === 'home' && <div className="max-w-2xl mx-auto space-y-6"><NewOrderForm addOrder={handleAddOrder} onInteraction={prefetchId} merchant={merchant} /></div>}
         {page === 'incoming' && <MerchantIncomingOrders orders={merchantOrders} onUpdateStatus={onUpdateOrderStatus || (() => { })} />}
         {page === 'history' && <OrderList orders={merchantOrders} users={users} viewingMerchant={merchant} onUpdateOrder={onUpdateOrder} />}
         {page === 'menu' && <MenuManager merchant={merchant} onUpdateMerchant={onUpdateUser || (() => { })} />}

@@ -8,9 +8,10 @@ interface AddOrderModalProps {
     merchants: User[];
     onClose: () => void;
     onSave: (newOrder: any) => Promise<void> | void;
+    getNewId?: () => Promise<string>;
 }
 
-const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSave }) => {
+const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSave, getNewId }) => {
     // Form State
     const [customer, setCustomer] = useState<Customer>({ phone: '', address: '' });
     const [notes, setNotes] = useState('');
@@ -23,6 +24,15 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
     const [paidAmount, setPaidAmount] = useState('');
     const [unpaidAmount, setUnpaidAmount] = useState('');
     const [cashAmount, setCashAmount] = useState('');
+    const [deliveryDiscount, setDeliveryDiscount] = useState(''); // NEW: Manual Discount State
+
+    // Pre-fetched ID State
+    const preFetchedIdRef = React.useRef<string | null>(null);
+    useEffect(() => {
+        if (getNewId && !preFetchedIdRef.current) {
+            getNewId().then(id => { preFetchedIdRef.current = id; });
+        }
+    }, [getNewId]);
 
     // UI State
     const [error, setError] = useState('');
@@ -72,22 +82,25 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
         }
 
         const merchantName = selectedMerchant?.name || 'تاجر غير معروف';
+        const merchant = selectedMerchant;
 
         // Prepare Base Data with Advanced Fields
         const baseData: any = { customer: { ...customer }, notes, merchantId, merchantName };
 
-        if (selectedMerchant?.canManageOrderDetails) {
+        // 🛡️ REFACTORED LOGIC START 🛡️
+        if (merchant?.canManageOrderDetails) {
             if (customOrderNumber) baseData.customOrderNumber = customOrderNumber;
 
+            // 1. Determine Input Total based on payment option
+            let inputTotal = 0;
             if (paymentOption === 'vodafone_cash') {
                 if (!cashAmount || parseFloat(cashAmount) <= 0) {
-                    setError('يرجى إدخال مبلغ فودافون كاش.');
+                    setError('يرجى إدخال مبلغ (الكاش).');
                     return;
                 }
                 baseData.paymentStatus = 'paid';
                 baseData.isVodafoneCash = true;
-                baseData.cashAmount = parseFloat(cashAmount);
-                baseData.totalPrice = parseFloat(cashAmount);
+                inputTotal = parseFloat(cashAmount);
             } else {
                 baseData.paymentStatus = paymentOption;
                 baseData.isVodafoneCash = false;
@@ -97,19 +110,37 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
                         setError('يرجى إدخال المبلغ المدفوع.');
                         return;
                     }
-                    baseData.paidAmount = parseFloat(paidAmount);
-                    baseData.totalPrice = parseFloat(paidAmount);
-                }
-                if (paymentOption === 'unpaid') {
+                    inputTotal = parseFloat(paidAmount);
+                } else if (paymentOption === 'unpaid') {
                     if (!unpaidAmount || parseFloat(unpaidAmount) <= 0) {
                         setError('يرجى إدخال المبلغ المطلوب.');
                         return;
                     }
-                    baseData.unpaidAmount = parseFloat(unpaidAmount);
-                    baseData.totalPrice = parseFloat(unpaidAmount);
+                    inputTotal = parseFloat(unpaidAmount);
                 }
             }
-        }
+
+            // 🛡️ NO-FEE LOGIC 🛡️
+            const discount = deliveryDiscount ? parseFloat(deliveryDiscount) : 0;
+
+            if (discount > 0) {
+                if (inputTotal < discount) {
+                    setError(`قيمة الخصم (${discount}) أكبر من سعر الطلب (${inputTotal}).`);
+                    return;
+                }
+                // Net Price = Input - Discount
+                // We DO NOT set deliveryFee here. It remains undefined.
+                baseData.totalPrice = Math.max(0, inputTotal - discount);
+            } else {
+                baseData.totalPrice = inputTotal;
+            }
+
+            // 3. Map Amounts
+            if (paymentOption === 'paid') baseData.paidAmount = inputTotal;
+            else if (paymentOption === 'unpaid') baseData.unpaidAmount = inputTotal;
+            else if (paymentOption === 'vodafone_cash') baseData.cashAmount = inputTotal;
+
+        } // End canManageOrderDetails
 
         setError('');
         setStatus('saving');
@@ -117,6 +148,10 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
 
         try {
             if (orderCount === 1) {
+                // Use pre-fetched ID if available to speed up
+                if (preFetchedIdRef.current) {
+                    baseData.id = preFetchedIdRef.current;
+                }
                 await onSave(baseData);
                 setProgress(100);
             } else {
@@ -138,6 +173,11 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
                 setPaidAmount('');
                 setUnpaidAmount('');
                 setCashAmount('');
+                setDeliveryDiscount(''); // Reset Discount
+
+                // Reset Pre-fetch for next time (if kept open, but modal closes)
+                preFetchedIdRef.current = null;
+
                 onClose();
             }, 800);
 
@@ -170,6 +210,9 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
         if (cat === 'market' || cat === 'سوبر ماركت') return <ShoppingCartIcon className="w-4 h-4" />;
         return <GridIcon className="w-4 h-4" />;
     };
+
+    // Focus handler
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
 
     return (
         <div className="flex flex-col h-full w-full bg-[#111827] animate-page-enter relative overflow-hidden">
@@ -253,69 +296,81 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
                 </div>
 
                 {/* Advanced Fields for Authorized Merchants */}
+                {/* Advanced Fields for Authorized Merchants */}
                 {selectedMerchant?.canManageOrderDetails && (
-                    <div className="space-y-4 animate-fadeIn mb-6">
-                        <div className="bg-[#1f2937] p-4 rounded-xl border border-gray-700 shadow-sm space-y-4">
-                            <div className="flex items-center gap-2 border-b border-gray-700 pb-2">
-                                <BanknoteIcon className="w-4 h-4 text-emerald-500" />
-                                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider">بيانات مالية</h3>
-                            </div>
+                    <div className="bg-[#1f2937] p-3 rounded-xl border border-gray-700 shadow-sm space-y-2 mb-4 animate-fadeIn">
 
-                            {/* Order Number */}
-                            <div>
-                                <label className="text-xs text-gray-400 mb-1.5 block font-bold flex items-center gap-1">
-                                    <ReceiptIcon className="w-3.5 h-3.5" />
-                                    رقم الطلب (اختياري)
-                                </label>
+                        {/* Compact Grid Layout */}
+                        <div className="grid grid-cols-2 gap-2">
+
+                            {/* 1. Order Number (Right) */}
+                            <div className="col-span-1">
+                                <label className="text-[10px] font-bold text-gray-400 mb-1 block text-right">رقم الطلب</label>
                                 <input
                                     value={customOrderNumber}
                                     onChange={(e) => setCustomOrderNumber(e.target.value)}
-                                    placeholder="#1234"
-                                    className="w-full bg-[#111] border border-gray-700 rounded-xl py-2.5 px-3 text-white text-center font-mono focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all placeholder-gray-600"
+                                    placeholder="#"
+                                    inputMode="decimal"
+                                    className="w-full bg-[#111] border border-gray-600 rounded-lg py-1 px-2 text-white text-center font-mono font-bold text-base focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all placeholder-gray-600 h-[38px]"
+                                    dir="ltr"
+                                    onFocus={handleFocus}
                                 />
                             </div>
 
-                            {/* Payment Status */}
-                            <div className="space-y-2">
-                                <label className="text-xs text-gray-400 block font-bold">حالة الدفع</label>
-                                <div className="flex bg-[#111] p-1 rounded-xl border border-gray-700 gap-1">
-                                    <button type="button" onClick={() => setPaymentOption('unpaid')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${paymentOption === 'unpaid' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
-                                        <XCircleIcon className="w-3.5 h-3.5" />
+                            {/* 2. Payment Status Buttons (Left) */}
+                            <div className="col-span-1">
+                                <label className="text-[10px] font-bold text-gray-400 mb-1 block">حالة الدفع</label>
+                                <div className="flex bg-[#111] p-0.5 rounded-lg border border-gray-600 gap-0.5 h-[38px]">
+                                    <button type="button" onClick={() => setPaymentOption('unpaid')} className={`flex-1 rounded-md text-[10px] font-bold transition-all flex items-center justify-center ${paymentOption === 'unpaid' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
                                         غير مدفوع
                                     </button>
-                                    <button type="button" onClick={() => setPaymentOption('paid')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${paymentOption === 'paid' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
-                                        <CheckCircleIcon className="w-3.5 h-3.5" />
+                                    <button type="button" onClick={() => setPaymentOption('paid')} className={`flex-1 rounded-md text-[10px] font-bold transition-all flex items-center justify-center ${paymentOption === 'paid' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
                                         مدفوع
                                     </button>
-                                    <button type="button" onClick={() => setPaymentOption('vodafone_cash')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${paymentOption === 'vodafone_cash' ? 'bg-red-800 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>
-                                        <VodafoneIcon className="w-4 h-4" />
-                                        فودافون
+                                    <button type="button" onClick={() => setPaymentOption('vodafone_cash')} className={`flex-1 rounded-md text-[10px] font-bold transition-all flex items-center justify-center ${paymentOption === 'vodafone_cash' ? 'bg-red-800 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
+                                        كاش
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Amounts */}
-                            {paymentOption === 'unpaid' && (
-                                <div className="animate-scaleIn">
-                                    <label className="text-xs text-gray-400 mb-1.5 block font-bold">المبلغ المطلوب</label>
-                                    <input type="number" value={unpaidAmount} onChange={(e) => setUnpaidAmount(e.target.value)} placeholder="0.00" className="w-full bg-[#111] border border-gray-700 rounded-xl py-2.5 px-3 text-white text-center font-mono focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none" />
+                            {/* 3. Price Input (Right) */}
+                            <div className="col-span-1">
+                                <label className="text-[10px] font-bold text-gray-400 mb-1 block text-right">
+                                    {paymentOption === 'paid' ? 'المبلغ المدفوع' : paymentOption === 'unpaid' ? 'المبلغ المطلوب' : 'مبلغ الكاش'}
+                                </label>
+                                <div className="relative">
+                                    {paymentOption === 'unpaid' && (
+                                        <input type="tel" inputMode="decimal" value={unpaidAmount} onChange={(e) => setUnpaidAmount(e.target.value)} placeholder="0.00" className="w-full bg-[#111] border border-gray-600 rounded-lg py-1 px-2 text-white text-center font-mono font-bold text-base focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all h-[40px]" dir="ltr" onFocus={handleFocus} />
+                                    )}
+                                    {paymentOption === 'paid' && (
+                                        <input type="tel" inputMode="decimal" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder="0.00" className="w-full bg-[#111] border border-gray-600 rounded-lg py-1 px-2 text-white text-center font-mono font-bold text-base focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all h-[40px]" dir="ltr" onFocus={handleFocus} />
+                                    )}
+                                    {paymentOption === 'vodafone_cash' && (
+                                        <input type="tel" inputMode="decimal" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="0.00" className="w-full bg-[#111] border border-gray-600 rounded-lg py-1 px-2 text-white text-center font-mono font-bold text-base focus:border-red-800 focus:ring-1 focus:ring-red-800 outline-none transition-all h-[40px]" dir="ltr" onFocus={handleFocus} />
+                                    )}
                                 </div>
-                            )}
-                            {paymentOption === 'paid' && (
-                                <div className="animate-scaleIn">
-                                    <label className="text-xs text-gray-400 mb-1.5 block font-bold">المبلغ المدفوع</label>
-                                    <input type="number" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder="0.00" className="w-full bg-[#111] border border-gray-700 rounded-xl py-2.5 px-3 text-white text-center font-mono focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none" />
+                            </div>
+
+                            {/* 4. Discount Input (Left) */}
+                            <div className="col-span-1">
+                                <label className="text-[10px] font-bold text-yellow-500 mb-1 block text-right">خصم التوصيل</label>
+                                <div className="relative">
+                                    <input
+                                        type="tel"
+                                        inputMode="decimal"
+                                        value={deliveryDiscount}
+                                        onChange={(e) => setDeliveryDiscount(e.target.value)}
+                                        placeholder="0"
+                                        className="w-full bg-[#111] border border-gray-600 rounded-lg py-1 px-2 text-yellow-500 text-center font-mono font-bold text-base focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all placeholder-gray-700 h-[40px]"
+                                        dir="ltr"
+                                        onFocus={handleFocus}
+                                    />
                                 </div>
-                            )}
-                            {paymentOption === 'vodafone_cash' && (
-                                <div className="animate-scaleIn">
-                                    <label className="text-xs text-gray-400 mb-1.5 block font-bold">مبلغ فودافون كاش</label>
-                                    <input type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="0.00" className="w-full bg-[#111] border border-gray-700 rounded-xl py-2.5 px-3 text-white text-center font-mono focus:border-red-800 focus:ring-1 focus:ring-red-800 outline-none" />
-                                </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 )}
+
 
                 <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent mb-4"></div>
 
@@ -335,10 +390,11 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
                                 value={customer.phone}
                                 onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
                                 placeholder="رقم الهاتف (11 رقم)"
-                                className="w-full bg-[#1f2937] border border-gray-700 rounded-xl py-4 pl-12 pr-4 text-white text-right placeholder:text-right focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all font-mono shadow-sm"
+                                className="w-full bg-[#1f2937] border border-gray-700 rounded-xl py-4 pl-12 pr-4 text-white text-right placeholder:text-right focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all font-mono shadow-sm text-lg"
                                 dir="rtl"
                                 maxLength={11}
                                 disabled={status === 'saving'}
+                                inputMode="decimal"
                             />
                         </div>
 
@@ -440,101 +496,103 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
                 </button>
             </div>
 
-            {isMerchantSheetOpen && (
-                <div className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-sm flex flex-col animate-fadeIn">
-                    <div className="flex-none p-4 pt-safe flex items-center gap-4 bg-[#1f2937] border-b border-gray-700 shadow-md z-30">
-                        <button onClick={closeMerchantSheet} className="bg-gray-800 hover:bg-gray-700 text-white p-2.5 rounded-full transition-colors active:scale-95">
-                            <ChevronLeftIcon className="w-6 h-6 rotate-180" />
-                        </button>
-                        <div className="flex-1">
-                            <h3 className="text-lg font-bold text-white">اختر التاجر</h3>
-                            <p className="text-xs text-gray-400">{filteredMerchants.length} تاجر متاح</p>
-                        </div>
-                    </div>
-
-                    <div className="flex-none bg-[#1f2937] p-4 pt-2 space-y-3 border-b border-gray-800 z-20">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="بحث باسم التاجر أو الرقم..."
-                                value={merchantSearchTerm}
-                                onChange={(e) => setMerchantSearchTerm(e.target.value)}
-                                className="w-full bg-[#111] border border-gray-700 rounded-xl py-3 pl-4 pr-11 text-white focus:ring-1 focus:ring-red-500 focus:border-red-500 placeholder-gray-500 shadow-inner outline-none transition-all"
-                                autoFocus
-                            />
-                            <SearchIcon className="absolute right-3.5 top-3.5 w-5 h-5 text-gray-500" />
+            {
+                isMerchantSheetOpen && (
+                    <div className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-sm flex flex-col animate-fadeIn">
+                        <div className="flex-none p-4 pt-safe flex items-center gap-4 bg-[#1f2937] border-b border-gray-700 shadow-md z-30">
+                            <button onClick={closeMerchantSheet} className="bg-gray-800 hover:bg-gray-700 text-white p-2.5 rounded-full transition-colors active:scale-95">
+                                <ChevronLeftIcon className="w-6 h-6 rotate-180" />
+                            </button>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-bold text-white">اختر التاجر</h3>
+                                <p className="text-xs text-gray-400">{filteredMerchants.length} تاجر متاح</p>
+                            </div>
                         </div>
 
-                        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                            {categories.map(cat => (
-                                <button
-                                    key={cat}
-                                    onClick={() => setSelectedCategory(cat)}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${selectedCategory === cat
-                                        ? 'bg-red-600 text-white border-red-600 shadow-md'
-                                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
-                                        }`}
-                                >
-                                    {cat === 'all' ? 'الكل' : cat}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                        <div className="flex-none bg-[#1f2937] p-4 pt-2 space-y-3 border-b border-gray-800 z-20">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="بحث باسم التاجر أو الرقم..."
+                                    value={merchantSearchTerm}
+                                    onChange={(e) => setMerchantSearchTerm(e.target.value)}
+                                    className="w-full bg-[#111] border border-gray-700 rounded-xl py-3 pl-4 pr-11 text-white focus:ring-1 focus:ring-red-500 focus:border-red-500 placeholder-gray-500 shadow-inner outline-none transition-all"
+                                    autoFocus
+                                />
+                                <SearchIcon className="absolute right-3.5 top-3.5 w-5 h-5 text-gray-500" />
+                            </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 bg-[#111] custom-scrollbar">
-                        {filteredMerchants.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {filteredMerchants.map(m => (
+                            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                                {categories.map(cat => (
                                     <button
-                                        key={m.id}
-                                        onClick={() => handleSelectMerchant(m.id)}
-                                        className={`w-full flex items-center p-3 rounded-xl border transition-all active:scale-[0.98] ${merchantId === m.id
-                                            ? 'bg-red-900/10 border-red-500 shadow-lg shadow-red-900/10 ring-1 ring-red-500/30'
-                                            : 'bg-[#1e1e1e] border-gray-800 hover:border-gray-600 hover:bg-[#252525]'
+                                        key={cat}
+                                        onClick={() => setSelectedCategory(cat)}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${selectedCategory === cat
+                                            ? 'bg-red-600 text-white border-red-600 shadow-md'
+                                            : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
                                             }`}
                                     >
-                                        <div className="relative">
-                                            <div className={`w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden border-2 shadow-sm ${merchantId === m.id ? 'border-red-500' : 'border-gray-700 bg-gray-800'}`}>
-                                                {m.storeImage ? (
-                                                    <img src={m.storeImage} alt={m.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="text-lg font-bold text-gray-500">{m.name.charAt(0)}</span>
-                                                )}
-                                            </div>
-                                            {merchantId === m.id && (
-                                                <div className="absolute -bottom-1 -right-1 bg-red-500 text-white rounded-full p-0.5 border-2 border-[#1e1e1e] shadow-sm animate-bounce">
-                                                    <CheckCircleIcon className="w-3 h-3" />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="mr-3 flex-1 text-right min-w-0">
-                                            <div className="flex justify-between items-start">
-                                                <p className={`font-bold text-sm truncate ${merchantId === m.id ? 'text-white' : 'text-gray-200'}`}>
-                                                    {m.name}
-                                                </p>
-                                            </div>
-                                            <p className="text-xs text-gray-500 font-mono mt-0.5">{m.phone}</p>
-                                            <div className="flex items-center gap-2 mt-1.5">
-                                                <span className="text-[10px] bg-black/40 text-gray-400 px-2 py-0.5 rounded border border-gray-700 flex items-center gap-1">
-                                                    {getCategoryIcon(m.storeCategory || '')}
-                                                    {m.storeCategory || 'غير مصنف'}
-                                                </span>
-                                            </div>
-                                        </div>
+                                        {cat === 'all' ? 'الكل' : cat}
                                     </button>
                                 ))}
                             </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                                <BuildingStorefrontIcon className="w-16 h-16 mb-4 opacity-10" />
-                                <p className="text-sm font-bold">لا يوجد تجار مطابقين للبحث</p>
-                            </div>
-                        )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 bg-[#111] custom-scrollbar">
+                            {filteredMerchants.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {filteredMerchants.map(m => (
+                                        <button
+                                            key={m.id}
+                                            onClick={() => handleSelectMerchant(m.id)}
+                                            className={`w-full flex items-center p-3 rounded-xl border transition-all active:scale-[0.98] ${merchantId === m.id
+                                                ? 'bg-red-900/10 border-red-500 shadow-lg shadow-red-900/10 ring-1 ring-red-500/30'
+                                                : 'bg-[#1e1e1e] border-gray-800 hover:border-gray-600 hover:bg-[#252525]'
+                                                }`}
+                                        >
+                                            <div className="relative">
+                                                <div className={`w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden border-2 shadow-sm ${merchantId === m.id ? 'border-red-500' : 'border-gray-700 bg-gray-800'}`}>
+                                                    {m.storeImage ? (
+                                                        <img src={m.storeImage} alt={m.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <span className="text-lg font-bold text-gray-500">{m.name.charAt(0)}</span>
+                                                    )}
+                                                </div>
+                                                {merchantId === m.id && (
+                                                    <div className="absolute -bottom-1 -right-1 bg-red-500 text-white rounded-full p-0.5 border-2 border-[#1e1e1e] shadow-sm animate-bounce">
+                                                        <CheckCircleIcon className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mr-3 flex-1 text-right min-w-0">
+                                                <div className="flex justify-between items-start">
+                                                    <p className={`font-bold text-sm truncate ${merchantId === m.id ? 'text-white' : 'text-gray-200'}`}>
+                                                        {m.name}
+                                                    </p>
+                                                </div>
+                                                <p className="text-xs text-gray-500 font-mono mt-0.5">{m.phone}</p>
+                                                <div className="flex items-center gap-2 mt-1.5">
+                                                    <span className="text-[10px] bg-black/40 text-gray-400 px-2 py-0.5 rounded border border-gray-700 flex items-center gap-1">
+                                                        {getCategoryIcon(m.storeCategory || '')}
+                                                        {m.storeCategory || 'غير مصنف'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                                    <BuildingStorefrontIcon className="w-16 h-16 mb-4 opacity-10" />
+                                    <p className="text-sm font-bold">لا يوجد تجار مطابقين للبحث</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

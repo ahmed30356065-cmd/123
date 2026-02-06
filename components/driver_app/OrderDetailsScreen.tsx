@@ -39,7 +39,7 @@ const ContactActions: React.FC<{ phone: string }> = ({ phone }) => {
 };
 
 const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, listType, driver, onAcceptOrder, onUpdateStatus, onBack, theme }) => {
-    const [fee, setFee] = useState('');
+    const [fee, setFee] = useState(order.deliveryFee ? order.deliveryFee.toString() : '');
     const [error, setError] = useState('');
     const merchant = users.find(u => u.id === order.merchantId);
 
@@ -49,6 +49,13 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
             setError('سعر غير صالح');
             return;
         }
+
+        // Fixed Delivery Fee Enforcement
+        if (order.deliveryFee && deliveryFee < order.deliveryFee) {
+            setError(`لا يمكن قبول الطلب بأقل من قيمة التوصيل المحددة (${order.deliveryFee} ج.م)`);
+            return;
+        }
+
         setError('');
 
         onAcceptOrder(order.id, driver.id, deliveryFee);

@@ -39,9 +39,12 @@ const App: React.FC = () => {
     const {
         users, orders, messages, payments, sliderImages, auditLogs, passwordResetRequests,
         sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
-        globalCounters, // Exposed for Optimistic ID generation
-        isLoading, currentUser, setCurrentUser, appTheme, setAppTheme,
-        setOrders, isOrdersLoaded // Exposed for Optimistic Updates and Sync Check
+        globalCounters,
+        isLoading, setIsLoading, isOrdersLoaded,
+        currentUser, setCurrentUser,
+        appTheme, setAppTheme,
+        setOrders, setUsers,
+        registerOptimisticUpdate
     } = useAppData(showNotify);
 
     // 2. Logic Hook
@@ -330,16 +333,17 @@ const App: React.FC = () => {
                             if (o.id === id) {
                                 // If status is changing explicitly in 'd', use it.
                                 // Else if driver is assigned and it was pending, auto-switch to InTransit (matching AdminOrdersScreen smart logic)
-                                let newStatus = d.status || o.status;
-                                if (!d.status && d.driverId && o.status === OrderStatus.Pending) {
-                                    newStatus = OrderStatus.InTransit;
-                                }
-                                // If driver is removed
-                                if (d.driverId === null && o.status === OrderStatus.InTransit) {
-                                    newStatus = OrderStatus.Pending;
-                                }
+                                // 🛡️ ZOMBIE FIX: Removed auto-promotion logic.
+                                // We ONLY change status if 'd.status' is explicitly provided.
+                                // The previous logic (auto InTransit if driverId exists) was causing 
+                                // reversion if the local app had stale "Pending" data but server was "Delivered".
 
-                                return { ...o, ...d, status: newStatus };
+                                // let newStatus = d.status || o.status;
+                                // if (!d.status && d.driverId && o.status === OrderStatus.Pending) {
+                                //     newStatus = OrderStatus.InTransit;
+                                // }
+
+                                return { ...o, ...d, status: d.status || o.status };
                             }
                             return o;
                         }));
@@ -348,9 +352,10 @@ const App: React.FC = () => {
                         // Prepare exact payload for Firebase
                         const updatePayload = { ...d };
                         // We duplicate the status logic here for the server payload to ensure consistency
-                        if (!d.status && d.driverId && oldOrder.status === OrderStatus.Pending) {
-                            updatePayload.status = OrderStatus.InTransit;
-                        }
+                        // 🛡️ ZOMBIE FIX: Removed server-side auto-promotion payload as well.
+                        // if (!d.status && d.driverId && oldOrder.status === OrderStatus.Pending) {
+                        //     updatePayload.status = OrderStatus.InTransit;
+                        // }
 
                         firebaseService.updateData('orders', id, updatePayload).catch(err => {
                             console.error("Edit order failed:", err);
@@ -392,11 +397,17 @@ const App: React.FC = () => {
                         try {
                             const count = dataArray.length;
                             // 1. Generate IDs in Batch (Atomic & Safe)
-                            const newIds = await firebaseService.generateIdsBatch(prefix, count);
+                            // Optimization: Check if IDs are already provided (Pre-fetched)
+                            const idsToGenerate = dataArray.filter(o => !o.id).length;
+                            let generatedIds: string[] = [];
+                            if (idsToGenerate > 0) {
+                                generatedIds = await firebaseService.generateIdsBatch(prefix, idsToGenerate);
+                            }
 
                             // 2. Assign IDs and prepare objects
+                            let genIndex = 0;
                             dataArray.forEach((orderData, index) => {
-                                const newId = newIds[index];
+                                const newId = orderData.id || generatedIds[genIndex++];
                                 newOrders.push({
                                     ...orderData,
                                     id: newId,
@@ -633,6 +644,7 @@ const App: React.FC = () => {
                     }}
                     deleteMessage={(id) => firebaseService.deleteData('messages', id)}
                     appConfig={appConfig}
+                    getNewId={() => firebaseService.generateUniqueIdSafe('ORD-')}
                 />
             )}
 
@@ -640,24 +652,54 @@ const App: React.FC = () => {
                 <DriverApp driver={currentUser} users={users} orders={orders} messages={messages}
                     isLoading={!isOrdersLoaded}
                     onUpdateOrderStatus={(id, s) => {
+                        // 1. Optimistic Update (Immediate Feedback)
+
+                        // 🔥 Register Sticky Update to prevent flicker
+                        registerOptimisticUpdate(id, s);
+
+                        setOrders(prev => prev.map(o => {
+                            if (o.id === id) {
+                                const newO = { ...o, status: s };
+                                if (s === OrderStatus.Delivered) newO.deliveredAt = new Date();
+                                if (s === OrderStatus.Pending) { newO.driverId = undefined; newO.deliveryFee = undefined; }
+                                return newO;
+                            }
+                            return o;
+                        }));
+
+                        // 2. Server Update (Background)
                         const updates: any = { status: s };
                         if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
                         if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
-                        firebaseService.updateData('orders', id, updates);
+                        firebaseService.updateData('orders', id, updates).catch(err => {
+                            console.error("Status update failed:", err);
+                            showNotify('فشل تحديث الحالة. تحقق من الانترنت.', 'error');
+                            // Optional: Revert optimistic update here if needed
+                        });
                     }}
                     onAcceptOrder={(oid, did, fee) => {
                         const order = orders.find(o => o.id === oid);
+                        if (!order) return;
 
                         // 1. Optimistic Update (Immediate Feedback)
+
+                        // 🔥 Register Sticky Update to prevent flicker (Force InTransit)
+                        registerOptimisticUpdate(oid, OrderStatus.InTransit);
+
+                        setOrders(prev => prev.map(o => {
+                            if (o.id === oid) {
+                                return { ...o, driverId: did, deliveryFee: fee, status: OrderStatus.InTransit };
+                            }
+                            return o;
+                        }));
+
                         const optimisticUpdate = {
                             driverId: did,
                             deliveryFee: fee,
                             status: OrderStatus.InTransit // Force status update immediately
                         };
 
-                        // Update local state immediately via parent helper (setOrders) or just let firebase subscription catch it.
-                        // Since we don't have direct setOrders here, we rely on Firebase's offline persistence or fast network.
-                        // Ideally checking setOrders is better, but direct firebase update is standard here.
+                        // 2. Server Update (Background)
 
                         firebaseService.updateData('orders', oid, optimisticUpdate)
                             .then(() => {
@@ -689,11 +731,11 @@ const App: React.FC = () => {
 
             {currentUser.role === 'merchant' && (
                 <MerchantPortal merchant={currentUser} users={users} orders={orders} messages={messages}
-                    addOrder={async (d) => {
+                    addOrder={async (d, preFetchedId) => {
                         try {
                             // 1. Get Safe ID (Fastest possible check)
                             // We still await this to prevent ID collisions, but it's now optimized (limit 15)
-                            const finalId = await firebaseService.generateUniqueIdSafe('ORD-');
+                            const finalId = preFetchedId || await firebaseService.generateUniqueIdSafe('ORD-');
 
                             const newOrder: Order = {
                                 ...d, id: finalId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
@@ -727,6 +769,7 @@ const App: React.FC = () => {
                     seenMessageIds={[]} markMessageAsSeen={(id) => { }} hideMessage={(id) => { }} deletedMessageIds={[]} appTheme={appTheme}
                     onUpdateUser={(id, d) => firebaseService.updateData('users', id, d)}
                     onUpdateOrder={(id, d) => firebaseService.updateData('orders', id, d)}
+                    getNewId={() => firebaseService.generateUniqueIdSafe('ORD-')}
                     appConfig={appConfig}
                 />
             )}

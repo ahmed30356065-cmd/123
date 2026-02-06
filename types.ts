@@ -80,6 +80,9 @@ export interface User {
   canManageMenu?: boolean;
   canManageOrderDetails?: boolean; // Added: Control "Payment/OrderNo" features
   canManageAdvancedFinancials?: boolean; // NEW: Advanced Payment Control Panel
+  // Fixed Delivery Fee Settings
+  isFixedDeliveryFeeEnabled?: boolean;
+  fixedDeliveryFee?: number;
   // Decoration (Updated to allow strings for extended collection)
   specialFrame?: string;
   specialBadge?: string;
