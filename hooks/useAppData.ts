@@ -253,10 +253,10 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 unique = unique.map(order => {
                     const pending = pendingWrites.current.get(order.id);
                     if (pending) {
-                        // If we have a pending update, FORCE the pending status locally
-                        // This ignores the stale server status
+                        // If we have a pending update, FORCE the pending fields locally
+                        // This ignores the stale server data for these specific fields
                         if (Date.now() - pending.timestamp < 5000) {
-                            return { ...order, status: pending.status };
+                            return { ...order, ...pending.updates };
                         } else {
                             pendingWrites.current.delete(order.id); // Expired
                         }
@@ -442,11 +442,11 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
     }, [isLoading]);
 
     // STICKY UPDATES LOGIC (Prevent Flicker)
-    const pendingWrites = useRef<Map<string, { status: any, timestamp: number }>>(new Map());
+    const pendingWrites = useRef<Map<string, { updates: any, timestamp: number }>>(new Map());
 
-    const registerOptimisticUpdate = (id: string, status: any) => {
-        pendingWrites.current.set(id, { status, timestamp: Date.now() });
-        // Auto-cleanup after 5 seconds (fallback)
+    const registerOptimisticUpdate = (id: string, updates: any) => {
+        pendingWrites.current.set(id, { updates, timestamp: Date.now() });
+        // Auto-cleanup after 5 seconds
         setTimeout(() => {
             if (pendingWrites.current.has(id)) {
                 pendingWrites.current.delete(id);

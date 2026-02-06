@@ -300,6 +300,7 @@ const App: React.FC = () => {
                     }}
                     updateOrderStatus={(id, s) => {
                         // 1. Optimistic Update (Instant Feedback)
+                        registerOptimisticUpdate(id, { status: s });
                         setOrders(prev => prev.map(o => {
                             if (o.id === id) {
                                 const newO = { ...o, status: s };
@@ -380,6 +381,7 @@ const App: React.FC = () => {
                     assignDriverAndSetStatus={(id, dr, fe, st) => {
                         // 1. Optimistic Update
                         const driverName = users.find(u => u.id === dr)?.name || dr;
+                        registerOptimisticUpdate(id, { driverId: dr, deliveryFee: fe, status: st });
                         setOrders(prev => prev.map(o => o.id === id ? { ...o, driverId: dr, deliveryFee: fe, status: st, driverName: driverName } : o));
 
                         // 2. Server Update
@@ -516,6 +518,7 @@ const App: React.FC = () => {
                     }}
                     updateOrderStatus={(id, s) => {
                         // 1. Optimistic Update
+                        registerOptimisticUpdate(id, { status: s });
                         setOrders(prev => prev.map(o => {
                             if (o.id === id) {
                                 const newO = { ...o, status: s };
@@ -546,6 +549,7 @@ const App: React.FC = () => {
                     assignDriverAndSetStatus={(id, dr, fe, st) => {
                         // 1. Optimistic Update
                         const driverName = users.find(u => u.id === dr)?.name || dr;
+                        registerOptimisticUpdate(id, { driverId: dr, deliveryFee: fe, status: st });
                         setOrders(prev => prev.map(o => o.id === id ? { ...o, driverId: dr, deliveryFee: fe, status: st, driverName: driverName } : o));
 
                         // 2. Server Update
@@ -655,7 +659,7 @@ const App: React.FC = () => {
                         // 1. Optimistic Update (Immediate Feedback)
 
                         // 🔥 Register Sticky Update to prevent flicker
-                        registerOptimisticUpdate(id, s);
+                        registerOptimisticUpdate(id, { status: s });
 
                         setOrders(prev => prev.map(o => {
                             if (o.id === id) {
@@ -683,8 +687,11 @@ const App: React.FC = () => {
 
                         // 1. Optimistic Update (Immediate Feedback)
 
-                        // 🔥 Register Sticky Update to prevent flicker (Force InTransit)
-                        registerOptimisticUpdate(oid, OrderStatus.InTransit);
+                        // 🔥 Register Sticky Update to prevent flicker (Force InTransit AND DriverID)
+                        registerOptimisticUpdate(oid, {
+                            status: OrderStatus.InTransit,
+                            driverId: did // <--- CRITICAL FIX: Ensure it stays in "My Orders" list
+                        });
 
                         setOrders(prev => prev.map(o => {
                             if (o.id === oid) {
