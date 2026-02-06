@@ -249,6 +249,16 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 // Deduplicate just in case an order is both (rare race condition)
                 let unique = Array.from(new Map(merged.map(item => [item.id, item])).values());
 
+                // 🛡️ RE-INJECT MISSING STICKY ORDERS
+                // If an order is in pendingWrites (optimistically updated) but vanished from both streams
+                // (e.g. removed from 'Pending' but not yet in 'My Orders'), force it back.
+                pendingWrites.current.forEach((info, id) => {
+                    if (info.fallbackOrder && !unique.find(o => o.id === id)) {
+                        // Re-construct the order from fallback + updates
+                        unique.push({ ...info.fallbackOrder, ...info.updates });
+                    }
+                });
+
                 // 🌟 sticky UPDATE LOGIC: Override server data with pending optimistic data
                 unique = unique.map(order => {
                     const pending = pendingWrites.current.get(order.id);
@@ -442,10 +452,10 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
     }, [isLoading]);
 
     // STICKY UPDATES LOGIC (Prevent Flicker)
-    const pendingWrites = useRef<Map<string, { updates: any, timestamp: number }>>(new Map());
+    const pendingWrites = useRef<Map<string, { updates: any, timestamp: number, fallbackOrder?: Order }>>(new Map());
 
-    const registerOptimisticUpdate = (id: string, updates: any) => {
-        pendingWrites.current.set(id, { updates, timestamp: Date.now() });
+    const registerOptimisticUpdate = (id: string, updates: any, fallbackOrder?: Order) => {
+        pendingWrites.current.set(id, { updates, timestamp: Date.now(), fallbackOrder });
         // Auto-cleanup after 5 seconds
         setTimeout(() => {
             if (pendingWrites.current.has(id)) {

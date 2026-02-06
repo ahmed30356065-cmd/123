@@ -300,7 +300,8 @@ const App: React.FC = () => {
                     }}
                     updateOrderStatus={(id, s) => {
                         // 1. Optimistic Update (Instant Feedback)
-                        registerOptimisticUpdate(id, { status: s });
+                        const order = orders.find(o => o.id === id);
+                        registerOptimisticUpdate(id, { status: s }, order); // Pass fallback order
                         setOrders(prev => prev.map(o => {
                             if (o.id === id) {
                                 const newO = { ...o, status: s };
@@ -312,7 +313,7 @@ const App: React.FC = () => {
                         }));
 
                         // 2. Server Update
-                        const order = orders.find(o => o.id === id);
+                        // const order = orders.find(o => o.id === id);
                         const updates: any = { status: s };
                         if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
                         if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
@@ -582,12 +583,12 @@ const App: React.FC = () => {
                             });
 
                             // 3. Notifications (Async - Non-blocking)
-                            // Use setTimeout to move out of critical path
+                            // Use setTimeout to move out of critical path and allow DB propagation
                             setTimeout(() => {
                                 newOrders.forEach(order => {
                                     firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تم إضافة طلب جديد #${order.id} وهو متاح للتوصيل`, url: `/?target=order&id=${order.id}` });
                                 });
-                            }, 50);
+                            }, 2000); // Increased to 2s to ensure data sync before notification
 
                         } catch (e) {
                             console.error("Supervisor Batched Add Failed", e);
@@ -659,7 +660,8 @@ const App: React.FC = () => {
                         // 1. Optimistic Update (Immediate Feedback)
 
                         // 🔥 Register Sticky Update to prevent flicker
-                        registerOptimisticUpdate(id, { status: s });
+                        const order = orders.find(o => o.id === id);
+                        registerOptimisticUpdate(id, { status: s }, order);
 
                         setOrders(prev => prev.map(o => {
                             if (o.id === id) {
@@ -691,7 +693,7 @@ const App: React.FC = () => {
                         registerOptimisticUpdate(oid, {
                             status: OrderStatus.InTransit,
                             driverId: did // <--- CRITICAL FIX: Ensure it stays in "My Orders" list
-                        });
+                        }, order);
 
                         setOrders(prev => prev.map(o => {
                             if (o.id === oid) {
@@ -764,7 +766,7 @@ const App: React.FC = () => {
                                 firebaseService.sendExternalNotification('admin', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
                                 firebaseService.sendExternalNotification('supervisor', { title: "طلب جديد من تاجر", body: `قام ${currentUser.name} بإضافة طلب جديد #${finalId}`, url: '/?target=orders' });
                                 firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `تنبيه: طلب جديد #${finalId} متاح للتوصيل`, url: `/?target=order&id=${finalId}` });
-                            }, 50);
+                            }, 2000); // Increased to 2s to ensure data sync
 
                         } catch (e) {
                             console.error("Merchant addOrder error:", e);
@@ -790,9 +792,12 @@ const App: React.FC = () => {
 
                         await firebaseService.updateData('orders', newId, { ...d, id: newId });
 
-                        await firebaseService.sendExternalNotification('admin', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
-                        await firebaseService.sendExternalNotification('supervisor', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
-                        await firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `يوجد طلب جديد #${newId} في الانتظار`, url: `/?target=order&id=${newId}` });
+                        // Delay notifications to ensure Driver App has synced
+                        setTimeout(async () => {
+                            await firebaseService.sendExternalNotification('admin', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
+                            await firebaseService.sendExternalNotification('supervisor', { title: isShopping ? "✨ طلب خدمة خاصة" : "📦 طلب جديد", body: `طلب جديد #${newId} من ${d.customer.name}`, url: `/?target=orders` });
+                            await firebaseService.sendExternalNotification('driver', { title: "طلب جديد متاح", body: `يوجد طلب جديد #${newId} في الانتظار`, url: `/?target=order&id=${newId}` });
+                        }, 2000);
 
                         if (!isShopping && d.merchantId && d.merchantId !== 'delinow') {
                             // Merchant notification logic...
