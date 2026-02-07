@@ -1,6 +1,7 @@
 import React from 'react';
 import { User } from '../../types';
 import { UserIcon, TrashIcon, PencilIcon, CheckCircleIcon, PhoneIcon, CalendarIcon, ClockIcon, MapPinIcon, CrownIcon, VerifiedIcon, StarIcon, RocketIcon, ShieldCheckIcon, SettingsIcon, TruckIconV2, StoreIcon, HeadsetIcon, BoltIcon, HeartIcon, DollarSignIcon, BanIcon, LockOpenIcon, GiftIcon } from '../icons';
+import AvatarFrame, { FRAMES } from '../common/AvatarFrame';
 
 interface UserCardProps {
     user: User;
@@ -105,7 +106,7 @@ const getBadgeIcon = (type?: string) => {
 
 const isCustomFrame = (frame?: string) => frame?.startsWith('data:') || frame?.startsWith('http');
 
-const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, onBlock, onUnblock, isPrimaryAdmin }) => {
+const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, onBlock, onUnblock, onGift, isPrimaryAdmin }) => {
     const { dateStr, timeStr, dayStr } = (() => {
         try {
             const d = new Date(user.createdAt);
@@ -126,6 +127,8 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
     const frameClass = getFrameContainerClass(user.specialFrame);
     const isBlocked = user.status === 'blocked';
 
+    const isSystemFrame = user.specialFrame && FRAMES[user.specialFrame];
+
     return (
         <div className={`group relative rounded-2xl border shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full ${isBlocked ? 'bg-red-950/20 border-red-500/30' : 'bg-gray-800 border-gray-700/50 hover:border-gray-600 hover:shadow-xl'}`}>
             {/* Status Strip */}
@@ -136,18 +139,32 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                         {/* Avatar with Frame */}
-                        <div className={`relative w-14 h-14 flex items-center justify-center rounded-full ${!isCustomFrame(user.specialFrame) ? frameClass : ''} ${isBlocked ? 'grayscale' : ''}`}>
-                            {isCustomFrame(user.specialFrame) && (
-                                <img src={user.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-[1.6] pointer-events-none" alt="frame" />
-                            )}
-                            <div className={`${isCustomFrame(user.specialFrame) ? 'w-[85%] h-[85%]' : 'w-full h-full'} rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800 relative z-0`}>
-                                {user.storeImage ? (
-                                    <img src={user.storeImage} alt={user.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <UserIcon className="w-7 h-7 text-gray-400" />
-                                )}
+                        {isSystemFrame ? (
+                            <div className="relative w-14 h-14 flex items-center justify-center">
+                                <AvatarFrame frameId={user.specialFrame!} size="md" className="scale-110">
+                                    <div className={`w-full h-full rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800 ${isBlocked ? 'grayscale' : ''}`}>
+                                        {user.storeImage ? (
+                                            <img src={user.storeImage} alt={user.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <UserIcon className="w-7 h-7 text-gray-400" />
+                                        )}
+                                    </div>
+                                </AvatarFrame>
                             </div>
-                        </div>
+                        ) : (
+                            <div className={`relative w-14 h-14 flex items-center justify-center rounded-full ${!isCustomFrame(user.specialFrame) ? frameClass : ''} ${isBlocked ? 'grayscale' : ''}`}>
+                                {isCustomFrame(user.specialFrame) && (
+                                    <img src={user.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-[1.6] pointer-events-none" alt="frame" />
+                                )}
+                                <div className={`${isCustomFrame(user.specialFrame) ? 'w-[85%] h-[85%]' : 'w-full h-full'} rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800 relative z-0`}>
+                                    {user.storeImage ? (
+                                        <img src={user.storeImage} alt={user.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <UserIcon className="w-7 h-7 text-gray-400" />
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         <div>
                             <div className="flex items-center gap-1.5">
@@ -235,6 +252,16 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
                             title="تعديل"
                         >
                             <PencilIcon className="w-4 h-4" />
+                        </button>
+                    )}
+
+                    {onGift && (
+                        <button
+                            onClick={() => onGift(user)}
+                            className="p-2 text-yellow-400 hover:text-white hover:bg-yellow-600 rounded-lg transition-colors border border-yellow-500/20 bg-yellow-500/10 clickable"
+                            title="إهداء إطار/شارة"
+                        >
+                            <GiftIcon className="w-4 h-4" />
                         </button>
                     )}
                 </div>

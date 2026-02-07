@@ -1,10 +1,11 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { 
-    ChevronLeftIcon, UploadIcon, CheckCircleIcon, ImageIcon, 
+import {
+    ChevronLeftIcon, UploadIcon, CheckCircleIcon, ImageIcon,
     PlusIcon, TrashIcon, EyeIcon, EyeOffIcon, GridIcon, XIcon, PencilIcon, RefreshCwIcon,
-    SettingsIcon, TicketIcon, CrownIcon, UserIcon, SearchIcon, SparklesIcon, PaletteIcon, ClockIcon, ShieldCheckIcon, ClipboardListIcon 
+    SettingsIcon, TicketIcon, CrownIcon, UserIcon, SearchIcon, SparklesIcon, PaletteIcon, ClockIcon, ShieldCheckIcon, ClipboardListIcon
 } from '../icons';
+import AvatarFrame, { FRAMES } from '../common/AvatarFrame';
 import useAndroidBack from '../../hooks/useAndroidBack';
 import { AppTheme, CategoryItem, AppConfig, User } from '../../types';
 import ConfirmationModal from './ConfirmationModal';
@@ -40,13 +41,13 @@ const UserSelectorModal: React.FC<{
 }> = ({ users, onClose, onSelect, title }) => {
     const [search, setSearch] = useState('');
     const [duration, setDuration] = useState<number | null>(7); // Default 7 days
-    
+
     const filteredUsers = useMemo(() => {
         const lowerSearch = search.toLowerCase();
         return users.filter(u => {
             const roleName = u.role === 'driver' ? 'مندوب' : u.role === 'merchant' ? 'تاجر' : u.role === 'admin' ? 'إدارة' : 'عميل';
             return (
-                u.name.toLowerCase().includes(lowerSearch) || 
+                u.name.toLowerCase().includes(lowerSearch) ||
                 (u.phone && u.phone.includes(lowerSearch)) ||
                 roleName.includes(lowerSearch)
             );
@@ -71,7 +72,7 @@ const UserSelectorModal: React.FC<{
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white"><XIcon className="w-5 h-5" /></button>
                 </div>
-                
+
                 <div className="p-4 border-b border-gray-700/50 space-y-4">
                     {/* Duration Selector */}
                     <div>
@@ -84,11 +85,10 @@ const UserSelectorModal: React.FC<{
                                 <button
                                     key={d.label}
                                     onClick={() => setDuration(d.value)}
-                                    className={`flex-1 min-w-[60px] py-2 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap ${
-                                        duration === d.value 
-                                        ? 'bg-blue-600 text-white shadow-md' 
+                                    className={`flex-1 min-w-[60px] py-2 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap ${duration === d.value
+                                        ? 'bg-blue-600 text-white shadow-md'
                                         : 'text-gray-400 hover:text-white'
-                                    }`}
+                                        }`}
                                 >
                                     {d.label}
                                 </button>
@@ -98,9 +98,9 @@ const UserSelectorModal: React.FC<{
 
                     <div className="relative">
                         <SearchIcon className="absolute right-3 top-2.5 w-4 h-4 text-gray-500" />
-                        <input 
-                            type="text" 
-                            placeholder="بحث بالاسم أو الرقم..." 
+                        <input
+                            type="text"
+                            placeholder="بحث بالاسم أو الرقم..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="w-full bg-[#0f172a] border border-gray-600 rounded-xl py-2 pl-4 pr-10 text-white text-sm focus:border-blue-500 outline-none"
@@ -112,8 +112,8 @@ const UserSelectorModal: React.FC<{
                 <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
                     {filteredUsers.length > 0 ? (
                         filteredUsers.map(user => (
-                            <button 
-                                key={user.id} 
+                            <button
+                                key={user.id}
                                 onClick={() => onSelect(user, duration)}
                                 className="w-full flex items-center justify-between p-3 hover:bg-gray-700/50 rounded-xl transition-colors border-b border-gray-700/30 last:border-0 group"
                             >
@@ -162,7 +162,7 @@ const CategoryIcons = {
         </svg>
     ),
     Market: ({ className }: { className?: string }) => (
-       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
@@ -179,11 +179,11 @@ const CategoryIcons = {
 const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentTheme, onUpdateTheme, appConfig, onUpdateAppConfig, users, onUpdateUser, sendNotification, currentUser }) => {
     const [currentView, setCurrentView] = useState<CustomizerView>('main');
     const [decoTab, setDecoTab] = useState<DecorationTab>('frames');
-    
+
     // UI States
     const [showSuccess, setShowSuccess] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    
+
     // Add Decoration States
     const [isAddDecorationOpen, setIsAddDecorationOpen] = useState(false);
     const [decorationName, setDecorationName] = useState('');
@@ -196,13 +196,13 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
 
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
-    
+
     // Layout & Categories State
     const [categories, setCategories] = useState<CategoryItem[]>([]);
-    
+
     // Local state for font to ensure immediate UI feedback
     const [activeFont, setActiveFont] = useState<string | undefined>(appConfig?.customFont);
-    
+
     // Modal State
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
@@ -211,7 +211,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
         onConfirm: () => void;
         variant?: 'danger' | 'primary';
     } | null>(null);
-    
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const decorationInputRef = useRef<HTMLInputElement>(null);
     const fontInputRef = useRef<HTMLInputElement>(null);
@@ -259,7 +259,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
 
     const handleUploadClick = (key: string) => {
         setActiveIconKey(key);
-        const cat = categories.find(c => c.id === key); 
+        const cat = categories.find(c => c.id === key);
         setPreviewIcon(cat?.icon || null);
         fileInputRef.current?.click();
     };
@@ -273,7 +273,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                 img.src = event.target?.result as string;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const size = 128; 
+                    const size = 128;
                     canvas.width = size;
                     canvas.height = size;
                     const ctx = canvas.getContext('2d');
@@ -282,7 +282,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                     const scale = Math.min(size / img.width, size / img.height);
                     const x = (size / 2) - (img.width / 2) * scale;
                     const y = (size / 2) - (img.height / 2) * scale;
-                    
+
                     ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
                     resolve(canvas.toDataURL('image/png'));
                 };
@@ -327,7 +327,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
             const reader = new FileReader();
             reader.onload = (event) => {
                 const base64Font = event.target?.result as string;
-                setActiveFont(base64Font); 
+                setActiveFont(base64Font);
                 if (onUpdateAppConfig && appConfig) {
                     onUpdateAppConfig({ ...appConfig, customFont: base64Font });
                     setShowSuccess(true);
@@ -370,7 +370,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                 alert('يرجى اختيار صورة بصيغة PNG أو GIF');
                 return;
             }
-            
+
             // Use FileReader directly to preserve original quality/transparency/animation
             // Do NOT resize via canvas
             const reader = new FileReader();
@@ -394,7 +394,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
         };
 
         // We store all decorations in the 'customer' theme key for centralized storage
-        const currentDecorations = decorationType === 'frame' 
+        const currentDecorations = decorationType === 'frame'
             ? (currentTheme.customer as any).customFrames || []
             : (currentTheme.customer as any).customBadges || [];
 
@@ -402,8 +402,8 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
 
         updateThemeImmediate(
             'customer',
-            decorationType === 'frame' 
-                ? { customFrames: updatedDecorations } 
+            decorationType === 'frame'
+                ? { customFrames: updatedDecorations }
                 : { customBadges: updatedDecorations }
         );
 
@@ -419,16 +419,16 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
             message: 'هل أنت متأكد من الحذف؟',
             variant: 'danger',
             onConfirm: () => {
-                const currentDecorations = type === 'frame' 
+                const currentDecorations = type === 'frame'
                     ? (currentTheme.customer as any).customFrames || []
                     : (currentTheme.customer as any).customBadges || [];
-                
+
                 const updatedDecorations = currentDecorations.filter((d: CustomDecoration) => d.id !== id);
-                
+
                 updateThemeImmediate(
                     'customer',
-                    type === 'frame' 
-                        ? { customFrames: updatedDecorations } 
+                    type === 'frame'
+                        ? { customFrames: updatedDecorations }
                         : { customBadges: updatedDecorations }
                 );
                 setConfirmModal(null);
@@ -447,7 +447,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
 
         const updates: any = {};
         const itemName = itemToGift.type === 'frame' ? 'إطار' : 'شارة';
-        
+
         let expiryDate = null;
         if (durationInDays) {
             const date = new Date();
@@ -467,7 +467,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
 
         const durationText = durationInDays ? `لمدة ${durationInDays} يوم` : 'بشكل دائم';
         const notificationBody = `تهانينا! حصلت على ${itemName} جديدة (${itemToGift.label}) ${durationText}. اذهب إلى ملفك الشخصي للتحقق!`;
-        
+
         // Pass targetId explicitly to ensure private notification
         sendNotification(user.role, {
             title: "هدية مميزة! 🎁",
@@ -551,7 +551,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
     }, [users]);
 
     const handleRevokeGift = (user: User, type: 'frame' | 'badge') => {
-         setConfirmModal({
+        setConfirmModal({
             isOpen: true,
             title: `سحب ${type === 'frame' ? 'الإطار' : 'الشارة'}`,
             message: `هل أنت متأكد من سحب ${type === 'frame' ? 'الإطار' : 'الشارة'} من ${user.name}؟`,
@@ -572,18 +572,29 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
     };
 
     // Get current custom decorations from customer theme (storage)
-    const currentFrames = (currentTheme.customer as any).customFrames || [];
+    const customFrames = (currentTheme.customer as any).customFrames || [];
+
+    // Merge Predefined Frames
+    const predefinedFrames: CustomDecoration[] = Object.entries(FRAMES).map(([id, config]) => ({
+        id: id,
+        label: config.name,
+        url: id, // Use ID as URL/Value
+        type: 'frame',
+        isSystem: true // Flag to identify system frames
+    }));
+
+    const currentFrames = [...predefinedFrames, ...customFrames];
     const currentBadges = (currentTheme.customer as any).customBadges || [];
 
     const getPageTitle = () => {
-        switch(currentView) {
+        switch (currentView) {
             case 'categories': return 'إدارة التصنيفات';
             case 'decorations': return 'الإطارات والشارات';
             case 'active_gifts': return 'سجل الإهداءات النشطة';
             default: return 'تخصيص المظهر';
         }
     }
-    
+
     // Check if user is admin (only admin can delete assets)
     const isAdmin = currentUser?.role === 'admin';
 
@@ -598,7 +609,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                     </div>
                 </div>
             )}
-            
+
             {/* Header */}
             <div className="flex-none px-4 pt-safe h-16 box-content flex items-center justify-between border-b border-gray-800 bg-[#1e293b]/90 backdrop-blur-md sticky top-0 z-20 shadow-md">
                 <div className="flex items-center gap-3">
@@ -616,7 +627,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                 {currentView === 'main' && (
                     <div className="h-full overflow-y-auto custom-scrollbar">
                         <div className="max-w-5xl mx-auto w-full p-6 flex flex-col gap-8 min-h-full">
-                            
+
                             {/* Global Settings Section (Fonts) */}
                             <div className="bg-[#1e293b]/80 backdrop-blur-sm rounded-[2rem] p-6 border border-gray-700 shadow-xl relative overflow-hidden group">
                                 <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
@@ -637,9 +648,9 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                             يمكنك رفع ملف خط بصيغة <code>.ttf</code> ليتم تطبيقه على جميع الواجهات في النظام بالكامل.
                                         </p>
                                     </div>
-                                    
+
                                     <div className="flex gap-3 w-full md:w-auto">
-                                        <button 
+                                        <button
                                             onClick={() => fontInputRef.current?.click()}
                                             disabled={isProcessing}
                                             className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]"
@@ -653,9 +664,9 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                                 </>
                                             )}
                                         </button>
-                                        
+
                                         {activeFont && (
-                                            <button 
+                                            <button
                                                 onClick={handleRemoveFont}
                                                 className="px-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold py-3 rounded-xl transition-colors border border-red-500/20"
                                                 title="إزالة الخط المخصص"
@@ -675,7 +686,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                     أدوات التخصيص
                                 </h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <button 
+                                    <button
                                         onClick={() => setCurrentView('categories')}
                                         className="group relative overflow-hidden bg-gradient-to-br from-cyan-900 to-blue-900 rounded-[2rem] p-8 flex items-center justify-between shadow-lg hover:shadow-cyan-500/20 transition-all active:scale-98 border border-white/5 h-40"
                                     >
@@ -689,7 +700,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-cyan-500/20 rounded-full blur-[50px] group-hover:bg-cyan-400/30 transition-colors"></div>
                                     </button>
 
-                                    <button 
+                                    <button
                                         onClick={() => setCurrentView('decorations')}
                                         className="group relative overflow-hidden bg-gradient-to-br from-purple-900 to-pink-900 rounded-[2rem] p-8 flex items-center justify-between shadow-lg hover:shadow-purple-500/20 transition-all active:scale-98 border border-white/5 h-40"
                                     >
@@ -702,9 +713,9 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                         </div>
                                         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-500/20 rounded-full blur-[50px] group-hover:bg-purple-400/30 transition-colors"></div>
                                     </button>
-                                    
+
                                     {/* Active Gifts Log Button */}
-                                    <button 
+                                    <button
                                         onClick={() => setCurrentView('active_gifts')}
                                         className="group relative overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 rounded-[2rem] p-8 flex items-center justify-between shadow-lg hover:shadow-gray-500/20 transition-all active:scale-98 border border-white/5 h-40 md:col-span-2"
                                     >
@@ -737,7 +748,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                         const frameExpiry = user.specialFrameExpiry ? new Date(user.specialFrameExpiry) : null;
                                         const badgeExpiry = user.specialBadgeExpiry ? new Date(user.specialBadgeExpiry) : null;
                                         const now = new Date();
-                                        
+
                                         const getExpiryText = (date: Date | null) => {
                                             if (!date) return 'دائم';
                                             const diffTime = date.getTime() - now.getTime();
@@ -760,25 +771,35 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                                 <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
                                                     {user.specialFrame && (
                                                         <div className="bg-black/20 p-3 rounded-xl border border-white/5 flex items-center gap-3 flex-1">
-                                                            <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden">
-                                                                {user.specialFrame.startsWith('http') || user.specialFrame.startsWith('data:') ? (
-                                                                    <img src={user.specialFrame} className="w-full h-full object-cover" />
+                                                            <div className="w-12 h-12 flex items-center justify-center relative">
+                                                                {FRAMES[user.specialFrame] ? (
+                                                                    <AvatarFrame frameId={user.specialFrame} size="sm" className="scale-90">
+                                                                        <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 rounded-full">
+                                                                            <UserIcon className="w-4 h-4" />
+                                                                        </div>
+                                                                    </AvatarFrame>
                                                                 ) : (
-                                                                    <span className="text-[10px]">إطار</span>
+                                                                    <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden border border-gray-600">
+                                                                        {user.specialFrame.startsWith('http') || user.specialFrame.startsWith('data:') ? (
+                                                                            <img src={user.specialFrame} className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <span className="text-[10px]">إطار</span>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                             <div className="flex-1">
-                                                                <p className="text-xs text-gray-300 font-bold">إطار</p>
+                                                                <p className="text-xs text-gray-300 font-bold">إطار مميز</p>
                                                                 <p className="text-[10px] text-yellow-500">{getExpiryText(frameExpiry)}</p>
                                                             </div>
-                                                            <button onClick={() => handleRevokeGift(user, 'frame')} className="text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-colors"><TrashIcon className="w-4 h-4"/></button>
+                                                            <button onClick={() => handleRevokeGift(user, 'frame')} className="text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-colors"><TrashIcon className="w-4 h-4" /></button>
                                                         </div>
                                                     )}
-                                                    
+
                                                     {user.specialBadge && (
                                                         <div className="bg-black/20 p-3 rounded-xl border border-white/5 flex items-center gap-3 flex-1">
                                                             <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden">
-                                                                 {user.specialBadge.startsWith('http') || user.specialBadge.startsWith('data:') ? (
+                                                                {user.specialBadge.startsWith('http') || user.specialBadge.startsWith('data:') ? (
                                                                     <img src={user.specialBadge} className="w-full h-full object-cover" />
                                                                 ) : (
                                                                     <span className="text-[10px]">شارة</span>
@@ -788,7 +809,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                                                 <p className="text-xs text-gray-300 font-bold">شارة</p>
                                                                 <p className="text-[10px] text-blue-400">{getExpiryText(badgeExpiry)}</p>
                                                             </div>
-                                                            <button onClick={() => handleRevokeGift(user, 'badge')} className="text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-colors"><TrashIcon className="w-4 h-4"/></button>
+                                                            <button onClick={() => handleRevokeGift(user, 'badge')} className="text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-colors"><TrashIcon className="w-4 h-4" /></button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -823,7 +844,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                 </h3>
                                 <p className="text-xs text-gray-400">{decoTab === 'frames' ? 'صور GIF أو PNG شفافة.' : 'أوسمة تظهر بجانب الاسم.'}</p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => { setDecorationType(decoTab === 'frames' ? 'frame' : 'badge'); setIsAddDecorationOpen(true); }}
                                 className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg active:scale-95 ${decoTab === 'frames' ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-900/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/20'}`}
                             >
@@ -838,25 +859,35 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                     {currentFrames.length > 0 ? currentFrames.map((frame: CustomDecoration) => (
                                         <div key={frame.id} className="bg-[#1e293b] p-4 rounded-xl border border-gray-700 flex flex-col items-center gap-3 relative group hover:border-purple-500 transition-colors shadow-sm">
                                             <div className="relative w-24 h-24 flex items-center justify-center">
-                                                <div className="absolute inset-0 m-auto w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border-2 border-gray-600">
-                                                    <UserIcon className="w-10 h-10 text-gray-500" />
-                                                </div>
-                                                <img src={frame.url} className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" alt={frame.label} />
+                                                {(frame as any).isSystem ? (
+                                                    <AvatarFrame frameId={frame.url} size="lg" className="scale-90">
+                                                        <div className="w-full h-full bg-gray-700 flex items-center justify-center text-gray-500">
+                                                            <UserIcon className="w-8 h-8" />
+                                                        </div>
+                                                    </AvatarFrame>
+                                                ) : (
+                                                    <>
+                                                        <div className="absolute inset-0 m-auto w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border-2 border-gray-600">
+                                                            <UserIcon className="w-10 h-10 text-gray-500" />
+                                                        </div>
+                                                        <img src={frame.url} className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" alt={frame.label} />
+                                                    </>
+                                                )}
                                             </div>
-                                            
+
                                             <div className="text-center w-full">
                                                 <p className="font-bold text-sm truncate w-full text-gray-200">{frame.label}</p>
                                             </div>
 
                                             <div className="flex gap-2 w-full justify-center">
-                                                <button 
+                                                <button
                                                     onClick={() => handleGiftClick(frame)}
                                                     className="px-3 py-1.5 bg-yellow-500/10 text-yellow-400 rounded-lg text-xs font-bold hover:bg-yellow-500/20 transition-colors flex items-center gap-1"
                                                 >
                                                     <SparklesIcon className="w-3 h-3" /> إهداء
                                                 </button>
-                                                {currentUser?.role === 'admin' && (
-                                                    <button 
+                                                {currentUser?.role === 'admin' && !(frame as any).isSystem && (
+                                                    <button
                                                         onClick={() => handleDeleteDecoration(frame.id, 'frame')}
                                                         className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors"
                                                         title="حذف من المكتبة"
@@ -883,11 +914,11 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                                 <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                                 <img src={badge.url} className="w-full h-full object-contain p-3 drop-shadow-md" alt={badge.label} />
                                             </div>
-                                            
+
                                             <p className="font-bold text-xs truncate w-full text-center text-gray-200">{badge.label}</p>
-                                            
+
                                             <div className="flex gap-2 w-full justify-center mt-auto">
-                                                <button 
+                                                <button
                                                     onClick={() => handleGiftClick(badge)}
                                                     className="px-3 py-1.5 bg-yellow-500/10 text-yellow-400 rounded-lg text-xs font-bold hover:bg-yellow-500/20 transition-colors flex-1 flex items-center justify-center gap-1"
                                                     title="إهداء"
@@ -895,7 +926,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                                     <SparklesIcon className="w-3 h-3" />
                                                 </button>
                                                 {currentUser?.role === 'admin' && (
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleDeleteDecoration(badge.id, 'badge')}
                                                         className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors"
                                                         title="حذف من المكتبة"
@@ -917,7 +948,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                         </div>
                     </div>
                 )}
-                
+
                 {currentView === 'categories' && (
                     <div className="flex flex-col h-full">
                         <div className="flex-none p-6 border-b border-gray-800 bg-[#1a1a1a] flex justify-between items-center">
@@ -925,7 +956,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                 <h3 className="font-bold text-lg text-white">إدارة التصنيفات</h3>
                                 <p className="text-xs text-gray-400">تعديل الأيقونات والمسميات في الصفحة الرئيسية</p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setIsAddModalOpen(true)}
                                 className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-cyan-900/20 active:scale-95"
                             >
@@ -937,14 +968,14 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                             <div className="grid gap-3 max-w-4xl mx-auto pb-10">
                                 {categories.map((cat, idx) => {
                                     const DefaultIcon = cat.key === 'cat_all' ? CategoryIcons.All :
-                                                        cat.key === 'cat_restaurant' ? CategoryIcons.Restaurant :
-                                                        cat.key === 'cat_market' ? CategoryIcons.Market :
-                                                        cat.key === 'cat_pharmacy' ? CategoryIcons.Pharmacy : GridIcon;
+                                        cat.key === 'cat_restaurant' ? CategoryIcons.Restaurant :
+                                            cat.key === 'cat_market' ? CategoryIcons.Market :
+                                                cat.key === 'cat_pharmacy' ? CategoryIcons.Pharmacy : GridIcon;
 
                                     return (
                                         <div key={cat.id} className="bg-[#1e293b] p-3 rounded-2xl border border-gray-700 flex items-center gap-4 group hover:border-gray-500 transition-colors shadow-sm">
                                             {/* Icon Uploader */}
-                                            <div 
+                                            <div
                                                 onClick={() => handleUploadClick(cat.id)}
                                                 className="w-14 h-14 bg-[#0f172a] rounded-xl flex items-center justify-center cursor-pointer border border-gray-600 hover:border-blue-500 relative overflow-hidden flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform"
                                             >
@@ -962,8 +993,8 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
 
                                             {/* Edit Label */}
                                             <div className="flex-1 min-w-0">
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     value={cat.label}
                                                     onChange={(e) => handleLabelChange(cat.id, e.target.value)}
                                                     onBlur={saveCategories}
@@ -975,7 +1006,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                             {/* Actions */}
                                             <div className="flex items-center gap-2">
                                                 {cat.icon && (
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleRestoreDefaultIcon(cat.id)}
                                                         className="p-2.5 rounded-xl text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20 transition-colors border border-yellow-400/20"
                                                         title="استعادة الافتراضي"
@@ -984,16 +1015,16 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                                     </button>
                                                 )}
 
-                                                <button 
+                                                <button
                                                     onClick={() => handleToggleVisibility(cat.id)}
                                                     className={`p-2.5 rounded-xl transition-colors border ${cat.isVisible ? 'text-green-400 bg-green-400/10 border-green-400/20' : 'text-gray-500 bg-gray-800 border-gray-700'}`}
                                                     title={cat.isVisible ? 'ظاهر' : 'مخفي'}
                                                 >
                                                     {cat.isVisible ? <EyeIcon className="w-4 h-4" /> : <EyeOffIcon className="w-4 h-4" />}
                                                 </button>
-                                                
+
                                                 {cat.id !== 'all' && (
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleDeleteCategory(cat.id)}
                                                         className="p-2.5 rounded-xl text-red-400 bg-red-400/10 hover:bg-red-400/20 transition-colors border border-red-400/20"
                                                         title="حذف"
@@ -1021,7 +1052,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                         </h3>
                         <div className="space-y-5">
                             {/* Image Preview / Upload */}
-                            <div 
+                            <div
                                 onClick={() => decorationInputRef.current?.click()}
                                 className={`w-full h-40 bg-[#0f172a] border-2 border-dashed ${decorationImage ? 'border-green-500' : 'border-gray-600'} rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-gray-800 transition-colors group relative overflow-hidden`}
                             >
@@ -1040,15 +1071,15 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 mb-2">الاسم / الوصف</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     value={decorationName}
                                     onChange={(e) => setDecorationName(e.target.value)}
                                     placeholder={decorationType === 'frame' ? "مثال: إطار ذهبي فاخر" : "مثال: شارة العميل المميز"}
                                     className="w-full bg-[#0f172a] border border-gray-600 rounded-xl px-4 py-3.5 text-white focus:border-green-500 outline-none transition-colors"
                                 />
                             </div>
-                            <button 
+                            <button
                                 onClick={handleAddDecoration}
                                 disabled={!decorationName.trim() || !decorationImage}
                                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
@@ -1062,8 +1093,8 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
 
             {/* Gift Modal */}
             {giftModalOpen && itemToGift && (
-                <UserSelectorModal 
-                    users={users} 
+                <UserSelectorModal
+                    users={users}
                     onClose={() => setGiftModalOpen(false)}
                     onSelect={handleGiftConfirm}
                     title={`إهداء ${itemToGift.type === 'frame' ? 'الإطار' : 'الشارة'} "${itemToGift.label}"`}
@@ -1081,8 +1112,8 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                         <div className="space-y-5">
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 mb-2">اسم التصنيف (سيظهر في التطبيق)</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     value={newCategoryName}
                                     onChange={(e) => setNewCategoryName(e.target.value)}
                                     placeholder="مثال: حلويات، مخبوزات..."
@@ -1090,7 +1121,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
                                     autoFocus
                                 />
                             </div>
-                            <button 
+                            <button
                                 onClick={handleAddCategory}
                                 disabled={!newCategoryName.trim()}
                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
@@ -1104,7 +1135,7 @@ const AppIconCustomizer: React.FC<AppIconCustomizerProps> = ({ onClose, currentT
 
             {/* Global Confirmation Modal for Font/Category Deletion */}
             {confirmModal && (
-                <ConfirmationModal 
+                <ConfirmationModal
                     title={confirmModal.title}
                     message={confirmModal.message}
                     onClose={() => setConfirmModal(null)}

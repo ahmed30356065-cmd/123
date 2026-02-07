@@ -18,7 +18,7 @@ interface CssFrameConfig extends BaseFrameConfig {
 
 type FrameConfig = SvgFrameConfig | CssFrameConfig;
 
-const FRAMES: Record<string, FrameConfig> = {
+export const FRAMES: Record<string, FrameConfig> = {
     'ruby-red': {
         name: 'الياقوت الأحمر',
         color: '#ef4444',
@@ -160,4 +160,4 @@ const AvatarFrame: React.FC<AvatarFrameProps> = ({ frameId, children, size = 'md
 };
 
 export default AvatarFrame;
-export { FRAMES };
+

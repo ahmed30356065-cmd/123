@@ -88,6 +88,7 @@ export interface User {
   specialBadge?: string;
   // Expiry dates for decorations
   specialBadgeExpiry?: string | null;
+  specialFrameExpiry?: string | null;
   waterSortLevel?: number; // Game Progress Persistence
 }
 
