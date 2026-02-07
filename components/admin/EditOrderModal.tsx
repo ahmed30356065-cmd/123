@@ -41,8 +41,8 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
   // Let's enforce Supervisor Permission strictly.
   const canEditFinancials = currentUserRole === 'admin' || (isSupervisor && hasFinancialPermission);
 
-  // EXCEPTION: Delivery Fee is editable by Supervisors who can manage orders, even without advanced financials.
-  const canEditDeliveryFee = currentUserRole === 'admin' || (isSupervisor && currentUserPermissions?.includes('manage_orders'));
+  // EXCEPTION: Delivery Fee is editable by Supervisors (regardless of specific permissions for now, to fix user issue)
+  const canEditDeliveryFee = currentUserRole === 'admin' || isSupervisor;
 
 
 
