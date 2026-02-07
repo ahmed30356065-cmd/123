@@ -152,7 +152,7 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
 
     };
 
-    const handleSaveDaily = async (data: { driverId: string; date: string; count: number; note?: string; amount: number }) => {
+    const handleSaveDaily = async (data: { driverId: string; date: string; count: number; note?: string; amount: number; totalDeliveryFees?: number }) => {
         try {
             const newId = `DAILY-${Date.now()}`;
             const newDaily: ManualDaily = {
@@ -162,6 +162,7 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                 ordersCount: data.count,
                 amount: data.amount,
                 note: data.note,
+                totalDeliveryFees: data.totalDeliveryFees,
                 createdBy: currentUser.id,
                 createdAt: new Date(),
                 reconciled: false
@@ -329,14 +330,16 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                                     سجل العمليات
                                 </button>
 
-                                <button
-                                    onClick={() => { setSelectedDriverForDaily(driver); setShowManualDailyModal(true); }}
-                                    className="flex items-center text-xs font-bold text-gray-500 hover:text-white transition-colors mr-auto ml-4"
-                                    title="إضافة يومية يدوية"
-                                >
-                                    <ClockIcon className="w-4 h-4 ml-1.5" />
-                                    يومية
-                                </button>
+                                {currentUser.role === 'admin' && (
+                                    <button
+                                        onClick={() => { setSelectedDriverForDaily(driver); setShowManualDailyModal(true); }}
+                                        className="flex items-center text-xs font-bold text-gray-500 hover:text-white transition-colors mr-auto ml-4"
+                                        title="إضافة يومية يدوية"
+                                    >
+                                        <ClockIcon className="w-4 h-4 ml-1.5" />
+                                        يومية
+                                    </button>
+                                )}
 
                                 {hasActiveOrders ? (
                                     <div

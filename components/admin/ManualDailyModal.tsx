@@ -6,7 +6,7 @@ interface ManualDailyModalProps {
     isOpen: boolean;
     onClose: () => void;
     drivers: User[];
-    onSave: (data: { driverId: string; date: string; count: number; note?: string; amount: number }) => Promise<void>;
+    onSave: (data: { driverId: string; date: string; count: number; note?: string; amount: number; totalDeliveryFees?: number }) => Promise<void>;
     preSelectedDriver?: User | null;
 }
 
@@ -14,6 +14,7 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
     const [driverId, setDriverId] = useState(preSelectedDriver?.id || '');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [count, setCount] = useState<number | ''>('');
+    const [deliveryFeePerOrder, setDeliveryFeePerOrder] = useState<number | ''>(''); // Changed from total to per-order
     const [note, setNote] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -30,21 +31,10 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
         if (selectedDriver.commissionType === 'fixed') {
             return Number(count) * commission;
         } else {
-            // For percentage, we can't calculate exact amount without total order value.
-            // Requirement says: "number of orders". 
-            // Usually "Daily" implies fixed fee per order.
-            // If percentage, this feature might be ambiguous. 
-            // We will assume "Partial Daily" or "Fixed Daily" logic mostly applies to Fixed Commission.
-            // BUT: If the user insists on adding "Daily" for percentage driver, what is the amount?
-            // Maybe they manually enter amount? 
-            // For now, let's Stick to the requested: "Add Daily Paid... and calculate automatically".
-            // If percentage, maybe we assume an average? No, that's dangerous.
-            // Let's assume this feature is primarily for Fixed Commission drivers or "Entries" that represent a specific debt.
-            // If percentage, return 0 or show warning?
-            // Let's leave it as 0 for percentage and maybe allow manual override?
-            // "استخرج تلقائي انت المستحقات" -> Auto calculate. 
-            // If commission is percentage, we can't auto-calculate from COUNT alone.
-            return 0;
+            // Percentage calculation: (Count * FeePerOrder * Percentage) / 100
+            if (!deliveryFeePerOrder) return 0;
+            const totalFees = Number(count) * Number(deliveryFeePerOrder);
+            return totalFees * (commission / 100);
         }
     };
 
@@ -59,9 +49,11 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
             await onSave({
                 driverId,
                 date,
+                date,
                 count: Number(count),
                 note,
-                amount
+                amount,
+                totalDeliveryFees: deliveryFeePerOrder ? (Number(count) * Number(deliveryFeePerOrder)) : undefined
             });
             onClose();
         } catch (error) {
@@ -133,6 +125,31 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
                         />
                     </div>
 
+                    {/* Total Delivery Fees Input (Only for Percentage Drivers) */}
+                    {selectedDriver && selectedDriver.commissionType === 'percentage' && (
+                        <div className="space-y-2 animate-fadeIn">
+                            <label className="text-xs font-bold text-yellow-500 block">سعر توصيل الطلب الواحد (للنسبة المئوية)</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={deliveryFeePerOrder}
+                                    onChange={(e) => setDeliveryFeePerOrder(Number(e.target.value))}
+                                    className="w-full bg-[#0f172a] border border-yellow-500/50 rounded-xl py-3 px-4 text-white text-sm outline-none focus:border-yellow-500 font-mono pl-10"
+                                    placeholder="مثلاً: 25"
+                                    required
+                                />
+                                <span className="absolute left-3 top-3.5 text-xs text-gray-500 font-bold">ج.م</span>
+                            </div>
+                            <p className="text-[10px] text-gray-500">
+                                الإجمالي: <span className="text-white font-bold">{count && deliveryFeePerOrder ? (Number(count) * Number(deliveryFeePerOrder)).toLocaleString() : 0} ج.م</span>
+                                {' | '}
+                                العمولة: <span className="text-green-400 font-bold">{selectedDriver.commissionRate}%</span>
+                            </p>
+                        </div>
+                    )}
+
                     {/* Note */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-400 block">ملاحظات (اختياري)</label>
@@ -152,11 +169,7 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
                         </span>
                     </div>
 
-                    {selectedDriver && selectedDriver.commissionType !== 'fixed' && (
-                        <div className="text-[10px] text-yellow-500 bg-yellow-500/10 p-2 rounded-lg border border-yellow-500/20">
-                            تنويه: هذا المندوب يعمل بنظام النسبة المئوية. لا يمكن حساب المبلغ تلقائياً بدقة بناءً على العدد فقط. سيتم تسجيل القيمة كـ 0 ج.م أو يرجى مراجعة السياسة.
-                        </div>
-                    )}
+
 
                     <button
                         type="submit"

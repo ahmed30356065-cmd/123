@@ -341,5 +341,6 @@ export interface ManualDaily {
   createdAt: Date;
   createdBy: string; // Admin ID
   note?: string;
+  totalDeliveryFees?: number; // For percentage based calculation
   reconciled?: boolean;
 }
