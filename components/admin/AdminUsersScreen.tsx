@@ -176,7 +176,7 @@ const AdminUsersScreen: React.FC<AdminUsersScreenProps> = ({ users, updateUser, 
   }
 
   return (
-    <div className="space-y-6 pb-32 animate-fadeIn relative">
+    <div className="space-y-6 pb-32 animate-fadeIn relative w-full overflow-x-hidden">
 
       {/* Header & Tabs Container (Not Sticky anymore) */}
       <div className="pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 transition-all">

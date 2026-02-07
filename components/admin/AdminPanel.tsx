@@ -403,7 +403,10 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                     }
                 });
             } else {
-                mainScrollRef.current.scrollTop = 0;
+                // Force scroll to top for new views
+                requestAnimationFrame(() => {
+                    if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+                });
             }
         }
     }, [view]);
