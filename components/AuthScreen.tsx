@@ -256,7 +256,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onPasswordLogin, onGoToSignUp, 
                                     type={showPassword ? "text" : "password"}
                                     id="password"
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     className="w-full bg-[#1e293b]/80 border border-gray-700 rounded-2xl py-4 pl-12 pr-5 text-white placeholder-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500/50 focus:bg-[#1e293b] outline-none transition-all duration-300 shadow-sm text-lg"
                                     required
                                     minLength={6}
