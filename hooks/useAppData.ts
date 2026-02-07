@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { User, Order, OrderStatus, Message, SliderImage, SliderConfig, AuditLog, AppConfig, UpdateConfig, AppTheme, Payment } from '../types';
+import { User, Order, OrderStatus, Message, SliderImage, SliderConfig, AuditLog, AppConfig, UpdateConfig, AppTheme, Payment, ManualDaily } from '../types';
 import * as firebaseService from '../services/firebase';
 import { setAndroidRole, safeStringify, NativeBridge, logoutAndroid } from '../utils/NativeBridge';
 import { AppStorage, SafeLocalStorage } from '../utils/storage';
@@ -58,6 +58,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
     const [passwordResetRequests, setPasswordResetRequests] = useState<{ phone: string; requestedAt: Date }[]>([]);
     const [payments, setPayments] = useState<Payment[]>([]);
     const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+    const [manualDailies, setManualDailies] = useState<ManualDaily[]>([]);
 
     // Configs
     const [sliderConfig, setSliderConfig] = useState<SliderConfig>({ isEnabled: true });
@@ -362,6 +363,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         });
 
         const unsubAudit = firebaseService.subscribeToCollection('audit_logs', (data) => setAuditLogs(data as AuditLog[]));
+        const unsubManualDailies = firebaseService.subscribeToCollection('manual_dailies', (data) => setManualDailies(data as ManualDaily[]));
 
         const unsubSettings = firebaseService.subscribeToCollection('settings', (data) => {
             const sConf = data.find(s => s.id === 'slider_config');
@@ -466,7 +468,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         });
 
         return () => {
-            unsubUsers(); unsubOrders(); unsubMsgs(); unsubPayments(); unsubReset(); unsubSlider(); unsubSettings(); unsubAudit();
+            unsubUsers(); unsubOrders(); unsubMsgs(); unsubPayments(); unsubReset(); unsubSlider(); unsubSettings(); unsubAudit(); unsubManualDailies();
         };
     }, [currentUser?.id, currentUser?.role, currentUser?.status, appConfig.appVersion]);
 
@@ -499,7 +501,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
     };
 
     return {
-        users, orders, messages, payments, sliderImages, auditLogs, passwordResetRequests,
+        users, orders, messages, payments, sliderImages, auditLogs, manualDailies, passwordResetRequests,
         sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
         globalCounters, // Exposed for Optimistic ID generation
         isLoading, setIsLoading, isOrdersLoaded,

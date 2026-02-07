@@ -9,6 +9,7 @@ interface DriverPaymentHistoryPageProps {
     onBack: () => void;
     onDeletePayment?: (paymentId: string) => void;
     currentUser?: User | null;
+    manualDailies?: any[]; // added manualDailies
 }
 
 const SummaryCard: React.FC<{
@@ -33,7 +34,7 @@ const SummaryCard: React.FC<{
     </div>
 );
 
-const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ driver, payments, orders, onBack, onDeletePayment, currentUser }) => {
+const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ driver, payments, orders, onBack, onDeletePayment, currentUser, manualDailies = [] }) => {
 
     // Helper to calculate payment details based on CURRENTLY EXISTING orders
     const calculateCorrectedPayment = (payment: Payment) => {
@@ -54,16 +55,34 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
         // Add safety check: App dues cannot exceed total fees
         if (companyShare > totalFees) companyShare = totalFees;
 
-        const driverShare = totalFees - companyShare;
+        // Manual Dailies Logic
+        let dailiesAmount = 0;
+        let dailiesCount = 0;
+        if (payment.reconciledManualDailyIds && payment.reconciledManualDailyIds.length > 0) {
+            const relevantDailies = manualDailies.filter(d => payment.reconciledManualDailyIds?.includes(d.id));
+            dailiesCount = relevantDailies.length;
+            dailiesAmount = relevantDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
+        }
+
+        companyShare += dailiesAmount;
+        // Driver share logic adjustment:
+        // Originally: driverShare = totalFees - companyShare.
+        // With dailies: companyShare now includes dailies.
+        // So driverShare = totalFees - (FeesCommission + Dailies).
+        // This is mathematically correct as "Net to Driver" is reduced by Dailies debt.
+
+        const driverShare = totalFees - companyShare; // This might go negative if debt > fees, which is correct.
 
         return {
             ...payment,
             verifiedCount: count,
+            verifiedDailiesCount: dailiesCount,
+            dailiesAmount: dailiesAmount,
             companyShare: companyShare,
             driverShare: driverShare,
             verifiedTotalCollected: totalFees,
             verifiedAmount: payment.amount,
-            isValid: count > 0 // If 0, it means all orders decreased to 0 or deleted
+            isValid: count > 0 || dailiesCount > 0
         };
     };
 
@@ -73,7 +92,7 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
             .map(calculateCorrectedPayment)
             .filter(p => p.isValid)
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [payments, driver.id, orders]);
+    }, [payments, driver.id, orders, manualDailies]);
 
     // Calculate Global Totals for the header
     const totals = useMemo(() => {
@@ -219,8 +238,11 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
 
                                                     {/* Orders */}
                                                     <div className="flex flex-col items-center md:items-start px-2 md:px-0">
-                                                        <span className="text-[10px] text-gray-500 mb-0.5">الطلبات</span>
-                                                        <span className="text-sm font-bold text-white">{payment.verifiedCount}</span>
+                                                        <span className="text-[10px] text-gray-500 mb-0.5">الطلبات / يوميات</span>
+                                                        <span className="text-sm font-bold text-white">
+                                                            {payment.verifiedCount}
+                                                            {payment.verifiedDailiesCount > 0 && <span className="text-yellow-500 text-xs"> +{payment.verifiedDailiesCount}</span>}
+                                                        </span>
                                                     </div>
 
                                                     {/* Driver Share */}
@@ -232,7 +254,10 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                                     {/* Company Share */}
                                                     <div className="flex flex-col items-center md:items-start px-2 md:px-0 md:border-r md:border-gray-700 md:pr-6">
                                                         <span className="text-[10px] text-red-500/70 mb-0.5">للشركة</span>
-                                                        <span className="text-sm font-bold text-red-400">{Math.round(payment.companyShare)}</span>
+                                                        <span className="text-sm font-bold text-red-400">
+                                                            {Math.round(payment.companyShare)}
+                                                            {payment.dailiesAmount > 0 && <span className="text-[9px] text-yellow-500/80 block leading-none">تتضمن {payment.dailiesAmount} ج.م يوميات</span>}
+                                                        </span>
                                                     </div>
 
                                                 </div>

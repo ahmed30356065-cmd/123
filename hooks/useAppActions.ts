@@ -1,5 +1,5 @@
 
-import { User, Order, AuditLog, OrderStatus } from '../types';
+import { User, Order, AuditLog, OrderStatus, ManualDaily } from '../types';
 import * as firebaseService from '../services/firebase';
 import { logoutAndroid } from '../utils/NativeBridge';
 
@@ -8,11 +8,12 @@ interface UseAppActionsProps {
     orders: Order[];
     messages: any[];
     payments?: any[]; // Added payments prop
+    manualDailies?: ManualDaily[];
     currentUser: User | null;
     showNotify: (msg: string, type: 'success' | 'error' | 'info', silent?: boolean) => void;
 }
 
-export const useAppActions = ({ users, orders, messages, payments = [], currentUser, showNotify }: UseAppActionsProps) => {
+export const useAppActions = ({ users, orders, messages, payments = [], manualDailies = [], currentUser, showNotify }: UseAppActionsProps) => {
 
     const generateNextUserId = (allUsers: User[]) => {
         const maxId = allUsers.reduce((max, u) => {
@@ -46,10 +47,25 @@ export const useAppActions = ({ users, orders, messages, payments = [], currentU
             !o.reconciled
         );
 
-        if (eligibleOrders.length === 0) {
-            showNotify('لا توجد طلبات لتسويتها', 'info');
-            return;
-        }
+        const eligibleDailies = manualDailies.filter(d =>
+            String(d.driverId) === String(driverId) &&
+            !d.reconciled // Hypothetical field, but manual dailies don't have 'reconciled' yet in type?
+            // Actually I defined ManualDaily type WITHOUT 'reconciled' field in types.ts step 1.
+            // I should have added 'reconciled' or check against Payment.reconciledManualDailyIds?
+            // Checking against all payments is slow. 
+            // Better to add 'reconciled' boolean to ManualDaily schema.
+        );
+
+        // Wait, I missed adding 'reconciled' to ManualDaily in types.ts!
+        // I need to add it now implicitly or explicitly.
+        // Let's assume I will add it to the type definition. I'll do a quick fix to types.ts first in next tool if needed.
+        // Or I can use this tool to Update types.ts as well? No, one file per tool.
+        // I will trust that I will add 'reconciled' to ManualDaily type in type.ts subsequently or assuming it exists.
+        // Actually I can check if it exists in data.
+
+        // Let's modify the code to assume it has it.
+        // And I'll add the field to types.ts in a separate call.
+
 
         const toCurrency = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
         const safeParseFloat = (val: any) => {
@@ -62,11 +78,17 @@ export const useAppActions = ({ users, orders, messages, payments = [], currentU
         let companyShare = 0;
         const commissionRate = safeParseFloat(driver.commissionRate);
 
+        // Calculate Manual Dailies Amount
+        const manualDailiesAmount = eligibleDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
+
         if (driver.commissionType === 'fixed') {
             companyShare = eligibleOrders.length * commissionRate;
         } else {
             companyShare = totalFees * (commissionRate / 100);
         }
+
+        // Add Manual Dailies
+        companyShare += manualDailiesAmount;
 
         const finalCompanyShare = toCurrency(companyShare);
         const finalTotalFees = toCurrency(totalFees);
@@ -103,19 +125,25 @@ export const useAppActions = ({ users, orders, messages, payments = [], currentU
             totalCollected: finalTotalFees,
             ordersCount: eligibleOrders.length,
             createdAt: paymentDate,
-            reconciledOrderIds: eligibleOrders.map(o => o.id)
+            reconciledOrderIds: eligibleOrders.map(o => o.id),
+            reconciledManualDailyIds: eligibleDailies.map(d => d.id)
         };
 
         try {
             const orderUpdates = eligibleOrders.map(o => ({ ...o, reconciled: true }));
-            await firebaseService.batchSaveData('orders', orderUpdates);
+            const dailyUpdates = eligibleDailies.map(d => ({ ...d, reconciled: true }));
+
+            if (orderUpdates.length > 0) await firebaseService.batchSaveData('orders', orderUpdates);
+            if (dailyUpdates.length > 0) await firebaseService.batchSaveData('manual_dailies', dailyUpdates);
+
             await firebaseService.updateData('payments', paymentId, paymentRecord);
-            logAction('financial', 'تسوية مالية', `تمت تسوية حساب المندوب ${driver.name}. المبلغ: ${finalCompanyShare} ج.م لعدد ${eligibleOrders.length} طلب.`);
-            showNotify(`تم تسوية ${eligibleOrders.length} طلب بنجاح`, 'success');
+
+            logAction('financial', 'تسوية مالية', `تمت تسوية حساب المندوب ${driver.name}. المبلغ: ${finalCompanyShare} ج.م (طلبات: ${eligibleOrders.length}, يوميات: ${eligibleDailies.length}).`);
+            showNotify(`تم تسوية ${eligibleOrders.length} طلب و ${eligibleDailies.length} يومية بنجاح`, 'success');
 
             firebaseService.sendExternalNotification('driver', {
                 title: "تمت تسوية الحساب",
-                body: `قام المسؤول بتسوية حسابك. تم تصفير المستحقات لـ ${eligibleOrders.length} طلب.`,
+                body: `قام المسؤول بتسوية حسابك. تم تصفير المستحقات لـ ${eligibleOrders.length} طلب و ${eligibleDailies.length} يومية.`,
                 targetId: driverId,
                 url: `/?target=wallet`
             });
@@ -224,6 +252,21 @@ export const useAppActions = ({ users, orders, messages, payments = [], currentU
             } catch (e) {
                 console.error("Failed to un-reconcile orders:", e);
                 showNotify('فشل استعادة حالة الطلبات، لكن سيتم حذف السجل', 'error');
+            }
+        }
+
+        // 3. Un-reconcile manual dailies
+        if (payment && payment.reconciledManualDailyIds && payment.reconciledManualDailyIds.length > 0) {
+            const dailyUpdates = payment.reconciledManualDailyIds.map((did: string) => ({
+                id: did,
+                reconciled: false
+            }));
+
+            try {
+                await firebaseService.batchSaveData('manual_dailies', dailyUpdates);
+                console.log(`Un-reconciled ${dailyUpdates.length} dailies for payment ${paymentId}`);
+            } catch (e) {
+                console.error("Failed to un-reconcile dailies:", e);
             }
         }
 

@@ -192,6 +192,7 @@ export interface Payment {
   amount: number;
   createdAt: Date;
   reconciledOrderIds: string[];
+  reconciledManualDailyIds?: string[]; // Added for manual dailies
   ordersCount?: number;
   totalCollected?: number;
 }
@@ -328,4 +329,17 @@ export interface UpdateLog {
   isActive: boolean;
   roles?: string[];
   url?: string;
+}
+
+// --- Manual Daily Entry ---
+export interface ManualDaily {
+  id: string;
+  driverId: string;
+  ordersCount: number;
+  amount: number; // Calculated: ordersCount * commission
+  dayDate: string; // YYYY-MM-DD
+  createdAt: Date;
+  createdBy: string; // Admin ID
+  note?: string;
+  reconciled?: boolean;
 }

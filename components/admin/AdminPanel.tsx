@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Order, User, OrderStatus, Customer, Role, SupervisorPermission, Message, Payment, SliderImage, SliderConfig, AppTheme, AuditLog, PromoCode, SupportChat, AppConfig } from '../../types';
+import { Order, User, OrderStatus, Customer, Role, SupervisorPermission, Message, Payment, SliderImage, SliderConfig, AppTheme, AuditLog, PromoCode, SupportChat, AppConfig, ManualDaily } from '../../types';
 import AdminOrdersScreen from './AdminOrdersScreen';
 import AdminUsersScreen from './AdminUsersScreen';
 import AdminStoresScreen from './AdminStoresScreen';
@@ -31,7 +31,9 @@ interface AdminPanelProps {
     user: User;
     orders: Order[];
     users: User[];
+
     payments: Payment[];
+    manualDailies?: ManualDaily[];
     updateUser: (userId: string, updatedData: Partial<User>) => void;
     deleteUser: (userId: string) => void;
     deleteOrder: (orderId: string) => void;

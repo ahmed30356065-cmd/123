@@ -3,7 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Order, User, OrderStatus, Payment } from '../../types';
 import { UserIcon, WalletIcon, ReceiptIcon, ClockIcon, CheckCircleIcon, XIcon, CashIcon, ExclamationIcon } from '../icons';
 import DriverPaymentHistoryPage from './DriverPaymentHistoryPage';
+import ManualDailyModal from './ManualDailyModal';
 import ConfirmationModal from './ConfirmationModal';
+import * as firebaseService from '../../services/firebase';
+import { ManualDaily } from '../../types';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
 const FinancialRow: React.FC<{ label: string, value: number, currency?: string, colorClass?: string }> = ({ label, value, currency = 'ج.م', colorClass = 'text-white' }) => (
@@ -75,13 +78,16 @@ interface AdminWalletScreenProps {
     handleDriverPayment: (driverId: string) => void;
     onDeletePayment: (paymentId: string) => void;
     currentUser: User;
+    manualDailies?: ManualDaily[];
 }
 
-const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, payments, updateUser, handleDriverPayment, onDeletePayment, currentUser }) => {
+const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, payments, updateUser, handleDriverPayment, onDeletePayment, currentUser, manualDailies = [] }) => {
     const [historyDriver, setHistoryDriver] = useState<User | null>(null);
     const [payingDriverInfo, setPayingDriverInfo] = useState<{ driver: User; amount: number } | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showHistoryPage, setShowHistoryPage] = useState(false); // New state for full page history
+    const [showManualDailyModal, setShowManualDailyModal] = useState(false);
+    const [selectedDriverForDaily, setSelectedDriverForDaily] = useState<User | null>(null);
 
     const drivers = users.filter(u => u.role === 'driver');
 
@@ -146,6 +152,29 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
 
     };
 
+    const handleSaveDaily = async (data: { driverId: string; date: string; count: number; note?: string; amount: number }) => {
+        try {
+            const newId = `DAILY-${Date.now()}`;
+            const newDaily: ManualDaily = {
+                id: newId,
+                driverId: data.driverId,
+                dayDate: data.date,
+                ordersCount: data.count,
+                amount: data.amount,
+                note: data.note,
+                createdBy: currentUser.id,
+                createdAt: new Date(),
+                reconciled: false
+            };
+
+            await firebaseService.updateData('manual_dailies', newId, newDaily);
+            setShowManualDailyModal(false);
+            setSelectedDriverForDaily(null);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     // Android Back Button Handler
     useAndroidBack(() => {
         // 1. Close History Page (Detailed View) - Returns to Wallet Main
@@ -184,9 +213,18 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                         }}
                         onDeletePayment={onDeletePayment}
                         currentUser={currentUser}
+                        manualDailies={manualDailies} // Pass it down
                     />
                 </div>
             )}
+
+            <ManualDailyModal
+                isOpen={showManualDailyModal}
+                onClose={() => { setShowManualDailyModal(false); setSelectedDriverForDaily(null); }}
+                drivers={drivers}
+                onSave={handleSaveDaily}
+                preSelectedDriver={selectedDriverForDaily}
+            />
 
             {/* Added pb-32 to ensure bottom cards are fully visible above the fixed nav */}
             <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-32`}>
@@ -197,7 +235,6 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                         (order) =>
                             order.driverId === driver.id &&
                             order.status === OrderStatus.Delivered &&  // Strict: Only Delivered
-                            order.status !== OrderStatus.Cancelled &&  // Double Strict: Never Cancelled
                             !order.reconciled &&
                             !order.isArchived
                     );
@@ -205,13 +242,20 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                     const totalFees = unreconciledOrders.reduce((sum, order) => sum + (order.deliveryFee || 0), 0);
                     const commissionRate = driver.commissionRate || 0;
 
+                    // Manual Dailies Calculation
+                    const driverDailies = manualDailies.filter(d => d.driverId === driver.id && !d.reconciled);
+                    const dailiesAmount = driverDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
+
                     let companyShare = 0;
                     if (driver.commissionType === 'fixed') {
                         companyShare = unreconciledOrders.length * commissionRate;
                     } else {
                         companyShare = totalFees * (commissionRate / 100);
                     }
-                    const driverShare = totalFees - companyShare;
+
+                    companyShare += dailiesAmount; // Add manual dailies to total claimable
+
+                    const driverShare = totalFees - (companyShare - dailiesAmount);
                     const commissionLabel = driver.commissionType === 'fixed'
                         ? `${commissionRate} ج.م/طلب`
                         : `${commissionRate}%`;
@@ -266,6 +310,11 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                                     </div>
                                     <FinancialRow label="إجمالي التحصيل" value={totalFees} colorClass="text-blue-400" />
                                     <FinancialRow label={`العمولة المستحقة (${commissionLabel})`} value={companyShare} colorClass="text-red-400" />
+                                    {dailiesAmount > 0 && (
+                                        <div className="flex justify-between items-baseline px-3 py-1">
+                                            <span className="text-xs text-yellow-500/70">+ {dailiesAmount} ج.م يوميات يدوية ({driverDailies.length})</span>
+                                        </div>
+                                    )}
                                     <FinancialRow label="صافي للمندوب" value={driverShare} colorClass="text-green-400" />
                                 </div>
                             </div>
@@ -279,6 +328,16 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                                     <ReceiptIcon className="w-4 h-4 ml-1.5" />
                                     سجل العمليات
                                 </button>
+
+                                <button
+                                    onClick={() => { setSelectedDriverForDaily(driver); setShowManualDailyModal(true); }}
+                                    className="flex items-center text-xs font-bold text-gray-500 hover:text-white transition-colors mr-auto ml-4"
+                                    title="إضافة يومية يدوية"
+                                >
+                                    <ClockIcon className="w-4 h-4 ml-1.5" />
+                                    يومية
+                                </button>
+
                                 {hasActiveOrders ? (
                                     <div
                                         className="flex items-center text-xs bg-red-900/40 text-red-400 font-bold px-4 py-2.5 rounded-lg border border-red-900/50 cursor-not-allowed w-auto text-center"
@@ -290,7 +349,7 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                                 ) : (
                                     <button
                                         onClick={() => { pushModalState('pay'); setPayingDriverInfo({ driver, amount: companyShare }); }}
-                                        disabled={unreconciledOrders.length === 0}
+                                        disabled={unreconciledOrders.length === 0 && driverDailies.length === 0}
                                         className="flex items-center text-xs bg-green-600 text-white hover:bg-green-700 font-bold px-4 py-2.5 rounded-lg transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed shadow-md"
                                     >
                                         تسوية الحساب

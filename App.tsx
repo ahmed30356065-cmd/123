@@ -44,7 +44,8 @@ const App: React.FC = () => {
         currentUser, setCurrentUser,
         appTheme, setAppTheme,
         setOrders, setUsers,
-        registerOptimisticUpdate
+        registerOptimisticUpdate,
+        manualDailies // Added manualDailies
     } = useAppData(showNotify);
 
     // 2. Logic Hook
@@ -56,7 +57,7 @@ const App: React.FC = () => {
         handleClearAuditLogs,
         generateNextUserId,
         deletePayment
-    } = useAppActions({ users, orders, messages, payments, currentUser, showNotify }); // Added payments
+    } = useAppActions({ users, orders, messages, payments, manualDailies, currentUser, showNotify }); // Added payments and manualDailies
 
     // Handle Android Deep Links without Reload
     useEffect(() => {
@@ -279,7 +280,7 @@ const App: React.FC = () => {
             {currentUser.role === 'admin' && (
                 <AdminPanel
                     logAction={logAction} // Passed for bulk buffering
-                    user={currentUser} users={users} orders={orders} messages={messages} payments={payments} passwordResetRequests={passwordResetRequests}
+                    user={currentUser} users={users} orders={orders} messages={messages} payments={payments} manualDailies={manualDailies} passwordResetRequests={passwordResetRequests}
                     resolvePasswordResetRequest={(phone) => {
                         firebaseService.deleteData('reset_requests', phone);
                         logAction('update', 'طلبات الاستعادة', `تمت معالجة طلب استعادة كلمة المرور للرقم ${phone}`);
