@@ -22,8 +22,9 @@ import SliderSettings from '../admin/SliderSettings';
 import AdminSupportScreen from '../admin/AdminSupportScreen';
 import AppIconCustomizer from '../admin/AppIconCustomizer';
 import * as firebaseService from '../../services/firebase';
+import PullToRefresh from '../common/PullToRefresh';
 
-type SupervisorView = 'orders' | 'users' | 'wallet' | 'add_order' | 'logs' | 'loyalty' | 'reports' | 'messages' | 'notifications' | 'stores' | 'slider' | 'support' | 'customizer';
+type SupervisorView = 'orders' | 'users' | 'wallet' | 'add_order' | 'logs' | 'loyalty' | 'reports' | 'messages' | 'notifications' | 'stores' | 'slider' | 'support' | 'customizer' | 'shopping' | 'special';
 
 interface SupervisorPanelProps {
   user: User;
@@ -156,89 +157,11 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
     props.showNotification(`تم حذف ${ordersToDelete.length} طلب بنجاح`, 'success');
   };
 
-  const renderView = () => {
-    switch (view) {
-      case 'orders': return (userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) ? (
-        <AdminOrdersScreen
-          {...props}
-          permissions={userPermissions}
-          onNavigateToAdd={() => setView('add_order')}
-          onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined}
-          onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined}
-          onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined}
-        />
-      ) : null;
-      case 'shopping': return (userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) ? (
-        <AdminOrdersScreen
-          {...props}
-          permissions={userPermissions}
-          viewMode="shopping"
-          onNavigateToAdd={() => setView('add_order')}
-          onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined}
-          onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined}
-          onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined}
-        />
-      ) : null;
-      case 'special': return (userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) ? (
-        <AdminOrdersScreen
-          {...props}
-          permissions={userPermissions}
-          viewMode="special"
-          onNavigateToAdd={() => setView('add_order')}
-          onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined}
-          onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined}
-          onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined}
-        />
-      ) : null;
-      case 'reports': return userPermissions.includes('view_reports') ? <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} /> : null;
-      case 'add_order': return <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={async (data) => { await props.adminAddOrder(data); }} />;
-      case 'notifications': return (
-        <NotificationsScreen
-          users={props.users.filter(u => u.role !== 'admin')}
-          updateUser={props.updateUser}
-          onDeleteUser={props.deleteUser}
-          passwordResetRequests={props.passwordResetRequests}
-          resolvePasswordResetRequest={props.resolvePasswordResetRequest}
-          setEditingUser={setEditingUser}
-          pendingOrders={props.orders.filter(o => o.status === OrderStatus.Pending && !o.driverId)}
-          onNavigateToOrders={() => setView('orders')}
-        />
-      );
-
-      case 'users':
-        // Strict filter: Supervisors CANNOT see admins, but logic is handled deeper in AdminUsersScreen too
-        // We pass currentUser to handle specific restrictions (e.g., editing other supervisors)
-        const visibleUsers = props.users.filter(u => u.role !== 'admin');
-        return userPermissions.includes('view_users') || userPermissions.includes('manage_users') ?
-          <AdminUsersScreen
-            {...props}
-            users={visibleUsers}
-            onAdminAddUser={props.adminAddUser}
-            onDeleteUser={props.deleteUser}
-            permissions={userPermissions}
-            setEditingUser={setEditingUser}
-            currentUser={props.user}
-          /> : null;
-
-      case 'stores': return userPermissions.includes('manage_stores') ? <AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} /> : null;
-      case 'slider': return userPermissions.includes('manage_slider') ? <SliderSettings images={props.sliderImages} isEnabled={props.sliderConfig.isEnabled} onAddImage={props.onAddSliderImage} onDeleteImage={props.onDeleteSliderImage} onUpdateImage={props.onUpdateSliderImage} onToggleSlider={props.onToggleSlider} merchants={merchants} adminUser={undefined} /> : null;
-      case 'wallet': return userPermissions.includes('view_wallet') ? <AdminWalletScreen {...props} /> : null;
-      case 'logs': return userPermissions.includes('view_logs') ? <AuditLogsScreen logs={props.auditLogs} onClearLogs={() => { }} /> : null;
-      case 'loyalty': return userPermissions.includes('manage_promo') ? <LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} /> : null;
-      case 'messages': return userPermissions.includes('send_messages') ? <AdminMessagesScreen users={props.users.filter(u => u.role !== 'admin')} onSendMessage={props.sendMessage} messages={props.messages} deleteMessage={props.deleteMessage} /> : null;
-      case 'support': return userPermissions.includes('manage_support') ? <AdminSupportScreen users={props.users} isRestricted={true} currentUser={props.user} /> : null;
-      case 'customizer': return userPermissions.includes('manage_decorations') && props.currentTheme && props.onUpdateTheme ?
-        <AppIconCustomizer
-          onClose={() => setView('orders')}
-          currentTheme={props.currentTheme}
-          onUpdateTheme={props.onUpdateTheme}
-          users={props.users}
-          onUpdateUser={props.updateUser}
-          sendNotification={firebaseService.sendExternalNotification}
-          currentUser={props.user}
-        /> : null;
-    }
+  const handleRefresh = async () => {
+    // Basic refresh logic
+    window.location.reload();
   };
+
 
   const availableViews = [
     { id: 'shopping', condition: userPermissions.includes('view_orders') || userPermissions.includes('manage_orders') },
@@ -381,8 +304,96 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
         </header>
       )}
 
-      <main className={view === 'add_order' ? "flex-1 bg-[#111] h-full" : "flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative"}>
-        {renderView()}
+
+
+      <main className={view === 'add_order' ? "flex-1 bg-[#111] h-full" : "flex-1 overflow-hidden relative pb-24"}>
+
+        {/* Orders View - Kept Mounted for Performance & Scroll */}
+        <div className={`h-full ${view === 'orders' ? 'block' : 'hidden'}`}>
+          <PullToRefresh onRefresh={handleRefresh}>
+            {(userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) && (
+              <AdminOrdersScreen
+                {...props}
+                permissions={userPermissions}
+                onNavigateToAdd={() => setView('add_order')}
+                onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined}
+                onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined}
+                onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined}
+              />
+            )}
+          </PullToRefresh>
+        </div>
+
+        {/* Users View - Isolated Scroll */}
+        {view === 'users' && (
+          <div className="h-full animate-fadeIn">
+            <PullToRefresh onRefresh={handleRefresh}>
+              <AdminUsersScreen
+                {...props}
+                users={props.users.filter(u => u.role !== 'admin')} // Strict filter
+                onAdminAddUser={props.adminAddUser}
+                onDeleteUser={props.deleteUser}
+                permissions={userPermissions}
+                setEditingUser={setEditingUser}
+                currentUser={props.user}
+              />
+            </PullToRefresh>
+          </div>
+        )}
+
+        {/* Other Views - Wrapped in PullToRefresh primarily for scroll container behavior */}
+        {view === 'reports' && userPermissions.includes('view_reports') && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} /></PullToRefresh></div>
+        )}
+
+        {view === 'shopping' && (userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminOrdersScreen {...props} permissions={userPermissions} viewMode="shopping" onNavigateToAdd={() => setView('add_order')} onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined} onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined} onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined} /></PullToRefresh></div>
+        )}
+
+        {view === 'special' && (userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminOrdersScreen {...props} permissions={userPermissions} viewMode="special" onNavigateToAdd={() => setView('add_order')} onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined} onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined} onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined} /></PullToRefresh></div>
+        )}
+
+        {view === 'add_order' && (
+          <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={async (data) => { await props.adminAddOrder(data); }} />
+        )}
+
+        {view === 'notifications' && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><NotificationsScreen users={props.users.filter(u => u.role !== 'admin')} updateUser={props.updateUser} onDeleteUser={props.deleteUser} passwordResetRequests={props.passwordResetRequests} resolvePasswordResetRequest={props.resolvePasswordResetRequest} setEditingUser={setEditingUser} pendingOrders={props.orders.filter(o => o.status === OrderStatus.Pending && !o.driverId)} onNavigateToOrders={() => setView('orders')} /></PullToRefresh></div>
+        )}
+
+        {view === 'stores' && userPermissions.includes('manage_stores') && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} /></PullToRefresh></div>
+        )}
+
+        {view === 'messages' && userPermissions.includes('send_messages') && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminMessagesScreen users={props.users.filter(u => u.role !== 'admin')} onSendMessage={props.sendMessage} messages={props.messages} deleteMessage={props.deleteMessage} /></PullToRefresh></div>
+        )}
+
+        {view === 'support' && userPermissions.includes('manage_support') && (
+          <div className="h-full"><AdminSupportScreen users={props.users} isRestricted={true} currentUser={props.user} /></div> // Support usually handles its own scroll or is full screen
+        )}
+
+        {view === 'slider' && userPermissions.includes('manage_slider') && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><SliderSettings images={props.sliderImages} isEnabled={props.sliderConfig.isEnabled} onAddImage={props.onAddSliderImage} onDeleteImage={props.onDeleteSliderImage} onUpdateImage={props.onUpdateSliderImage} onToggleSlider={props.onToggleSlider} merchants={merchants} adminUser={undefined} /></PullToRefresh></div>
+        )}
+
+        {view === 'wallet' && userPermissions.includes('view_wallet') && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminWalletScreen {...props} /></PullToRefresh></div>
+        )}
+
+        {view === 'logs' && userPermissions.includes('view_logs') && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AuditLogsScreen logs={props.auditLogs} onClearLogs={() => { }} /></PullToRefresh></div>
+        )}
+
+        {view === 'loyalty' && userPermissions.includes('manage_promo') && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} /></PullToRefresh></div>
+        )}
+
+        {view === 'customizer' && userPermissions.includes('manage_decorations') && props.currentTheme && props.onUpdateTheme && (
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AppIconCustomizer onClose={() => setView('orders')} currentTheme={props.currentTheme} onUpdateTheme={props.onUpdateTheme} users={props.users} onUpdateUser={props.updateUser} sendNotification={firebaseService.sendExternalNotification} currentUser={props.user} /></PullToRefresh></div>
+        )}
+
       </main>
 
       {view !== 'add_order' && availableViews.length > 0 && <AdminBottomNav activeView={view as any} onNavigate={(v) => setView(v as SupervisorView)} availableViews={availableViews} isVisible={isNavVisible} />}
