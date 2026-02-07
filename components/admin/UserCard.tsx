@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { User } from '../../types';
-import { UserIcon, TrashIcon, PencilIcon, CheckCircleIcon, PhoneIcon, CalendarIcon, ClockIcon, MapPinIcon, CrownIcon, VerifiedIcon, StarIcon, RocketIcon, ShieldCheckIcon, SettingsIcon, TruckIconV2, StoreIcon, HeadsetIcon, BoltIcon, HeartIcon, DollarSignIcon, BanIcon, LockOpenIcon } from '../icons';
+import { UserIcon, TrashIcon, PencilIcon, CheckCircleIcon, PhoneIcon, CalendarIcon, ClockIcon, MapPinIcon, CrownIcon, VerifiedIcon, StarIcon, RocketIcon, ShieldCheckIcon, SettingsIcon, TruckIconV2, StoreIcon, HeadsetIcon, BoltIcon, HeartIcon, DollarSignIcon, BanIcon, LockOpenIcon, GiftIcon } from '../icons';
 
 interface UserCardProps {
     user: User;
@@ -10,6 +9,7 @@ interface UserCardProps {
     onApprove?: (userId: string) => void;
     onBlock?: (user: User) => void;
     onUnblock?: (user: User) => void;
+    onGift?: (user: User) => void; // Added onGift prop
     isPrimaryAdmin?: boolean;
 }
 

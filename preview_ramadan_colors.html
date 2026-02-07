@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إطارات رمضان - ألوان متنوعة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Scheherazade+New:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            min-height: 100vh;
+            padding: 40px 20px;
+            font-family: 'Amiri', serif;
+            color: white;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: bold;
+            background: linear-gradient(90deg, #fbbf24, #3b82f6, #ec4899, #10b981);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 35px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .frame-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            padding: 35px;
+            text-align: center;
+            transition: 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .frame-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        .frame-container {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: url('https://ui-avatars.com/api/?name=R&background=1e293b&color=cbd5e1&size=200') center/cover;
+            position: relative;
+            z-index: 10;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.7);
+        }
+
+        .frame-title {
+            font-size: 22px;
+            margin-bottom: 6px;
+            font-family: 'Scheherazade New', serif;
+            font-weight: bold;
+        }
+
+        .frame-desc {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        /* Animations */
+        @keyframes rotate {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.5;
+                transform: scale(0.9);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+        }
+
+        @keyframes swing {
+
+            0%,
+            100% {
+                transform: rotate(-6deg);
+            }
+
+            50% {
+                transform: rotate(6deg);
+            }
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 8px currentColor);
+            }
+
+            50% {
+                filter: drop-shadow(0 0 16px currentColor);
+            }
+        }
+
+        /* Common Elements */
+        .ring {
+            position: absolute;
+            border-radius: 50%;
+            animation: rotate 30s linear infinite;
+        }
+
+        .lantern {
+            position: absolute;
+            width: 35px;
+            height: 55px;
+            transform-origin: top center;
+            animation: swing 3.5s ease-in-out infinite;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+        }
+
+        .star {
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1 class="title">🌙 إطارات رمضان - ألوان متنوعة 🌙</h1>
+        <p style="color: #94a3b8; font-size: 18px;">10 تصاميم بألوان مختلفة</p>
+    </div>
+
+    <div class="grid">
+
+        <!-- 1. Golden Classic (الذهبي الكلاسيكي) -->
+        <div class="frame-card" style="border-color: rgba(251, 191, 36, 0.3);">
+            <div class="frame-container">
+                <div class="ring" style="width: 200px; height: 200px; border: 2px dashed rgba(251, 191, 36, 0.4);">
+                </div>
+                <svg style="position: absolute; width: 240px; height: 240px; z-index: 15; animation: float 4s ease-in-out infinite;"
+                    viewBox="0 0 200 200">
+                    <defs>
+                        <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#fef3c7" />
+                            <stop offset="100%" stop-color="#d97706" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M 130,35 A 38,38 0 1 1 130,85 A 28,28 0 1 0 130,35 Z" fill="url(#gold)"
+                        filter="drop-shadow(0 0 10px #fbbf24)" />
+                    <path
+                        d="M 155,45 L 158,51 L 164,53 L 159,57 L 160,63 L 155,59 L 150,63 L 151,57 L 146,53 L 152,51 Z"
+                        fill="#fef3c7" class="star" />
+                </svg>
+                <div class="avatar" style="border-color: rgba(251, 191, 36, 0.5);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #fbbf24;">الذهبي الكلاسيكي</h3>
+            <p class="frame-desc" style="color: #fbbf24;">Golden Classic</p>
+        </div>
+
+        <!-- 2. Sapphire Blue (الياقوت الأزرق) -->
+        <div class="frame-card" style="border-color: rgba(59, 130, 246, 0.3);">
+            <div class="frame-container">
+                <div class="ring" style="width: 190px; height: 190px; border: 3px solid rgba(59, 130, 246, 0.4);"></div>
+                <svg class="lantern" style="top: -8px; left: 25px; color: #3b82f6;" viewBox="0 0 35 55">
+                    <path d="M 17.5,0 L 17.5,8 M 10,8 L 25,8 L 27,15 L 17.5,22 L 8,15 Z" fill="#1e3a8a"
+                        stroke="currentColor" stroke-width="1" />
+                    <rect x="12" y="15" width="11" height="12" fill="rgba(59, 130, 246, 0.3)" stroke="currentColor"
+                        stroke-width="0.5" />
+                    <circle cx="17.5" cy="20" r="3" fill="#bfdbfe">
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
+                    </circle>
+                </svg>
+                <svg class="lantern" style="top: -8px; right: 25px; color: #3b82f6; animation-delay: 0.5s;"
+                    viewBox="0 0 35 55">
+                    <path d="M 17.5,0 L 17.5,8 M 10,8 L 25,8 L 27,15 L 17.5,22 L 8,15 Z" fill="#1e3a8a"
+                        stroke="currentColor" stroke-width="1" />
+                    <rect x="12" y="15" width="11" height="12" fill="rgba(59, 130, 246, 0.3)" stroke="currentColor"
+                        stroke-width="0.5" />
+                    <circle cx="17.5" cy="20" r="3" fill="#bfdbfe">
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"
+                            begin="0.5s" />
+                    </circle>
+                </svg>
+                <div class="avatar" style="border-color: rgba(59, 130, 246, 0.6);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #3b82f6;">الياقوت الأزرق</h3>
+            <p class="frame-desc" style="color: #60a5fa;">Sapphire Blue</p>
+        </div>
+
+        <!-- 3. Emerald Green (الزمرد الأخضر) -->
+        <div class="frame-card" style="border-color: rgba(16, 185, 129, 0.3);">
+            <div class="frame-container">
+                <svg style="position: absolute; width: 250px; height: 250px; z-index: 15; animation: glow 3s ease-in-out infinite; color: #10b981;"
+                    viewBox="0 0 200 200">
+                    <ellipse cx="100" cy="45" rx="40" ry="18" fill="#064e3b" stroke="currentColor" stroke-width="1" />
+                    <path d="M 60,45 L 60,70 L 140,70 L 140,45" fill="#064e3b" stroke="currentColor" stroke-width="1" />
+                    <circle cx="100" cy="40" r="5" fill="#10b981" class="star" />
+                </svg>
+                <div class="ring"
+                    style="width: 210px; height: 210px; border: 1px solid rgba(16, 185, 129, 0.3); animation-direction: reverse;">
+                </div>
+                <div class="avatar" style="border-color: rgba(16, 185, 129, 0.5);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #10b981;">الزمرد الأخضر</h3>
+            <p class="frame-desc" style="color: #34d399;">Emerald Green</p>
+        </div>
+
+        <!-- 4. Ruby Red (الياقوت الأحمر) -->
+        <div class="frame-card" style="border-color: rgba(239, 68, 68, 0.3);">
+            <div class="frame-container">
+                <svg style="position: absolute; width: 100%; height: 100%; z-index: 5;" viewBox="0 0 200 200">
+                    <path d="M 100,15 L 103,25 L 113,27 L 105,33 L 107,43 L 100,37 L 93,43 L 95,33 L 87,27 L 97,25 Z"
+                        fill="#ef4444" class="star" />
+                    <path
+                        d="M 25,100 L 28,108 L 36,110 L 30,115 L 31,123 L 25,118 L 19,123 L 20,115 L 14,110 L 22,108 Z"
+                        fill="#ef4444" class="star" style="animation-delay: 0.5s" />
+                    <path
+                        d="M 175,100 L 178,108 L 186,110 L 180,115 L 181,123 L 175,118 L 169,123 L 170,115 L 164,110 L 172,108 Z"
+                        fill="#ef4444" class="star" style="animation-delay: 1s" />
+                    <path
+                        d="M 100,185 L 103,193 L 111,195 L 105,200 L 106,208 L 100,203 L 94,208 L 95,200 L 89,195 L 97,193 Z"
+                        fill="#ef4444" class="star" style="animation-delay: 1.5s" />
+                </svg>
+                <div class="ring" style="width: 180px; height: 180px; border: 2px solid rgba(239, 68, 68, 0.4);"></div>
+                <div class="avatar" style="border-color: rgba(239, 68, 68, 0.6);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #ef4444;">الياقوت الأحمر</h3>
+            <p class="frame-desc" style="color: #f87171;">Ruby Red</p>
+        </div>
+
+        <!-- 5. Amethyst Purple (الجمشت البنفسجي) -->
+        <div class="frame-card" style="border-color: rgba(168, 85, 247, 0.3);">
+            <div class="frame-container">
+                <svg style="position: absolute; width: 260px; height: 260px; z-index: 15; animation: rotate 25s linear infinite;"
+                    viewBox="0 0 200 200">
+                    <defs>
+                        <path id="purple-path" d="M 100,30 A 70,70 0 1 1 99.9,30" fill="none" />
+                    </defs>
+                    <text font-size="13" fill="#a855f7" font-family="'Scheherazade New', serif" opacity="0.7">
+                        <textPath href="#purple-path">☪ رمضان كريم ☪ رمضان مبارك ☪</textPath>
+                    </text>
+                </svg>
+                <div class="ring" style="width: 175px; height: 175px; border: 2px dashed rgba(168, 85, 247, 0.4);">
+                </div>
+                <div class="avatar" style="border-color: rgba(168, 85, 247, 0.6);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #a855f7;">الجمشت البنفسجي</h3>
+            <p class="frame-desc" style="color: #c084fc;">Amethyst Purple</p>
+        </div>
+
+        <!-- 6. Rose Pink (الوردي الملكي) -->
+        <div class="frame-card" style="border-color: rgba(236, 72, 153, 0.3);">
+            <div class="frame-container">
+                <svg style="position: absolute; width: 230px; height: 230px; z-index: 15; animation: float 5s ease-in-out infinite;"
+                    viewBox="0 0 200 200">
+                    <path d="M 125,30 A 35,35 0 1 1 125,80 A 26,26 0 1 0 125,30 Z" fill="#ec4899"
+                        filter="drop-shadow(0 0 10px #ec4899)" transform="rotate(-15 125 55)" />
+                    <path
+                        d="M 150,40 L 153,46 L 159,48 L 154,52 L 155,58 L 150,54 L 145,58 L 146,52 L 141,48 L 147,46 Z"
+                        fill="#fce7f3" class="star" />
+                </svg>
+                <div class="ring" style="width: 195px; height: 195px; border: 2px solid rgba(236, 72, 153, 0.3);"></div>
+                <div class="avatar" style="border-color: rgba(236, 72, 153, 0.5);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #ec4899;">الوردي الملكي</h3>
+            <p class="frame-desc" style="color: #f9a8d4;">Rose Pink</p>
+        </div>
+
+        <!-- 7. Silver Moonlight (الفضي القمري) -->
+        <div class="frame-card" style="border-color: rgba(203, 213, 225, 0.3);">
+            <div class="frame-container">
+                <svg style="position: absolute; width: 240px; height: 240px; z-index: 15; animation: glow 4s ease-in-out infinite; color: #cbd5e1;"
+                    viewBox="0 0 200 200">
+                    <path d="M 135,35 A 40,40 0 1 1 135,90 A 30,30 0 1 0 135,35 Z" fill="#94a3b8"
+                        filter="drop-shadow(0 0 12px currentColor)" />
+                    <circle cx="100" cy="100" r="88" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"
+                        stroke-dasharray="4 4" />
+                </svg>
+                <div class="avatar" style="border-color: rgba(203, 213, 225, 0.6);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #cbd5e1;">الفضي القمري</h3>
+            <p class="frame-desc" style="color: #94a3b8;">Silver Moonlight</p>
+        </div>
+
+        <!-- 8. Bronze Antique (البرونزي العتيق) -->
+        <div class="frame-card" style="border-color: rgba(180, 83, 9, 0.3);">
+            <div class="frame-container">
+                <div class="ring" style="width: 205px; height: 205px; border: 2px dashed rgba(180, 83, 9, 0.4);"></div>
+                <svg style="position: absolute; width: 250px; height: 250px; z-index: 15;" viewBox="0 0 200 200">
+                    <path d="M 50,50 Q 100,35 150,50" fill="none" stroke="#b45309" stroke-width="2" opacity="0.5" />
+                    <path d="M 50,150 Q 100,165 150,150" fill="none" stroke="#b45309" stroke-width="2" opacity="0.5" />
+                    <circle cx="100" cy="100" r="85" fill="none" stroke="#d97706" stroke-width="1" opacity="0.3" />
+                </svg>
+                <div class="avatar" style="border-color: rgba(180, 83, 9, 0.6);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #d97706;">البرونزي العتيق</h3>
+            <p class="frame-desc" style="color: #f59e0b;">Bronze Antique</p>
+        </div>
+
+        <!-- 9. Turquoise Ocean (الفيروزي المحيطي) -->
+        <div class="frame-card" style="border-color: rgba(6, 182, 212, 0.3);">
+            <div class="frame-container">
+                <svg class="lantern" style="top: -8px; left: 30px; color: #06b6d4;" viewBox="0 0 35 55">
+                    <path d="M 17.5,0 L 17.5,8 M 10,8 L 25,8 L 27,15 L 17.5,22 L 8,15 Z" fill="#164e63"
+                        stroke="currentColor" stroke-width="1" />
+                    <rect x="12" y="15" width="11" height="12" fill="rgba(6, 182, 212, 0.3)" stroke="currentColor"
+                        stroke-width="0.5" />
+                    <circle cx="17.5" cy="20" r="3" fill="#cffafe">
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
+                    </circle>
+                </svg>
+                <div class="ring" style="width: 185px; height: 185px; border: 2px solid rgba(6, 182, 212, 0.4);"></div>
+                <div class="avatar" style="border-color: rgba(6, 182, 212, 0.6);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #06b6d4;">الفيروزي المحيطي</h3>
+            <p class="frame-desc" style="color: #22d3ee;">Turquoise Ocean</p>
+        </div>
+
+        <!-- 10. Coral Sunset (المرجاني الغروبي) -->
+        <div class="frame-card" style="border-color: rgba(251, 113, 133, 0.3);">
+            <div class="frame-container">
+                <svg style="position: absolute; width: 100%; height: 100%; z-index: 5;" viewBox="0 0 200 200">
+                    <path d="M 100,20 L 102,28 L 110,30 L 104,35 L 105,43 L 100,38 L 95,43 L 96,35 L 90,30 L 98,28 Z"
+                        fill="#fb7185" class="star" />
+                    <path
+                        d="M 30,100 L 32,106 L 38,108 L 33,112 L 34,118 L 30,114 L 26,118 L 27,112 L 22,108 L 28,106 Z"
+                        fill="#fb7185" class="star" style="animation-delay: 0.7s" />
+                    <path
+                        d="M 170,100 L 172,106 L 178,108 L 173,112 L 174,118 L 170,114 L 166,118 L 167,112 L 162,108 L 168,106 Z"
+                        fill="#fb7185" class="star" style="animation-delay: 1.2s" />
+                </svg>
+                <div class="ring" style="width: 190px; height: 190px; border: 2px dashed rgba(251, 113, 133, 0.4);">
+                </div>
+                <div class="avatar" style="border-color: rgba(251, 113, 133, 0.5);"></div>
+            </div>
+            <h3 class="frame-title" style="color: #fb7185;">المرجاني الغروبي</h3>
+            <p class="frame-desc" style="color: #fda4af;">Coral Sunset</p>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

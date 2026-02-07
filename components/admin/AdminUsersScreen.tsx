@@ -7,6 +7,8 @@ import UserCard from './UserCard';
 import { UsersIcon, UserPlusIcon, SearchIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
+import GiftFrameModal from './GiftFrameModal';
+
 interface AdminUsersScreenProps {
   users: User[];
   updateUser: (userId: string, updatedData: Partial<User>) => void;
@@ -25,6 +27,7 @@ const AdminUsersScreen: React.FC<AdminUsersScreenProps> = ({ users, updateUser, 
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [blockingUser, setBlockingUser] = useState<User | null>(null);
   const [unblockingUser, setUnblockingUser] = useState<User | null>(null);
+  const [giftingUser, setGiftingUser] = useState<User | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<UserTab>('drivers');
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,8 +114,9 @@ const AdminUsersScreen: React.FC<AdminUsersScreenProps> = ({ users, updateUser, 
     if (deletingUser) { setDeletingUser(null); return true; }
     if (blockingUser) { setBlockingUser(null); return true; }
     if (unblockingUser) { setUnblockingUser(null); return true; }
+    if (giftingUser) { setGiftingUser(null); return true; }
     return false;
-  }, [isAddModalOpen, deletingUser, blockingUser, unblockingUser]);
+  }, [isAddModalOpen, deletingUser, blockingUser, unblockingUser, giftingUser]);
 
   const pushModalState = (modalName: string) => {
     try {
@@ -128,6 +132,7 @@ const AdminUsersScreen: React.FC<AdminUsersScreenProps> = ({ users, updateUser, 
       setDeletingUser(null);
       setBlockingUser(null);
       setUnblockingUser(null);
+      setGiftingUser(null);
     }
   };
 
@@ -138,6 +143,7 @@ const AdminUsersScreen: React.FC<AdminUsersScreenProps> = ({ users, updateUser, 
         setDeletingUser(null);
         setBlockingUser(null);
         setUnblockingUser(null);
+        setGiftingUser(null);
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -163,6 +169,11 @@ const AdminUsersScreen: React.FC<AdminUsersScreenProps> = ({ users, updateUser, 
       updateUser(unblockingUser.id, { status: 'active' });
     }
     closeModal();
+  };
+
+  const handleSaveFrame = (userId: string, frameId: string | undefined) => {
+    updateUser(userId, { specialFrame: frameId || 'none' }); // Use 'none' or undefined logic based on backend
+    setGiftingUser(null);
   };
 
   const handleSaveUser = async (data: any) => {
@@ -263,6 +274,7 @@ const AdminUsersScreen: React.FC<AdminUsersScreenProps> = ({ users, updateUser, 
                   onApprove={isEditable ? (id) => updateUser(id, { status: 'active' }) : undefined}
                   onBlock={isEditable ? (u) => { pushModalState('blockUser'); setBlockingUser(u); } : undefined}
                   onUnblock={isEditable ? (u) => { pushModalState('unblockUser'); setUnblockingUser(u); } : undefined}
+                  onGift={currentUser?.role === 'admin' ? (u) => { pushModalState('giftUser'); setGiftingUser(u); } : undefined}
                   isPrimaryAdmin={user.id === '5'}
                 />
               </div>
@@ -323,6 +335,14 @@ const AdminUsersScreen: React.FC<AdminUsersScreenProps> = ({ users, updateUser, 
           confirmButtonText="فك الحظر"
           cancelButtonText="إلغاء"
           confirmVariant="success"
+        />
+      )}
+
+      {giftingUser && (
+        <GiftFrameModal
+          user={giftingUser}
+          onClose={closeModal}
+          onSave={handleSaveFrame}
         />
       )}
 
