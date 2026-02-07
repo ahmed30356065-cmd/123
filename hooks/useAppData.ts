@@ -201,6 +201,27 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
             }
         });
 
+        // ... existing user subscription ...
+
+        // 🛑 SUSPENSION GUARD: If suspended, DO NOT subscribe to anything else.
+        if (currentUser?.status === 'suspended') {
+            setOrders([]);
+            setMessages([]);
+            setPayments([]);
+            setSliderImages([]);
+            setAuditLogs([]);
+
+            // Clear Cache to prevent flash on restart
+            AppStorage.set('cache_orders', []);
+            AppStorage.set('cache_messages', []);
+            AppStorage.set('cache_slider', []);
+
+            // We ONLY keep 'users' subscription (defined above) to detect when we get reactivated.
+            return () => {
+                unsubUsers();
+            };
+        }
+
         // SMART DATA SUBSCRIPTION FOR ORDERS
         let unsubOrders = () => { };
 
@@ -235,7 +256,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 AppStorage.set('cache_orders', data);
                 setIsOrdersLoaded(true);
             });
-        } else if (currentUser.role === 'user' || currentUser.role === 'customer') {
+        } else if (currentUser.role === 'customer') {
             // 👤 Customer: See only MY orders
             // Note: Storing phone in 'customer.phone' in order object
             unsubOrders = firebaseService.subscribeToQuery('orders', [
@@ -292,6 +313,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 setIsOrdersLoaded(true);
 
                 // DETECT NEW ORDERS - LIGHTNING SPEED
+                pointsConfig; // dummy ref
                 if (unique.length > prevOrdersRef.current && prevOrdersRef.current !== 0) {
                     console.log("[InstantSync] 🔔 New Order Detected!");
                 }
@@ -446,7 +468,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         return () => {
             unsubUsers(); unsubOrders(); unsubMsgs(); unsubPayments(); unsubReset(); unsubSlider(); unsubSettings(); unsubAudit();
         };
-    }, [currentUser?.id, currentUser?.role, appConfig.appVersion]);
+    }, [currentUser?.id, currentUser?.role, currentUser?.status, appConfig.appVersion]);
 
     useEffect(() => {
         if (currentUser) setAndroidRole(currentUser.role, currentUser.id);
