@@ -41,6 +41,13 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
   // Let's enforce Supervisor Permission strictly.
   const canEditFinancials = currentUserRole === 'admin' || (isSupervisor && hasFinancialPermission);
 
+  // EXCEPTION: Delivery Fee is editable by Supervisors who can manage orders, even without advanced financials.
+  const canEditDeliveryFee = currentUserRole === 'admin' || (isSupervisor && currentUserPermissions?.includes('manage_orders'));
+
+
+
+
+
   // Safeguard: order.customer might be null in old records
   const [customer, setCustomer] = useState<Customer>(order.customer || { phone: '', address: '' });
   const [notes, setNotes] = useState(order.notes || '');
@@ -348,7 +355,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
             <div className="space-y-4 animate-fadeIn">
 
               <div className="bg-[#1f2937] p-4 rounded-xl border border-gray-700">
-                <label className={`block text-xs mb-2 font-bold uppercase ${!canEditFinancials ? 'text-gray-600' : 'text-gray-400'}`}>سعر التوصيل (EGP)</label>
+                <label className={`block text-xs mb-2 font-bold uppercase ${!canEditDeliveryFee ? 'text-gray-600' : 'text-gray-400'}`}>سعر التوصيل (EGP)</label>
                 <div className="relative">
                   <input
                     type="tel"
@@ -362,13 +369,13 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
                     }}
                     placeholder="0"
                     dir="ltr"
-                    disabled={!canEditFinancials}
-                    className={`w-full border text-xl font-bold py-3 px-4 pl-12 rounded-xl font-mono ${!canEditFinancials ? 'bg-gray-900 border-gray-800 text-gray-500 cursor-not-allowed' : 'bg-[#111] border-gray-600 text-white focus:border-blue-500 focus:outline-none'}`}
+                    disabled={!canEditDeliveryFee}
+                    className={`w-full border text-xl font-bold py-3 px-4 pl-12 rounded-xl font-mono ${!canEditDeliveryFee ? 'bg-gray-900 border-gray-800 text-gray-500 cursor-not-allowed' : 'bg-[#111] border-gray-600 text-white focus:border-blue-500 focus:outline-none'}`}
                     style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
                   />
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">EGP</span>
                 </div>
-                {!canEditFinancials && <p className="text-[10px] text-red-500 mt-2 font-bold">* لا تملك صلاحية تعديل رسوم التوصيل</p>}
+                {!canEditDeliveryFee && <p className="text-[10px] text-red-500 mt-2 font-bold">* لا تملك صلاحية تعديل رسوم التوصيل</p>}
               </div>
 
               <div className="bg-[#1f2937] p-4 rounded-xl border border-gray-700 flex-1 flex flex-col">
