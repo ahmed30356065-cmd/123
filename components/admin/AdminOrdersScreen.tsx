@@ -459,7 +459,13 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
 
                 editOrder(editingOrder.id, finalData);
                 setEditingOrder(null);
-            }} currentUserRole={currentUser?.role} />}
+                editOrder(editingOrder.id, finalData);
+                setEditingOrder(null);
+            }}
+                currentUserRole={currentUser?.role}
+                currentUserPermissions={permissions} // Pass permissions
+                currentUser={currentUser} // Pass full user object for deeper checks
+            />}
 
             {deletingOrder && (
                 <ConfirmationModal

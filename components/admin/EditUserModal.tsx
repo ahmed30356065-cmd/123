@@ -56,7 +56,7 @@ const PERMISSION_GROUPS: {
                 { id: 'view_reports', label: 'التقارير والإحصائيات', desc: 'الوصول للوحة الإحصائيات' },
                 { id: 'view_wallet', label: 'المحفظة والتسويات', desc: 'إدارة المحافظ المالية للمناديب' },
                 { id: 'view_logs', label: 'سجل المراقبة', desc: 'مشاهدة سجلات النشاط' },
-                { id: 'manage_advanced_financials', label: 'إدارة المدفوعات المتقدمة', desc: 'تعديل الأسعار وحالات الدفع بشكل كامل' },
+                { id: 'manage_advanced_financials', label: 'إدارة الأمور المالية المتقدمة', desc: 'تعديل الأسعار وحالات الدفع والمحفظة' },
             ]
 
         },
@@ -255,7 +255,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
             updatedData.commissionType = commissionType;
             updatedData.incentivesActive = incentivesActive;
             updatedData.dailyLogMode = dailyLogMode;
-            updatedData.maxConcurrentOrders = isLimitUnlimited ? null : maxOrders;
+            updatedData.maxConcurrentOrders = isLimitUnlimited ? undefined : maxOrders;
         }
 
         if (role === 'merchant') {

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Order, User, Customer, OrderStatus, CartItem } from '../../types';
-import { XIcon, CheckCircleIcon, ImageIcon, ChevronLeftIcon, PencilIcon, DollarSignIcon } from '../icons';
+import { Order, User, Customer, OrderStatus, CartItem, SupervisorPermission } from '../../types';
+import { XIcon, CheckCircleIcon, ImageIcon, ChevronLeftIcon, PencilIcon, DollarSignIcon, LockIcon } from '../icons';
 
 interface EditOrderModalProps {
   order: Order;
@@ -16,12 +16,31 @@ interface EditOrderModalProps {
     driverId?: string | null,
     deliveryFee?: number | null,
     items?: CartItem[],
-    totalPrice?: number
+    totalPrice?: number,
+    status?: OrderStatus // Allow status updates if needed
   }) => void;
   currentUserRole?: string;
+  currentUserPermissions?: SupervisorPermission[];
+  currentUser?: User;
 }
 
-const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drivers, onClose, onSave, currentUserRole }) => {
+const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drivers, onClose, onSave, currentUserRole, currentUserPermissions, currentUser }) => {
+
+  // 1. Check if user is Supervisor
+  const isSupervisor = currentUserRole === 'supervisor';
+
+  // 2. Check Permission
+  const hasFinancialPermission = !isSupervisor || (currentUserPermissions?.includes('manage_advanced_financials'));
+
+  // 3. Check Merchant Configuration (Does this merchant allow financial edits?)
+  const selectedMerchantForCheck = merchants.find(m => m.id === order.merchantId);
+  const merchantAllowsFinancials = selectedMerchantForCheck?.canManageAdvancedFinancials !== false; // Default allowed unless explicitly false
+
+  // FINAL DECISION: Can this user edit price/payment?
+  // Admin ALWAYS can. Supervisor needs Permission. Merchant Config is secondary layer if needed (but prompt focused on Supervisor Permission).
+  // Let's enforce Supervisor Permission strictly.
+  const canEditFinancials = currentUserRole === 'admin' || (isSupervisor && hasFinancialPermission);
+
   // Safeguard: order.customer might be null in old records
   const [customer, setCustomer] = useState<Customer>(order.customer || { phone: '', address: '' });
   const [notes, setNotes] = useState(order.notes || '');
@@ -243,23 +262,27 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
                   {items.length === 0 && (
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700 mt-4">
                       <div>
-                        <label className="block text-xs text-red-400 mb-1.5 font-bold">السعر الأصلي (قبل الخصم)</label>
+                        {/* Check Permissions for Price Editing */}
+                        <label className={`block text-xs mb-1.5 font-bold ${!canEditFinancials ? 'text-gray-600' : 'text-red-400'}`}>السعر الأصلي (قبل الخصم)</label>
                         <input
                           type="number"
                           value={basePrice}
                           onChange={(e) => setBasePrice(parseFloat(e.target.value) || 0)}
-                          className={commonInputStyle}
+                          className={`${commonInputStyle} ${!canEditFinancials ? 'opacity-50 cursor-not-allowed bg-gray-900 border-gray-800 text-gray-500' : ''}`}
                           placeholder="0.00"
+                          disabled={!canEditFinancials}
                         />
+                        {!canEditFinancials && <p className="text-[9px] text-red-500 mt-1">* يتطلب صلاحية مالية متقدمة</p>}
                       </div>
                       <div>
-                        <label className="block text-xs text-yellow-500 mb-1.5 font-bold">الخصم</label>
+                        <label className={`block text-xs mb-1.5 font-bold ${!canEditFinancials ? 'text-gray-600' : 'text-yellow-500'}`}>الخصم</label>
                         <input
                           type="number"
                           value={discount}
                           onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                          className={commonInputStyle}
+                          className={`${commonInputStyle} ${!canEditFinancials ? 'opacity-50 cursor-not-allowed bg-gray-900 border-gray-800 text-gray-500' : ''}`}
                           placeholder="0.00"
+                          disabled={!canEditFinancials}
                         />
                       </div>
                     </div>
@@ -279,13 +302,14 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
 
               {/* Discount Input for Products Tab */}
               <div className="bg-[#1f2937] p-3 rounded-xl border border-gray-700 flex justify-between items-center mb-2">
-                <label className="text-xs font-bold text-gray-400">قيمة الخصم</label>
+                <label className={`text-xs font-bold ${!canEditFinancials ? 'text-gray-500' : 'text-gray-400'}`}>قيمة الخصم</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     value={discount}
                     onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                    className="w-24 bg-[#111] border border-gray-600 rounded-lg py-1 px-2 text-white text-center font-bold"
+                    disabled={!canEditFinancials}
+                    className={`w-24 border rounded-lg py-1 px-2 text-center font-bold ${!canEditFinancials ? 'bg-gray-900 border-gray-800 text-gray-500 cursor-not-allowed' : 'bg-[#111] border-gray-600 text-white'}`}
                   />
                   <span className="text-xs text-gray-500">ج.م</span>
                 </div>
@@ -310,7 +334,8 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
                       type="number"
                       value={item.price}
                       onChange={(e) => handleItemPriceChange(idx, e.target.value)}
-                      className="w-full bg-[#111] border border-gray-600 text-white text-sm rounded-lg py-2 text-center focus:border-yellow-500 focus:outline-none font-bold"
+                      disabled={!canEditFinancials}
+                      className={`w-full border text-sm rounded-lg py-2 text-center font-bold ${!canEditFinancials ? 'bg-gray-900 border-gray-800 text-gray-500 cursor-not-allowed' : 'bg-[#111] border-gray-600 text-white focus:border-yellow-500 focus:outline-none'}`}
                     />
                   </div>
                 </div>
@@ -323,7 +348,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
             <div className="space-y-4 animate-fadeIn">
 
               <div className="bg-[#1f2937] p-4 rounded-xl border border-gray-700">
-                <label className="block text-xs text-gray-400 mb-2 font-bold uppercase">سعر التوصيل (EGP)</label>
+                <label className={`block text-xs mb-2 font-bold uppercase ${!canEditFinancials ? 'text-gray-600' : 'text-gray-400'}`}>سعر التوصيل (EGP)</label>
                 <div className="relative">
                   <input
                     type="tel"
@@ -337,11 +362,13 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
                     }}
                     placeholder="0"
                     dir="ltr"
-                    className="w-full bg-[#111] border border-gray-600 text-white text-xl font-bold py-3 px-4 pl-12 rounded-xl focus:border-blue-500 focus:outline-none font-mono"
+                    disabled={!canEditFinancials}
+                    className={`w-full border text-xl font-bold py-3 px-4 pl-12 rounded-xl font-mono ${!canEditFinancials ? 'bg-gray-900 border-gray-800 text-gray-500 cursor-not-allowed' : 'bg-[#111] border-gray-600 text-white focus:border-blue-500 focus:outline-none'}`}
                     style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
                   />
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">EGP</span>
                 </div>
+                {!canEditFinancials && <p className="text-[10px] text-red-500 mt-2 font-bold">* لا تملك صلاحية تعديل رسوم التوصيل</p>}
               </div>
 
               <div className="bg-[#1f2937] p-4 rounded-xl border border-gray-700 flex-1 flex flex-col">

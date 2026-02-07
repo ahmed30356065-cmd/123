@@ -71,6 +71,7 @@ interface SupervisorPanelProps {
   appConfig?: AppConfig;
   currentTheme?: any;
   onUpdateTheme?: (appType: 'driver' | 'merchant' | 'customer' | 'admin', config: any) => void;
+  onOpenPaymentModal?: (order: Order) => void;
 }
 
 const SideMenuItem: React.FC<{ icon: React.ReactNode, label: string, onClick: () => void, isActive?: boolean, danger?: boolean }> = ({ icon, label, onClick, isActive, danger }) => (
@@ -98,6 +99,8 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
   const [statusChangeOrder, setStatusChangeOrder] = useState<Order | null>(null);
   const [assigningDriverOrder, setAssigningDriverOrder] = useState<Order | null>(null);
   const [transferOrder, setTransferOrder] = useState<Order | null>(null);
+
+
   const [statusConfirmation, setStatusConfirmation] = useState<{ order: Order; newStatus: OrderStatus } | null>(null);
 
   const merchants = useMemo(() => props.users.filter(u => u.role === 'merchant'), [props.users]);
@@ -317,6 +320,7 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
                 permissions={userPermissions}
                 onNavigateToAdd={() => setView('add_order')}
                 onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined}
+                onOpenPaymentModal={userPermissions.includes('manage_advanced_financials') ? props.onOpenPaymentModal : undefined}
                 onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined}
                 onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined}
               />
@@ -347,15 +351,15 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
         )}
 
         {view === 'shopping' && (userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) && (
-          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminOrdersScreen {...props} permissions={userPermissions} viewMode="shopping" onNavigateToAdd={() => setView('add_order')} onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined} onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined} onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined} /></PullToRefresh></div>
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminOrdersScreen {...props} permissions={userPermissions} viewMode="shopping" onNavigateToAdd={() => setView('add_order')} onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined} onOpenPaymentModal={userPermissions.includes('manage_advanced_financials') ? props.onOpenPaymentModal : undefined} onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined} onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined} /></PullToRefresh></div>
         )}
 
         {view === 'special' && (userPermissions.includes('view_orders') || userPermissions.includes('manage_orders')) && (
-          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminOrdersScreen {...props} permissions={userPermissions} viewMode="special" onNavigateToAdd={() => setView('add_order')} onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined} onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined} onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined} /></PullToRefresh></div>
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminOrdersScreen {...props} permissions={userPermissions} viewMode="special" onNavigateToAdd={() => setView('add_order')} onOpenStatusModal={userPermissions.includes('manage_orders') ? setStatusChangeOrder : undefined} onOpenPaymentModal={userPermissions.includes('manage_advanced_financials') ? props.onOpenPaymentModal : undefined} onBulkAssign={userPermissions.includes('manage_orders') ? handleBulkAssign : undefined} onBulkDelete={userPermissions.includes('delete_orders') ? handleBulkDelete : undefined} /></PullToRefresh></div>
         )}
 
         {view === 'add_order' && (
-          <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={async (data) => { await props.adminAddOrder(data); }} />
+          <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={async (data) => { await props.adminAddOrder(data as any); }} />
         )}
 
         {view === 'notifications' && (
@@ -379,7 +383,7 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
         )}
 
         {view === 'wallet' && userPermissions.includes('view_wallet') && (
-          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminWalletScreen {...props} /></PullToRefresh></div>
+          <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminWalletScreen {...props} currentUser={props.user} onDeletePayment={() => { }} /></PullToRefresh></div>
         )}
 
         {view === 'logs' && userPermissions.includes('view_logs') && (
