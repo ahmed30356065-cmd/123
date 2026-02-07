@@ -84,6 +84,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
     // Determine if the current viewer is an Admin
     const viewerIsAdmin = currentUser?.role === 'admin';
 
+    // DEBUG LOGGING
+    console.log('[EditUserModal] Viewer Role:', currentUser?.role, 'Is Admin?', viewerIsAdmin);
+    console.log('[EditUserModal] Target User:', user.name, user.role);
+
     const [name, setName] = useState(user.name);
     const [phone, setPhone] = useState(user.phone || '');
     const [address, setAddress] = useState(user.address || '');
@@ -93,7 +97,9 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
     // Password Logic:
     // If Viewer is Admin: Show existing password (if available).
     // If Viewer is Supervisor: Show empty field (they can only set new one).
-    const [password, setPassword] = useState(viewerIsAdmin ? (user.password || '') : '');
+    // DOUBLE CHECK: Ensure we don't accidentally show it if logic fails
+    const initialPassword = (viewerIsAdmin && currentUser?.role === 'admin') ? (user.password || '') : '';
+    const [password, setPassword] = useState(initialPassword);
     const [confirmPassword, setConfirmPassword] = useState(''); // Always empty initially for confirmation
     const [showPassword, setShowPassword] = useState(false);
 
