@@ -1,13 +1,13 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Customer, User } from '../../types';
+import { Customer, User, Order } from '../../types';
 import { ChevronLeftIcon, SearchIcon, PlusIcon, MinusIcon, BuildingStorefrontIcon, UserIcon, PhoneIcon, MapPinIcon, ClipboardListIcon, CheckCircleIcon, XIcon, ChevronDownIcon, GridIcon, UtensilsIcon, ShoppingCartIcon, VodafoneIcon, XCircleIcon, ReceiptIcon, BanknoteIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
 interface AddOrderModalProps {
     merchants: User[];
     onClose: () => void;
-    onSave: (newOrder: any) => Promise<void> | void;
+    onSave: (newOrder: Partial<Order> | Partial<Order>[]) => Promise<void> | void;
     getNewId?: () => Promise<string>;
 }
 
@@ -85,7 +85,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
         const merchant = selectedMerchant;
 
         // Prepare Base Data with Advanced Fields
-        const baseData: any = { customer: { ...customer }, notes, merchantId, merchantName };
+        const baseData: Partial<Order> & Record<string, any> = { customer: { ...customer }, notes, merchantId, merchantName };
 
         // 🛡️ REFACTORED LOGIC START 🛡️
         if (merchant?.canManageOrderDetails) {
@@ -129,16 +129,24 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
                     return;
                 }
                 // Net Price = Input - Discount
-                // We DO NOT set deliveryFee here. It remains undefined.
+                baseData.originalPrice = inputTotal;
+                baseData.discount = discount;
                 baseData.totalPrice = Math.max(0, inputTotal - discount);
             } else {
                 baseData.totalPrice = inputTotal;
             }
 
             // 3. Map Amounts
-            if (paymentOption === 'paid') baseData.paidAmount = inputTotal;
-            else if (paymentOption === 'unpaid') baseData.unpaidAmount = inputTotal;
-            else if (paymentOption === 'vodafone_cash') baseData.cashAmount = inputTotal;
+            if (paymentOption === 'paid') baseData.paidAmount = inputTotal; // Paid full input amount? Or post discount?
+            // Usually 'paidAmount' is what they paid. If they paid 200 and discount is 10, total is 190.
+            // If they paid "original price" 200, that's what we record. 
+            // BUT based on current logic, inputTotal IS the amount entered in the field.
+            // If Discount is separate, InputTotal should probably be the "Original Price".
+            // Let's assume InputTotal is Original Price.
+
+            if (paymentOption === 'paid') baseData.paidAmount = baseData.totalPrice; // They pay the final price
+            else if (paymentOption === 'unpaid') baseData.unpaidAmount = baseData.totalPrice; // They owe the final price
+            else if (paymentOption === 'vodafone_cash') baseData.cashAmount = baseData.totalPrice;
 
         } // End canManageOrderDetails
 
@@ -327,7 +335,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ merchants, onClose, onSav
                                     <button type="button" onClick={() => setPaymentOption('paid')} className={`flex-1 rounded-md text-[10px] font-bold transition-all flex items-center justify-center ${paymentOption === 'paid' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
                                         مدفوع
                                     </button>
-                                    <button type="button" onClick={() => setPaymentOption('vodafone_cash')} className={`flex-1 rounded-md text-[10px] font-bold transition-all flex items-center justify-center ${paymentOption === 'vodafone_cash' ? 'bg-red-800 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
+                                    <button type="button" onClick={() => setPaymentOption('vodafone_cash')} className={`flex-1 rounded-md text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${paymentOption === 'vodafone_cash' ? 'bg-red-800 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}>
+                                        <VodafoneIcon className="w-3 h-3" />
                                         كاش
                                     </button>
                                 </div>

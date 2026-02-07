@@ -214,7 +214,15 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                         ))}
                                         <div className="flex justify-between items-center pt-1 mt-1 border-t border-gray-700/30 font-bold text-xs">
                                             <span className="text-gray-400">الإجمالي:</span>
-                                            <span className="text-white">{(order.items.reduce((s, i) => s + (i.price * i.quantity), 0)).toLocaleString()} ج.م</span>
+                                            <div className="flex items-center gap-2">
+                                                {/* Show Original Price if Discounted */}
+                                                {(order.discount || (order.originalPrice && order.originalPrice > order.totalPrice)) && (
+                                                    <span className="text-red-400 line-through text-[10px]">
+                                                        {((order.originalPrice || (order.totalPrice + (order.discount || 0)))).toLocaleString()}
+                                                    </span>
+                                                )}
+                                                <span className="text-white">{(order.totalPrice).toLocaleString()} ج.م</span>
+                                            </div>
                                         </div>
                                     </>
                                 ) : (

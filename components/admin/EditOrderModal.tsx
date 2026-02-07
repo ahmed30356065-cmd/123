@@ -32,7 +32,15 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
 
   // New state for editing items
   const [items, setItems] = useState<CartItem[]>(order.items || []);
-  const [itemsTotal, setItemsTotal] = useState<number>(order.totalPrice || 0);
+
+  // Base Price Logic
+  // If items exist, base is sum of items. If manual, base is originalPrice (preferred) or totalPrice.
+  const initialBasePrice = (items.length > 0)
+    ? items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    : (order.originalPrice || order.totalPrice || 0);
+
+  const [basePrice, setBasePrice] = useState<number>(initialBasePrice);
+  const [discount, setDiscount] = useState<number>(order.discount || 0);
 
   const [error, setError] = useState('');
 
@@ -43,22 +51,22 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
 
   const commonInputStyle = "w-full px-4 py-3 border border-gray-600 bg-[#111] text-white rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm";
 
-  // Recalculate items total whenever items change
+  // Recalculate base price whenever items change
   useEffect(() => {
     if (items.length > 0) {
       const newTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      setItemsTotal(newTotal);
-    } else {
-      setItemsTotal(0);
+      setBasePrice(newTotal);
     }
+    // If no items, basePrice is manually controlled (we might need an input for it if type is manual)
   }, [items]);
 
-  // Calculate Grand Total (Items + Delivery Fee) immediately for display
+  // Calculate Grand Total (Base - Discount + Fee)
   const grandTotal = useMemo(() => {
     const fee = deliveryFee === '' ? 0 : parseFloat(String(deliveryFee));
     const validFee = isNaN(fee) ? 0 : fee;
-    return itemsTotal + validFee;
-  }, [itemsTotal, deliveryFee]);
+    const priceAfterDiscount = Math.max(0, basePrice - discount);
+    return priceAfterDiscount + validFee;
+  }, [basePrice, discount, deliveryFee]);
 
   const handleItemPriceChange = (index: number, newPrice: string) => {
     const priceValue = parseFloat(newPrice);
@@ -110,14 +118,19 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
       merchantId,
       merchantName,
       driverId: driverId || null, // Send null if empty to unassign
-      deliveryFee: fee
+      deliveryFee: fee,
+      totalPrice: Math.max(0, basePrice - discount),
+      originalPrice: basePrice,
+      discount: discount
     };
 
-    // If shopping order, include updated items and total price
+    // If shopping order, include updated items
     if (order.type === 'shopping_order') {
       updatePayload.items = items;
-      updatePayload.totalPrice = itemsTotal;
+      // totalPrice is already set above
     }
+
+
 
     onSave(updatePayload);
   };
@@ -225,6 +238,32 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
                     <label className="block text-xs text-gray-500 mb-1.5 font-bold">ملاحظات إضافية</label>
                     <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${commonInputStyle} resize-none`}></textarea>
                   </div>
+
+                  {/* Manual Price Editing for Non-Shopping Orders or overrides */}
+                  {items.length === 0 && (
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700 mt-4">
+                      <div>
+                        <label className="block text-xs text-red-400 mb-1.5 font-bold">السعر الأصلي (قبل الخصم)</label>
+                        <input
+                          type="number"
+                          value={basePrice}
+                          onChange={(e) => setBasePrice(parseFloat(e.target.value) || 0)}
+                          className={commonInputStyle}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-yellow-500 mb-1.5 font-bold">الخصم</label>
+                        <input
+                          type="number"
+                          value={discount}
+                          onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                          className={commonInputStyle}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -235,7 +274,21 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ order, merchants, drive
             <div className="space-y-3 animate-fadeIn">
               <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-xl flex justify-between items-center mb-2">
                 <span className="text-yellow-500 text-xs font-bold">يمكنك تعديل أسعار المنتجات مباشرة</span>
-                <span className="text-white font-mono text-sm font-bold bg-yellow-500/20 px-2 py-1 rounded">{itemsTotal.toLocaleString()} ج.م</span>
+                <span className="text-white font-mono text-sm font-bold bg-yellow-500/20 px-2 py-1 rounded">{basePrice.toLocaleString()} ج.م</span>
+              </div>
+
+              {/* Discount Input for Products Tab */}
+              <div className="bg-[#1f2937] p-3 rounded-xl border border-gray-700 flex justify-between items-center mb-2">
+                <label className="text-xs font-bold text-gray-400">قيمة الخصم</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                    className="w-24 bg-[#111] border border-gray-600 rounded-lg py-1 px-2 text-white text-center font-bold"
+                  />
+                  <span className="text-xs text-gray-500">ج.م</span>
+                </div>
               </div>
 
               {items.map((item, idx) => (

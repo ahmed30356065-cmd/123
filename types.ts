@@ -141,6 +141,8 @@ export interface Order {
   merchantName: string;
   items: CartItem[];
   totalPrice: number;
+  originalPrice?: number; // Pre-discount price
+  discount?: number; // Discount amount
   status: OrderStatus;
   deliveryFee?: number;
   regionPrice?: number;

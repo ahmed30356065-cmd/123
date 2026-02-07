@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Order } from '../../types';
-import { XIcon, CheckCircleIcon, DollarSignIcon, CalculatorIcon, CreditCardIcon, BanknoteIcon, ReceiptIcon } from '../icons';
+import { XIcon, CheckCircleIcon, DollarSignIcon, CalculatorIcon, CreditCardIcon, BanknoteIcon, ReceiptIcon, VodafoneIcon } from '../icons';
 
 interface PaymentModalProps {
     order: Order;
@@ -143,7 +143,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                                     : 'bg-[#111] text-gray-400 hover:text-white border border-gray-700'
                                     }`}
                             >
-                                <DollarSignIcon className="w-4 h-4" />
+                                <VodafoneIcon className="w-4 h-4" />
                                 فودافون
                             </button>
                             <button
