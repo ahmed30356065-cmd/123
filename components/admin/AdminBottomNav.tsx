@@ -6,7 +6,7 @@ import {
     RocketIcon, ShoppingCartIcon, GamepadIcon // Added new icons
 } from '../icons';
 
-export type AdminView = 'orders' | 'users' | 'stores' | 'notifications' | 'wallet' | 'messages' | 'settings' | 'slider' | 'customizer' | 'support' | 'games';
+export type AdminView = 'orders' | 'users' | 'stores' | 'notifications' | 'wallet' | 'messages' | 'settings' | 'slider' | 'customizer' | 'support' | 'games' | 'shopping' | 'special';
 
 interface AdminBottomNavProps {
     activeView: AdminView;

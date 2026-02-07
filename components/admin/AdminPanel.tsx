@@ -393,14 +393,18 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         lastScrollY.current = currentScrollY;
     };
 
-    // Restore scroll position when switching back to orders
+    // Restore scroll position when switching back to orders, otherwise scroll to top
     useEffect(() => {
-        if (view === 'orders' && mainScrollRef.current) {
-            requestAnimationFrame(() => {
-                if (mainScrollRef.current) {
-                    mainScrollRef.current.scrollTop = ordersScrollPos.current;
-                }
-            });
+        if (mainScrollRef.current) {
+            if (view === 'orders') {
+                requestAnimationFrame(() => {
+                    if (mainScrollRef.current) {
+                        mainScrollRef.current.scrollTop = ordersScrollPos.current;
+                    }
+                });
+            } else {
+                mainScrollRef.current.scrollTop = 0;
+            }
         }
     }, [view]);
 
@@ -429,6 +433,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                     deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
                     editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
                     adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                    onOpenPaymentModal={handleOpenPaymentModal}
                     onNavigateToAdd={handleNavigateToAdd}
                     onBulkAssign={handleBulkAssign}
                     onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -437,12 +442,12 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                     currentUser={props.user}
                 />
             );
-            case 'reports': return <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} />;
-            case 'add_order': return <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={props.adminAddOrder} getNewId={props.getNewId} />;
+            case 'reports': return <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} />;
+            case 'add_order': return <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={(order) => props.adminAddOrder(order as any)} getNewId={props.getNewId} />;
             case 'users': return <AdminUsersScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} onAdminAddUser={props.adminAddUser} setEditingUser={setEditingUser} onViewUser={setViewingUser} appName={fullAppName} currentUser={props.user} />;
             case 'stores': return <AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} />;
             case 'notifications': return <NotificationsScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} passwordResetRequests={props.passwordResetRequests} resolvePasswordResetRequest={props.resolvePasswordResetRequest} setEditingUser={setEditingUser} pendingOrders={props.orders.filter(o => o.status === OrderStatus.Pending && !o.driverId)} onNavigateToOrders={() => setView('orders')} unreadChats={unreadSupportChats} onNavigateToSupport={() => setView('support')} />;
-            case 'wallet': return <AdminWalletScreen orders={props.orders} users={props.users} payments={props.payments} updateUser={props.updateUser} handleDriverPayment={props.handleDriverPayment} />;
+            case 'wallet': return <AdminWalletScreen orders={props.orders} users={props.users} payments={props.payments} updateUser={props.updateUser} handleDriverPayment={props.handleDriverPayment} onDeletePayment={(id) => firebaseService.deleteData('payments', id)} currentUser={props.user} />;
             case 'messages': return <AdminMessagesScreen users={props.users} onSendMessage={props.sendMessage} messages={props.messages} deleteMessage={props.deleteMessage} />;
             case 'slider': return <SliderSettings images={props.sliderImages} isEnabled={props.sliderConfig.isEnabled} onAddImage={props.onAddSliderImage} onDeleteImage={props.onDeleteSliderImage} onUpdateImage={props.onUpdateSliderImage} onToggleSlider={props.onToggleSlider} merchants={merchants} adminUser={props.user} />;
             case 'customizer': return <AppIconCustomizer currentTheme={props.currentTheme} onUpdateTheme={props.onUpdateTheme} onClose={() => setView('orders')} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} users={props.users} onUpdateUser={props.updateUser} sendNotification={firebaseService.sendExternalNotification} currentUser={props.user} />;
@@ -599,7 +604,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
 
             <main
                 ref={mainScrollRef}
-                className={view === 'add_order' ? "flex-1 bg-[#111] h-full" : isFullScreenMode ? "flex-1 h-full relative" : "flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative"}
+                className={view === 'add_order' ? "flex-1 bg-[#111] h-full" : isFullScreenMode ? "flex-1 h-full relative" : "flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pb-24 relative"}
                 onScroll={!isFullScreenMode ? handleScroll : undefined}
             >
                 <PullToRefresh onRefresh={handleRefresh} className="">

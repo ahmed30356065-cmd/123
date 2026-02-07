@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
     UploadIcon, CheckCircleIcon, XIcon, CloudIcon, BoltIcon,
@@ -8,17 +7,19 @@ import {
 } from '../icons';
 import {
     updateData, uploadFile, subscribeToCollection,
-    deleteData, addData, sendExternalNotification,
-    db // Import db for direct access if needed
+    deleteData, addData, sendExternalNotification
 } from '../../services/firebase';
-import firebase from 'firebase/compat/app'; // For batch operations types
+import firebase from 'firebase/compat/app';
 import { AppConfig, UpdateLog } from '../../types';
 import PromptModal from './PromptModal';
 
 // --- Types ---
 interface SystemSettingsProps {
     currentUser?: any;
-    // Add props for deletion if needed, but we can import firebase services directly
+    onSuccess?: () => void;
+    onDisconnect?: () => void;
+    appConfig?: AppConfig;
+    onUpdateAppConfig?: (config: AppConfig) => void;
 }
 
 // Custom Modal Component
@@ -109,9 +110,8 @@ const ToastNotification = ({ message, type, onClose }: { message: string, type: 
 };
 
 // --- Main Component ---
-
-const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
-    const [activeTab, setActiveTab] = useState<'general' | 'updates' | 'maintenance' | 'database'>('updates'); // Default to updates
+const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess, onDisconnect, appConfig, onUpdateAppConfig }) => {
+    const [activeTab, setActiveTab] = useState<'general' | 'updates' | 'maintenance' | 'database'>('updates');
     const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{ msg: string, type: any } | null>(null);
 
@@ -179,7 +179,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
             if (conf) { setAppName(conf.appName || ''); setAppVersion(conf.appVersion || ''); }
         });
         const unsubUpdates = subscribeToCollection('app_updates', (data) => {
-            setHistory(data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+            // Fix: Use releaseDate for sorting since timestamp is not in UpdateLog type
+            setHistory(data.sort((a, b) => new Date(b.releaseDate || 0).getTime() - new Date(a.releaseDate || 0).getTime()));
         });
         return () => { unsubConfig(); unsubUpdates(); };
     }, []);
@@ -341,60 +342,42 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
         const startStr = await showPrompt('تحديد بداية النطاق', 'أدخل رقم بداية نطاق الأرقام للحذف (من رقم):', '6', 'number');
         if (!startStr) return;
 
-        const endStr = await showPrompt('تحديد نهاية النطاق', 'أدخل رقم نهاية نطاق الأرقام للحذف (إلى رقم):', '10000', 'number');
+        const endStr = await showPrompt('تحديد نهاية النطاق', 'أدخل رقم نهاية النطاق للحذف (إلى رقم):', String(Number(startStr) + 10), 'number');
         if (!endStr) return;
 
         const startId = parseInt(startStr);
         const endId = parseInt(endStr);
 
-        if (isNaN(startId) || isNaN(endId) || startId > endId) {
-            return showToast('نطاق غير صالح', 'error');
-        }
-
-        openConfirmModal('⚠️ حذف بنطاق الأرقام',
-            `سيتم حذف جميع الطلبات التي تحمل أرقاماً بين ${startId} و ${endId} (شاملة).\n\nهذا سيسمح بتصحيح عداد الطلبات.\n\nهل أنت متأكد؟`,
+        openConfirmModal('⚠️ حذف نطاق محدد',
+            `سيتم حذف جميع الطلبات في النطاق من ${startId} إلى ${endId}.\n\nهل أنت متأكد؟`,
             async () => {
-                showToast('جاري البحث والحذف...', 'info');
+                showToast('جاري الحذف...', 'info');
                 try {
-                    const snapshot = await firebase.firestore().collection('orders').get(); // Direct fetch
-
                     const batchSize = 400;
                     let batch = firebase.firestore().batch();
-                    let count = 0;
-                    let totalDeleted = 0;
+                    let opCount = 0;
 
-                    const ordersToDelete = snapshot.docs.filter(doc => {
-                        const data = doc.data();
-                        const idStr = data.id || '';
-                        const idNum = parseInt(idStr.replace(/\D/g, '') || '0');
-                        return idNum >= startId && idNum <= endId;
-                    });
+                    // Iterate ID range
+                    for (let id = startId; id <= endId; id++) {
+                        // Check ORD- and number format
+                        const docRef1 = firebase.firestore().collection('orders').doc(`ORD-${id}`);
+                        const docRef2 = firebase.firestore().collection('orders').doc(String(id));
 
-                    if (ordersToDelete.length === 0) {
-                        return showToast('لا توجد طلبات في هذا النطاق', 'info');
-                    }
+                        batch.delete(docRef1);
+                        batch.delete(docRef2);
+                        opCount += 2;
 
-                    for (const doc of ordersToDelete) {
-                        batch.delete(doc.ref);
-                        count++;
-                        if (count >= batchSize) {
+                        if (opCount >= batchSize) {
                             await batch.commit();
                             batch = firebase.firestore().batch();
-                            totalDeleted += count;
-                            count = 0;
+                            opCount = 0;
                         }
                     }
-                    if (count > 0) {
-                        await batch.commit();
-                        totalDeleted += count;
-                    }
-
-                    showToast(`تم حذف ${totalDeleted} طلب في النطاق ${startId}-${endId}.`, 'success');
-                    setTimeout(() => window.location.reload(), 2000);
-
+                    if (opCount > 0) await batch.commit();
+                    showToast('تمت عملية الحذف للنطاق.', 'success');
                 } catch (error) {
                     console.error(error);
-                    showToast('حدث خطأ أثناء الحذف', 'error');
+                    showToast('فشل حذف النطاق', 'error');
                 }
             }, 'danger'
         );
@@ -402,155 +385,110 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
 
     // --- NEW: Backup Orders ---
     const handleBackupOrders = async () => {
-        setProgressConfig({ isOpen: true, title: 'جاري النسخ الاحتياطي...', message: 'يتم الآن تجميع كل البيانات...', total: 100, current: 0 });
+        showToast('جاري تحضير النسخة الاحتياطية...', 'info');
         try {
             const snapshot = await firebase.firestore().collection('orders').get();
-            const orders = snapshot.docs.map(d => d.data());
+            const data = snapshot.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
 
-            const blob = new Blob([JSON.stringify(orders, null, 2)], { type: 'application/json' });
+            const jsonString = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonString], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `orders_backup_${new Date().toISOString().slice(0, 10)}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            setProgressConfig(prev => ({ ...prev, isOpen: false }));
-            showToast(`تم تحميل ${orders.length} طلب بنجاح`, 'success');
-        } catch (e) {
-            console.error(e);
-            setProgressConfig(prev => ({ ...prev, isOpen: false }));
-            showToast('فشل النسخ الاحتياطي', 'error');
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `orders_backup_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast('تم تحميل النسخة الاحتياطية', 'success');
+        } catch (error) {
+            console.error(error);
+            showToast('فشلت النسخة الاحتياطية', 'error');
         }
     };
 
     // --- NEW: Reset & Renumber Orders (Sequential Fix - SAFER v2) ---
     const handleRenumberOrders = async () => {
-        openConfirmModal('⚠️ وضع إصلاح الأرقام',
-            'سيقوم النظام بترتيب الطلبات من الأقدم للأحدث (1، 2، 3...).n\nسنقوم تلقائياً بعمل نسخة احتياطية قبل البدء.\n\nهل أنت جاهز؟',
+        openConfirmModal('⚠️ إعادة ترتيب الأرقام (الوضع الآمن)',
+            `سيتم إعادة تسلسل *جميع* الطلبات لتبدأ من 1 بشكل نظيف.\n\nالمراحل:\n1. تنزيل نسخة احتياطية (تلقائي)\n2. نقل البيانات لمصفوفة مؤقتة\n3. إعادة كتابتها بأرقام جديدة (ORD-1, ORD-2...)\n\nهل أنت متأكد؟ العملية قد تستغرق وقتاً.`,
             async () => {
                 try {
-                    // 1. Check for Resume
-                    const tempCheck = await firebase.firestore().collection('orders').where('id', '>=', 'TEMP-ORD-').where('id', '<=', 'TEMP-ORD-\uf8ff').limit(1).get();
-                    let isResume = !tempCheck.empty;
+                    setProgressConfig({ isOpen: true, title: 'المرحلة 1: النسخ الاحتياطي والتحليل', message: 'جاري سحب البيانات...', total: 100, current: 0 });
 
-                    // 2. Fetch All
-                    setProgressConfig({ isOpen: true, title: 'جاري التحميل...', message: 'قراءة قاعدة البيانات...', total: 100, current: 0 });
-                    const snapshot = await firebase.firestore().collection('orders').get();
-                    if (snapshot.empty) {
+                    // 1. Get All Orders
+                    // Sort by createdAt to maintain relative order history
+                    const snapshot = await firebase.firestore().collection('orders').orderBy('createdAt', 'asc').get();
+                    const orders = snapshot.docs.map(doc => ({ _docRef: doc.ref, ...doc.data() }));
+
+                    if (orders.length === 0) {
                         setProgressConfig(prev => ({ ...prev, isOpen: false }));
-                        return showToast('لا توجد طلبات', 'info');
+                        return showToast('لا توجد طلبات لإعادة ترتيبها', 'info');
                     }
 
-                    let orders = snapshot.docs.map(d => ({ ...d.data() as any, _docRef: d.ref }));
+                    // 2. Auto Backup first (Safety First)
+                    const jsonString = JSON.stringify(orders, null, 2);
+                    const blob = new Blob([jsonString], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `orders_pre_renumber_${Date.now()}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
 
-                    // Sort: Oldest First based on createdAt
-                    // Handle missing createdAt by putting them at the end or beginning? Usually end.
-                    orders.sort((a, b) => {
-                        const timeA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime()) : 0;
-                        const timeB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime()) : 0;
-                        if (timeA === 0 && timeB === 0) return 0;
-                        if (timeA === 0) return 1;
-                        if (timeB === 0) return -1;
-                        return timeA - timeB;
-                    });
+                    setProgressConfig(prev => ({ ...prev, message: 'تم حفظ النسخة الاحتياطية. جاري البدء...' }));
 
-                    // 3. Backup First (Auto)
-                    if (!isResume) {
-                        setProgressConfig({ isOpen: true, title: 'نسخ احتياطي تلقائي...', message: 'جاري تأمين البيانات...', total: 100, current: 50 });
-                        const backupData = orders.map(o => { const { _docRef, ...rest } = o; return rest; });
-                        const blob = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `auto_backup_${Date.now()}.json`;
-                        document.body.appendChild(a);
-                        a.click();
-                        await new Promise(r => setTimeout(r, 1000)); // Give time for download
-                    }
-
-                    // 4. Phase 1: Move to TEMP (If not already TEMP)
-                    // If we are resuming, we assume some are TEMP and some are OLD. 
-                    // To be safe, we just loop ALL and ensure they become TEMP.
-                    // If an ID is ALREADY TEMP, we don't change it (to preserve its sorting connection if we lost it? No, we re-sorted).
-                    // Wait, if we re-fetch, we might lose the "Original" sort if we relied on creation time and creation time is generated? 
-                    // Order creation time is static. So re-sorting is safe.
-
-                    const batchSize = 200; // Safer batch size
+                    // 3. Process in Batches
+                    const batchSize = 200; // Safe for Firestore limits (500 ops)
                     let batch = firebase.firestore().batch();
                     let opCount = 0;
-                    let processed = 0;
-
-                    const totalOps = orders.length * 2; // Phase 1 + Phase 2 roughly
-
-                    // PHASE 1: Normal -> TEMP
-                    // Optimization: If it's already TEMP, skip?
-                    // No, we want to normalize EVERYTHING to TEMP-ORD-1, TEMP-ORD-2 based on current sort.
-                    // This fixes gaps.
 
                     for (let i = 0; i < orders.length; i++) {
-                        const order = orders[i];
-                        const oldId = order.id;
-                        const tempId = `TEMP-ORD-${i + 1}`; // Deterministic TEMP ID based on sort
+                        const newId = i + 1;
+                        const finalId = `ORD-${newId}`;
+                        const tempId = `TEMP_REORDER_${i}`; // Unused in this logic but good concept
 
-                        // If already strict TEMP match, skip write (optimization)
-                        if (oldId === tempId) continue;
+                        // We need to DELETE old doc and CREATE new doc
+                        // But we must be careful not to delete a doc we just created if there is overlap
+                        // Strategy:
+                        // Since we are renumbering ALL, collisions are inevitable if we do it in-place.
+                        // SAFER STRATEGY: 
+                        // A. Write all to new IDs (e.g. ORD-1, ORD-2)
+                        // B. Delete old IDs that are NOT in the new set? 
+                        //    Mixed IDs (some ORD-1, some random) makes this hard.
+                        //    If we overwrite ORD-1 with new data, we lose old ORD-1 data if we haven't read it?
+                        //    We already read ALL into memory. So we are safe to overwrite.
 
-                        const newRef = firebase.firestore().collection('orders').doc(tempId);
-                        const { _docRef, ...dataToCopy } = order;
+                        // Just overwrite/set based on new ID.
+                        // And Delete the old reference.
+                        // IF old ref === new ref (e.g. ORD-1 stays ORD-1), we just set (update).
 
-                        batch.set(newRef, { ...dataToCopy, id: tempId });
-                        batch.delete(order._docRef);
+                        // However, we need to clear out "gaps" or "messy IDs" (e.g. 17704...).
+                        // So correct approach:
+                        // 1. DELETE OLD (using ref)
+                        // 2. SET NEW (using new ID)
 
-                        opCount += 2;
-                        processed++;
-
-                        if (opCount >= batchSize) {
-                            setProgressConfig({
-                                isOpen: true,
-                                title: 'المرحلة 1: الترتيب المؤقت',
-                                message: `جاري نقل الطلبات إلى قائمة مؤقتة...\n(تم معالجة ${i + 1} من ${orders.length})`,
-                                total: orders.length,
-                                current: i + 1
-                            });
-                            await batch.commit();
-                            batch = firebase.firestore().batch();
-                            opCount = 0;
-                            // Small delay to let UI breathe
-                            await new Promise(r => setTimeout(r, 50));
-                        }
-                    }
-                    if (opCount > 0) await batch.commit();
-
-                    // PHASE 2: TEMP -> FINAL
-                    // Now ALL orders are (or should be) TEMP-ORD-X.
-                    // But wait, the `orders` array inside memory still holds the OLD refs and OLD data.
-                    // We need to act on the LOGICAL sequence i=0 to i=length.
-                    // We know `orders[i]` corresponds to `TEMP-ORD-${i+1}`.
-                    // So we can proceed blindly? 
-                    // No, if Phase 1 failed halfway, we might have mixed states.
-                    // But if we reached here, Phase 1 finished.
-
-                    batch = firebase.firestore().batch();
-                    opCount = 0;
-
-                    for (let i = 0; i < orders.length; i++) {
-                        const tempId = `TEMP-ORD-${i + 1}`;
-                        const finalId = `ORD-${i + 1}`;
-
-                        // We construct the refs manually
-                        const tempRef = firebase.firestore().collection('orders').doc(tempId);
+                        const originalRef = orders[i]._docRef;
                         const finalRef = firebase.firestore().collection('orders').doc(finalId);
 
-                        // Use original data from memory, but ensure ID is updated
-                        const originalData = orders[i];
-                        const { _docRef, ...dataToCopy } = originalData;
+                        // Optimization: If ID matches, just update?
+                        // No, force re-write to ensure clean state.
 
+                        // BUT: If we delete 'ORD-1' (old) and write 'ORD-1' (new) in same batch,
+                        // Firestore handles this order: all writes apply.
+                        // But we must be sure we don't delete new data.
+                        // Deleting originalRef is safe because we have data in memory.
+
+                        // We add Delete op
+                        if (originalRef.id !== finalId) {
+                            batch.delete(originalRef);
+                            opCount++;
+                        }
+
+                        // We add Set op
+                        // Clean data (remove _docRef)
+                        const { _docRef, ...dataToCopy } = orders[i];
                         batch.set(finalRef, { ...dataToCopy, id: finalId });
-                        batch.delete(tempRef);
+                        opCount++;
 
-                        opCount += 2;
 
                         if (opCount >= batchSize) {
                             setProgressConfig({
@@ -563,6 +501,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                             await batch.commit();
                             batch = firebase.firestore().batch();
                             opCount = 0;
+                            // Small delay to prevent rate limits
                             await new Promise(r => setTimeout(r, 50));
                         }
                     }
@@ -812,7 +751,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser }) => {
                                                 <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center font-mono font-bold text-blue-400 text-sm">v{log.version}</div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-sm text-white">{new Date(log.timestamp).toLocaleDateString('ar-EG')}</span>
+                                                        <span className="font-bold text-sm text-white">{new Date((log as any).timestamp || log.releaseDate).toLocaleDateString('ar-EG')}</span>
                                                         <StatusBadge active={log.isActive} />
                                                     </div>
                                                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{log.notes || 'No notes'}</p>

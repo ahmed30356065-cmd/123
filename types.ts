@@ -171,6 +171,7 @@ export interface Order {
   unpaidAmount?: number; // Amount unpaid
   cashAmount?: number; // Cash amount (Vodafone Cash)
   reconciled?: boolean; // Payment reconciliation status
+  customer?: Customer;
 }
 
 export interface Message {
