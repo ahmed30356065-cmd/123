@@ -48,7 +48,7 @@ export interface User {
   role: Role;
   password?: string;
   // Added 'blocked' status
-  status: 'active' | 'pending' | 'inactive' | 'blocked';
+  status: 'active' | 'pending' | 'inactive' | 'blocked' | 'suspended';
   phone?: string;
   email?: string;
   addresses?: string[];

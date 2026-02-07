@@ -401,6 +401,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
                                         { value: 'active', label: 'نشط' },
                                         { value: 'pending', label: 'قيد المراجعة' },
                                         { value: 'inactive', label: 'غير نشط' },
+                                        { value: 'blocked', label: 'محظور' },
+                                        { value: 'suspended', label: 'معلق' },
                                     ] as const).map((s) => (
                                         <button
                                             key={s.value}

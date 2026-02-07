@@ -182,6 +182,18 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                     return;
                 }
 
+                if (updatedMe && updatedMe.status === 'suspended') {
+                    // 🛑 Suspended User Logic: Keep logged in but show NOTHING
+                    setCurrentUser(updatedMe); // Update local user to reflected suspended status
+                    SafeLocalStorage.set('currentUser', firebaseService.deepClean(updatedMe));
+
+                    // CLEAR ALL DATA so the app looks empty
+                    setOrders([]);
+                    setUsers([]); // Only see self effectively
+                    setMessages([]);
+                    return; // Stop processing further
+                }
+
                 if (updatedMe && safeStringify(updatedMe) !== safeStringify(currentUser)) {
                     setCurrentUser(updatedMe);
                     SafeLocalStorage.set('currentUser', firebaseService.deepClean(updatedMe));

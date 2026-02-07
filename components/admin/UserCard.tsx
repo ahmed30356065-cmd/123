@@ -19,6 +19,7 @@ const getStatusText = (status: string) => {
         case 'pending': return 'قيد المراجعة';
         case 'inactive': return 'غير نشط';
         case 'blocked': return 'محظور';
+        case 'suspended': return 'معلق';
         default: return status;
     }
 }
@@ -29,6 +30,7 @@ const getStatusColor = (status: string) => {
         case 'pending': return 'yellow';
         case 'inactive': return 'gray';
         case 'blocked': return 'red';
+        case 'suspended': return 'orange';
         default: return 'gray';
     }
 }
@@ -47,7 +49,7 @@ const getRoleBadge = (role: string) => {
 // Reuse the Frame Style logic (duplicated to avoid circular deps for now, or could be utils)
 const getFrameContainerClass = (type?: string) => {
     if (type?.startsWith('data:') || type?.startsWith('http')) return 'p-0';
-    switch(type) {
+    switch (type) {
         case 'gold': return 'p-[2px] bg-gradient-to-tr from-[#BF953F] via-[#FCF6BA] to-[#B38728] shadow-[0_0_8px_rgba(252,246,186,0.4)]';
         case 'neon': return 'p-[2px] bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_8px_rgba(34,211,238,0.5)]';
         case 'royal': return 'p-[2px] bg-gradient-to-bl from-indigo-900 via-purple-500 to-indigo-900 shadow-sm border border-purple-500/30';
@@ -66,13 +68,13 @@ const getBadgeIcon = (type?: string) => {
             </div>
         );
     }
-    
-    switch(type) {
+
+    switch (type) {
         case 'verified': return <VerifiedIcon className="w-3 h-3 text-blue-400" />;
         case 'vip': return <CrownIcon className="w-3 h-3 text-yellow-400" />;
         case 'star': return <StarIcon className="w-3 h-3 text-purple-400" />;
         case 'popular': return <RocketIcon className="w-3 h-3 text-red-400" />;
-        case 'shield': 
+        case 'shield':
         case 'tier-1':
         case 'tier-2':
         case 'tier-3':
@@ -108,11 +110,11 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
         try {
             const d = new Date(user.createdAt);
             if (isNaN(d.getTime())) return { dateStr: '--', timeStr: '--', dayStr: '' };
-            
+
             const dayStr = d.toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long' });
             const dateStr = d.toLocaleDateString('ar-EG-u-nu-latn', { year: 'numeric', month: 'short', day: 'numeric' });
             const timeStr = d.toLocaleTimeString('ar-EG-u-nu-latn', { hour: 'numeric', minute: 'numeric' });
-            
+
             return { dateStr, timeStr, dayStr };
         } catch (e) {
             return { dateStr: '--', timeStr: '--', dayStr: '' };
@@ -123,30 +125,30 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
     const roleStyle = getRoleBadge(user.role);
     const frameClass = getFrameContainerClass(user.specialFrame);
     const isBlocked = user.status === 'blocked';
-    
+
     return (
         <div className={`group relative rounded-2xl border shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full ${isBlocked ? 'bg-red-950/20 border-red-500/30' : 'bg-gray-800 border-gray-700/50 hover:border-gray-600 hover:shadow-xl'}`}>
             {/* Status Strip */}
             <div className={`absolute top-0 right-0 w-1.5 h-full bg-${statusColor}-500 opacity-80`}></div>
-            
+
             <div className="p-5 flex-1">
                 {/* Header */}
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                         {/* Avatar with Frame */}
                         <div className={`relative w-14 h-14 flex items-center justify-center rounded-full ${!isCustomFrame(user.specialFrame) ? frameClass : ''} ${isBlocked ? 'grayscale' : ''}`}>
-                             {isCustomFrame(user.specialFrame) && (
+                            {isCustomFrame(user.specialFrame) && (
                                 <img src={user.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-[1.6] pointer-events-none" alt="frame" />
-                             )}
-                             <div className={`${isCustomFrame(user.specialFrame) ? 'w-[85%] h-[85%]' : 'w-full h-full'} rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800 relative z-0`}>
+                            )}
+                            <div className={`${isCustomFrame(user.specialFrame) ? 'w-[85%] h-[85%]' : 'w-full h-full'} rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800 relative z-0`}>
                                 {user.storeImage ? (
                                     <img src={user.storeImage} alt={user.name} className="w-full h-full object-cover" />
                                 ) : (
                                     <UserIcon className="w-7 h-7 text-gray-400" />
                                 )}
-                             </div>
+                            </div>
                         </div>
-                        
+
                         <div>
                             <div className="flex items-center gap-1.5">
                                 <h3 className="font-bold text-white text-lg leading-tight truncate max-w-[120px]" title={user.name}>{user.name}</h3>
@@ -175,7 +177,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
                             <span className="truncate">{user.address}</span>
                         </div>
                     )}
-                    
+
                     {/* Date & Time Section */}
                     <div className="pt-2 mt-2 border-t border-gray-700/50 flex flex-col gap-1.5">
                         <div className="flex items-center justify-between text-[10px] text-gray-400">
@@ -201,7 +203,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
                             قبول
                         </button>
                     )}
-                    
+
                     {/* Block/Unblock Logic */}
                     {isBlocked ? (
                         onUnblock && !isPrimaryAdmin && (
@@ -215,20 +217,20 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
                             </button>
                         )
                     ) : (
-                         onBlock && !isPrimaryAdmin && (
-                             <button
-                                 onClick={() => onBlock(user)}
-                                 className="p-2 text-gray-400 hover:text-white hover:bg-red-600 rounded-lg transition-colors border border-gray-600 hover:border-red-500 clickable"
-                                 title="حظر المستخدم"
-                             >
-                                 <BanIcon className="w-4 h-4" />
-                             </button>
-                         )
+                        onBlock && !isPrimaryAdmin && (
+                            <button
+                                onClick={() => onBlock(user)}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-red-600 rounded-lg transition-colors border border-gray-600 hover:border-red-500 clickable"
+                                title="حظر المستخدم"
+                            >
+                                <BanIcon className="w-4 h-4" />
+                            </button>
+                        )
                     )}
 
                     {onEdit && (
-                        <button 
-                            onClick={() => onEdit(user)} 
+                        <button
+                            onClick={() => onEdit(user)}
                             className="p-2 text-blue-400 hover:text-white hover:bg-blue-600 rounded-lg transition-colors border border-blue-500/20 bg-blue-500/10 clickable"
                             title="تعديل"
                         >
@@ -239,8 +241,8 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
 
                 {/* Left Side (Delete) */}
                 {onDelete && !isPrimaryAdmin && (
-                    <button 
-                        onClick={() => onDelete(user)} 
+                    <button
+                        onClick={() => onDelete(user)}
                         className="p-2 text-red-400 hover:text-white hover:bg-red-600 rounded-lg transition-colors border border-blue-500/20 bg-red-500/10 mr-2 clickable"
                         title="حذف"
                     >
