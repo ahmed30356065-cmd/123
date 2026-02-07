@@ -4,6 +4,7 @@ import { Role } from '../types';
 import { CameraIcon, UploadIcon, CheckCircleIcon, MapPinIcon, ChevronDownIcon, UserIcon, PhoneIcon, EyeIcon, EyeOffIcon, ClockIcon, BriefcaseIcon, UtensilsIcon, ShoppingCartIcon, PlusIcon, GridIcon, BoltIcon, TruckIconV2, XIcon, MailIcon, ChevronRightIcon, BuildingStorefrontIcon } from './icons';
 import { NativeBridge } from '../utils/NativeBridge';
 import useAndroidBack from '../hooks/useAndroidBack';
+import ImageCropperModal from './common/ImageCropperModal';
 
 interface SignUpScreenProps {
     onSignUp: (user: any) => Promise<{ success: boolean; message: string }>;
@@ -94,6 +95,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUp, onBackToLogin }) 
     const [isImageProcessing, setIsImageProcessing] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+    // Cropper State
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const [tempImage, setTempImage] = useState<string | null>(null);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleRoleSelect = (selectedRole: 'driver' | 'merchant' | 'customer') => {
@@ -148,22 +153,34 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUp, onBackToLogin }) 
         });
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setIsImageProcessing(true);
-            try {
-                const compressedImage = await resizeImage(file);
-                // تأخير بسيط لإظهار الأنيميشن بشكل جمالي
-                setTimeout(() => {
-                    setImage(compressedImage);
-                    setIsImageProcessing(false);
-                }, 800);
-            } catch (error) {
-                console.error("Error resizing image:", error);
+            const reader = new FileReader();
+            reader.onload = () => {
+                setTempImage(reader.result as string);
+                setIsCropperOpen(true);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleCropComplete = async (croppedBlob: Blob) => {
+        setIsImageProcessing(true);
+        try {
+            // Convert Blob to Base64
+            const reader = new FileReader();
+            reader.readAsDataURL(croppedBlob);
+            reader.onloadend = () => {
+                const base64data = reader.result as string;
+                setImage(base64data);
                 setIsImageProcessing(false);
-                setError("حدث خطأ أثناء معالجة الصورة، يرجى المحاولة مرة أخرى.");
-            }
+            };
+        } catch (error) {
+            console.error("Error processing cropped image:", error);
+            setIsImageProcessing(false);
+            setError("حدث خطأ أثناء معالجة الصورة المقصوصة.");
         }
     };
 
@@ -375,6 +392,17 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onSignUp, onBackToLogin }) 
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-red-600/10 rounded-full blur-[100px]"></div>
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[100px]"></div>
             </div>
+
+
+            {/* Cropper Modal */}
+            {isCropperOpen && tempImage && (
+                <ImageCropperModal
+                    imageSrc={tempImage}
+                    onCropComplete={handleCropComplete}
+                    onClose={() => { setIsCropperOpen(false); setTempImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    aspectRatio={1} // Always square for profile/store
+                />
+            )}
 
             {isCategoryModalOpen && (
                 <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-fadeIn p-0 sm:p-4" onClick={() => setIsCategoryModalOpen(false)}>

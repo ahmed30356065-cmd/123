@@ -14,6 +14,7 @@ import { HomeIcon, ShoppingCartIcon, UserIcon, LogoutIconV2, MessageSquareIcon, 
 import { setAndroidRole, NativeBridge } from '../../utils/NativeBridge';
 import useAndroidBack from '../../hooks/useAndroidBack';
 import ConfirmationModal from '../admin/ConfirmationModal';
+import ImageCropperModal from '../common/ImageCropperModal';
 import * as firebaseService from '../../services/firebase';
 
 interface CustomerAppProps {
@@ -312,7 +313,91 @@ const ProfileMenuItem: React.FC<{ icon: React.ReactNode, label: string, subLabel
 const InfoModal: React.FC<{ title: string; content: string; onClose: () => void }> = ({ title, content, onClose }) => (<div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}> <div className="bg-[#1e293b] w-full max-w-md rounded-3xl border border-gray-700 shadow-2xl overflow-hidden animate-pop-in flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}> <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-[#151e2d]"> <h3 className="text-lg font-bold text-white">{title}</h3> <button onClick={onClose} className="p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors"><XIcon className="w-5 h-5" /></button> </div> <div className="p-6 overflow-y-auto text-gray-300 text-sm leading-relaxed whitespace-pre-wrap"> {content} </div> </div> </div>);
 const AddressesManagementModal: React.FC<{ user: User; onClose: () => void; onUpdate: (addresses: string[]) => void }> = ({ user, onClose, onUpdate }) => { const initialAddress = (user.addresses && user.addresses.length > 0) ? user.addresses[0] : (user.address || ''); const [address, setAddress] = useState(initialAddress); const [isEditing, setIsEditing] = useState(false); const [editValue, setEditValue] = useState(''); const handleSaveEdit = () => { if (!editValue.trim()) return; setAddress(editValue); onUpdate([editValue]); setIsEditing(false); }; return (<div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}> <div className="bg-[#1e293b] w-full max-w-md rounded-[2rem] border border-gray-700 shadow-2xl overflow-hidden animate-pop-in flex flex-col" onClick={e => e.stopPropagation()}> <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-[#151e2d]"> <h3 className="text-lg font-bold text-white flex items-center gap-2"><MapPinIcon className="w-5 h-5 text-red-500" />عنوان التوصيل</h3> <button onClick={onClose} className="p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors"><XIcon className="w-5 h-5" /></button> </div> <div className="p-6"> <p className="text-xs text-gray-400 mb-3 font-medium">العنوان المسجل (يستخدم لتوصيل الطلبات)</p> <div className="bg-[#0f172a] rounded-xl p-4 border border-gray-700 group transition-all hover:border-gray-600 shadow-inner"> {isEditing ? (<div className="space-y-3 animate-fade-slide-up"> <textarea value={editValue} onChange={(e) => setEditValue(e.target.value)} className="w-full bg-[#1e293b] border border-gray-600 rounded-lg p-3 text-white text-sm focus:border-red-500 outline-none resize-none h-28 leading-relaxed" placeholder="تفاصيل العنوان..." autoFocus /> <div className="flex gap-2"> <button onClick={handleSaveEdit} className="flex-1 bg-green-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-green-700 transition-colors shadow-lg">حفظ التغييرات</button> <button onClick={() => setIsEditing(false)} className="flex-1 bg-gray-700 text-gray-300 py-2.5 rounded-lg text-xs font-bold hover:bg-gray-600 transition-colors">إلغاء</button> </div> </div>) : (<div className="flex justify-between items-start gap-3"> <div className="flex-1"> {address ? <p className="text-sm text-gray-200 leading-relaxed font-medium">{address}</p> : <p className="text-sm text-red-400 italic font-medium flex items-center gap-2"><ExclamationTriangleIcon className="w-4 h-4" />لا يوجد عنوان مسجل</p>} </div> <button onClick={() => { setIsEditing(true); setEditValue(address); }} className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors flex-shrink-0" title="تعديل العنوان"><PencilIcon className="w-4 h-4" /></button> </div>)} </div> </div> </div> </div>); };
 const ChangePasswordModal: React.FC<{ onClose: () => void; onSave: (password: string) => void }> = ({ onClose, onSave }) => { const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState(''); const [show, setShow] = useState(false); const [error, setError] = useState(''); const handleSubmit = () => { if (password.length < 6) { setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; } if (password !== confirm) { setError('كلمات المرور غير متطابقة'); return; } onSave(password); onClose(); }; return (<div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}> <div className="bg-[#1e293b] w-full max-w-sm rounded-3xl border border-gray-700 shadow-2xl p-6 animate-pop-in" onClick={e => e.stopPropagation()}> <h3 className="text-lg font-bold text-white mb-4">تغيير كلمة المرور</h3> <div className="space-y-3"> <div className="relative"> <input type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور الجديدة" className="w-full bg-[#0f172a] border border-gray-600 rounded-xl px-4 py-3 text-white outline-none focus:border-red-500" /> <button onClick={() => setShow(!show)} className="absolute left-3 top-3.5 text-gray-500">{show ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}</button> </div> <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="تأكيد كلمة المرور" className="w-full bg-[#0f172a] border border-gray-600 rounded-xl px-4 py-3 text-white outline-none focus:border-red-500" /> {error && <p className="text-red-400 text-xs font-bold">{error}</p>} <button onClick={handleSubmit} className="w-full bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-colors">حفظ</button> </div> </div> </div>); };
-const EditProfileModal: React.FC<{ user: User; onClose: () => void; onSave: (name: string, phone: string, image?: string) => void }> = ({ user, onClose, onSave }) => { const [name, setName] = useState(user.name); const [phone, setPhone] = useState(user.phone || ''); const [image, setImage] = useState<string | null>(user.storeImage || null); const fileInputRef = useRef<HTMLInputElement>(null); const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => { const img = new Image(); img.src = reader.result as string; img.onload = () => { const canvas = document.createElement('canvas'); const MAX_WIDTH = 1024; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); if (ctx) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, canvas.width, canvas.height); setImage(canvas.toDataURL('image/jpeg', 0.9)); } }; }; reader.readAsDataURL(file); } }; return (<div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}> <div className="bg-[#1e293b] w-full max-w-sm rounded-[2rem] border border-gray-700 shadow-2xl overflow-hidden animate-pop-in" onClick={e => e.stopPropagation()}> <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-[#151e2d]"> <h3 className="text-lg font-bold text-white flex items-center gap-2"><SettingsIcon className="w-5 h-5 text-blue-500" />تعديل البيانات</h3> <button onClick={onClose} className="p-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors"><XIcon className="w-5 h-5" /></button> </div> <div className="p-6 space-y-5"> <div className="flex flex-col items-center mb-2"> <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}> <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#0f172a] shadow-lg relative bg-gray-800 flex items-center justify-center"> {image ? (<img src={image} alt="Profile" className="w-full h-full object-cover" />) : (<UserIcon className="w-10 h-10 text-gray-500" />)} <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"> <CameraIcon className="w-8 h-8 text-white" /> </div> </div> <div className="absolute bottom-0 right-0 bg-blue-600 rounded-full p-1.5 border-2 border-[#1e293b] shadow-md"> <CameraIcon className="w-4 h-4 text-white" /> </div> </div> <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /> <p className="text-xs text-gray-500 mt-2">اضغط لتغيير الصورة</p> </div> <div> <label className="block text-xs font-bold text-gray-400 mb-2">الاسم الكامل</label> <div className="relative"> <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-[#0f172a] border border-gray-600 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all pl-10" /> <UserIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-500" /> </div> </div> <div> <label className="block text-xs font-bold text-gray-400 mb-2">رقم الهاتف</label> <div className="relative"> <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-[#0f172a] border border-gray-600 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all pl-10 text-right placeholder:text-right font-mono" dir="rtl" /> <PhoneIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-500" /> </div> <p className="text-[10px] text-yellow-500/80 mt-2 bg-yellow-500/10 p-2 rounded-lg border border-yellow-500/20">تنبيه: تغيير رقم الهاتف يتطلب مراجعة من الإدارة قبل تفعيله.</p> </div> <button onClick={() => onSave(name, phone, image || undefined)} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all mt-2">حفظ التغييرات</button> </div> </div> </div>); };
+const EditProfileModal: React.FC<{ user: User; onClose: () => void; onSave: (name: string, phone: string, image?: string) => void }> = ({ user, onClose, onSave }) => {
+    const [name, setName] = useState(user.name);
+    const [phone, setPhone] = useState(user.phone || '');
+    const [image, setImage] = useState<string | null>(user.storeImage || null);
+
+    // Cropper State
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const [tempImage, setTempImage] = useState<string | null>(null);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                setTempImage(reader.result as string);
+                setIsCropperOpen(true);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleCropComplete = async (croppedBlob: Blob) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(croppedBlob);
+        reader.onloadend = () => {
+            setImage(reader.result as string);
+            setIsCropperOpen(false);
+            setTempImage(null);
+        };
+    };
+
+    return (
+        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+            <div className="bg-[#1e293b] w-full max-w-sm rounded-[2rem] border border-gray-700 shadow-2xl overflow-hidden animate-pop-in" onClick={e => e.stopPropagation()}>
+                <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-[#151e2d]">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><SettingsIcon className="w-5 h-5 text-blue-500" />تعديل البيانات</h3>
+                    <button onClick={onClose} className="p-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors"><XIcon className="w-5 h-5" /></button>
+                </div>
+                <div className="p-6 space-y-5">
+                    <div className="flex flex-col items-center mb-2">
+                        <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
+                            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#0f172a] shadow-lg relative bg-gray-800 flex items-center justify-center">
+                                {image ? (<img src={image} alt="Profile" className="w-full h-full object-cover" />) : (<UserIcon className="w-10 h-10 text-gray-500" />)}
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <CameraIcon className="w-8 h-8 text-white" />
+                                </div>
+                            </div>
+                            <div className="absolute bottom-0 right-0 bg-blue-600 rounded-full p-1.5 border-2 border-[#1e293b] shadow-md">
+                                <CameraIcon className="w-4 h-4 text-white" />
+                            </div>
+                        </div>
+                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                        <p className="text-xs text-gray-500 mt-2">اضغط لتغيير الصورة</p>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-2">الاسم الكامل</label>
+                        <div className="relative">
+                            <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-[#0f172a] border border-gray-600 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all pl-10" />
+                            <UserIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-500" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-2">رقم الهاتف</label>
+                        <div className="relative">
+                            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-[#0f172a] border border-gray-600 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all pl-10 text-right placeholder:text-right font-mono" dir="rtl" />
+                            <PhoneIcon className="absolute left-3 top-3.5 w-5 h-5 text-gray-500" />
+                        </div>
+                        <p className="text-[10px] text-yellow-500/80 mt-2 bg-yellow-500/10 p-2 rounded-lg border border-yellow-500/20">تنبيه: تغيير رقم الهاتف يتطلب مراجعة من الإدارة قبل تفعيله.</p>
+                    </div>
+                    <button onClick={() => onSave(name, phone, image || undefined)} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all mt-2">حفظ التغييرات</button>
+                </div>
+            </div>
+            {isCropperOpen && tempImage && (
+                <ImageCropperModal
+                    imageSrc={tempImage}
+                    onCropComplete={handleCropComplete}
+                    onClose={() => { setIsCropperOpen(false); setTempImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    aspectRatio={1}
+                />
+            )}
+        </div>
+    );
+};
 const ProfileStatusModal: React.FC<{ type: 'success' | 'pending'; onClose: () => void }> = ({ type, onClose }) => { return (<div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}> <div className="bg-[#1e293b] w-full max-w-sm rounded-[2rem] border border-gray-700 shadow-2xl p-8 text-center animate-pop-in" onClick={e => e.stopPropagation()}> <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg ${type === 'success' ? 'bg-green-500/20 text-green-500 ring-4 ring-green-500/10' : 'bg-yellow-500/20 text-yellow-500 ring-4 ring-yellow-500/10'}`}> {type === 'success' ? <CheckCircleIcon className="w-10 h-10 animate-pulse" /> : <ClockIcon className="w-10 h-10 animate-pulse" />} </div> <h3 className="text-xl font-black text-white mb-2">{type === 'success' ? 'تم التحديث بنجاح' : 'الطلب قيد المراجعة'}</h3> <p className="text-gray-400 text-sm leading-relaxed mb-8">{type === 'success' ? 'تم تحديث اسمك في الملف الشخصي بنجاح.' : 'تم إرسال طلب تغيير رقم الهاتف إلى الإدارة للمراجعة. سيتم التواصل معك قريباً لتأكيد التغيير.'}</p> <button onClick={onClose} className={`w-full font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-white ${type === 'success' ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 hover:bg-gray-600'}`}>حسناً، فهمت</button> </div> </div>); };
 
 type CustomerView = 'landing' | 'store-list' | 'store' | 'cart' | 'orders' | 'messages' | 'special-request' | 'favorites' | 'coming-soon' | 'profile';
@@ -337,6 +422,10 @@ const CustomerApp: React.FC<any> = ({ user, merchants, orders, onPlaceOrder, onL
     const [supportConfig, setSupportConfig] = useState<SupportConfig | undefined>(undefined);
     const [initialCategory, setInitialCategory] = useState<string | undefined>(undefined);
     const [unreadSupportMessages, setUnreadSupportMessages] = useState<ChatMessage[]>([]);
+
+    // Cropper State for Profile Screen
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const [tempImage, setTempImage] = useState<string | null>(null);
 
     const appVersion = appConfig?.appVersion || 'VERSION 1.0.5';
     const appName = appConfig?.appName || 'GOO NOW';
@@ -425,27 +514,23 @@ const CustomerApp: React.FC<any> = ({ user, merchants, orders, onPlaceOrder, onL
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                const img = new Image();
-                img.src = reader.result as string;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1024;
-                    const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                        ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'high';
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        const result = canvas.toDataURL('image/jpeg', 0.9);
-                        onUpdateUser(user.id, { storeImage: result });
-                    }
-                };
+            reader.onload = () => {
+                setTempImage(reader.result as string);
+                setIsCropperOpen(true);
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const handleCropComplete = async (croppedBlob: Blob) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(croppedBlob);
+        reader.onloadend = () => {
+            const result = reader.result as string;
+            onUpdateUser(user.id, { storeImage: result });
+            setIsCropperOpen(false);
+            setTempImage(null);
+        };
     };
 
     const handleProfileUpdate = (name: string, phone: string, image?: string) => {
@@ -757,6 +842,15 @@ const CustomerApp: React.FC<any> = ({ user, merchants, orders, onPlaceOrder, onL
             )}
 
             {view !== 'store' && view !== 'special-request' && view !== 'coming-soon' && renderBottomNav()}
+
+            {isCropperOpen && tempImage && (
+                <ImageCropperModal
+                    imageSrc={tempImage}
+                    onCropComplete={handleCropComplete}
+                    onClose={() => { setIsCropperOpen(false); setTempImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    aspectRatio={1}
+                />
+            )}
         </div>
     );
 };

@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { User } from '../types';
-import { XIcon, LogoutIconV2, SettingsIcon, ChevronLeftIcon, UserIcon, PhoneIcon } from './icons';
+import { XIcon, LogoutIconV2, SettingsIcon, ChevronLeftIcon, UserIcon, PhoneIcon, CameraIcon, UploadIcon } from './icons';
+import ImageCropperModal from './common/ImageCropperModal';
 
 interface MerchantProfileModalProps {
     merchant: User;
@@ -18,6 +19,44 @@ const MerchantProfileModal: React.FC<MerchantProfileModalProps> = ({ merchant, o
     const [confirmPassword, setConfirmPassword] = useState('');
     const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
+    // Image Upload State
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const [tempImage, setTempImage] = useState<string | null>(null);
+    const [isImageProcessing, setIsImageProcessing] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                setTempImage(reader.result as string);
+                setIsCropperOpen(true);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleCropComplete = async (croppedBlob: Blob) => {
+        setIsImageProcessing(true);
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(croppedBlob);
+            reader.onloadend = () => {
+                const base64data = reader.result as string;
+                onUpdateUser(merchant.id, { storeImage: base64data });
+                setIsImageProcessing(false);
+                setIsCropperOpen(false);
+                setTempImage(null);
+                setMessage({ text: 'تم تحديث صورة المتجر بنجاح', type: 'success' });
+            };
+        } catch (error) {
+            console.error("Error cropping:", error);
+            setIsImageProcessing(false);
+            setMessage({ text: 'حدث خطأ أثناء معالجة الصورة', type: 'error' });
+        }
+    };
+
     const handleSavePassword = () => {
         if (!newPassword || newPassword.length < 6) {
             setMessage({ text: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.', type: 'error' });
@@ -30,9 +69,9 @@ const MerchantProfileModal: React.FC<MerchantProfileModalProps> = ({ merchant, o
 
         // Update user password immediately in the database/state
         onUpdateUser(merchant.id, { password: newPassword });
-        
+
         setMessage({ text: 'تم تحديث كلمة المرور بنجاح.', type: 'success' });
-        
+
         // Reset fields and return to menu after a short delay
         setTimeout(() => {
             setView('menu');
@@ -54,7 +93,7 @@ const MerchantProfileModal: React.FC<MerchantProfileModalProps> = ({ merchant, o
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4 animate-fadeIn" onClick={onClose}>
             <div className="bg-[#2A2A2A] rounded-xl shadow-2xl w-full max-w-sm text-white overflow-hidden border border-gray-700" onClick={(e) => e.stopPropagation()}>
-                
+
                 {/* Header */}
                 <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-[#222]">
                     <div className="flex items-center">
@@ -78,25 +117,41 @@ const MerchantProfileModal: React.FC<MerchantProfileModalProps> = ({ merchant, o
                         <div className="space-y-6">
                             {/* User Info Card */}
                             <div className="flex items-center space-x-4 space-x-reverse bg-gray-800 p-4 rounded-lg border border-gray-700">
-                                <div className="w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border border-gray-600">
+                                <div
+                                    onClick={() => !isImageProcessing && fileInputRef.current?.click()}
+                                    className="relative w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border border-gray-600 cursor-pointer group"
+                                >
+                                    {isImageProcessing ? (
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        </div>
+                                    ) : (
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                            <CameraIcon className="w-6 h-6 text-white" />
+                                        </div>
+                                    )}
+
                                     {merchant.storeImage ? (
                                         <img src={merchant.storeImage} alt={merchant.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <UserIcon className="w-8 h-8 text-gray-300" />
                                     )}
                                 </div>
+                                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+
                                 <div>
                                     <p className="text-lg font-bold text-white">{merchant.name}</p>
                                     <div className="flex items-center text-sm text-gray-400 mt-1">
                                         <PhoneIcon className="w-3 h-3 ml-1" />
                                         <span className="font-mono">{merchant.phone}</span>
                                     </div>
+                                    <p className="text-xs text-blue-400 mt-1 cursor-pointer hover:underline" onClick={() => fileInputRef.current?.click()}>تغيير الصورة</p>
                                 </div>
                             </div>
 
                             {/* Menu Actions */}
                             <div className="space-y-3">
-                                <button 
+                                <button
                                     onClick={() => setView('settings')}
                                     className="w-full flex items-center justify-between p-4 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-700 group"
                                 >
@@ -109,7 +164,7 @@ const MerchantProfileModal: React.FC<MerchantProfileModalProps> = ({ merchant, o
                                     <ChevronLeftIcon className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
                                 </button>
 
-                                <button 
+                                <button
                                     onClick={handleLogoutClick}
                                     className="w-full flex items-center justify-between p-4 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/30 group"
                                 >
@@ -126,11 +181,11 @@ const MerchantProfileModal: React.FC<MerchantProfileModalProps> = ({ merchant, o
                         /* Settings View (Change Password) */
                         <div className="space-y-4">
                             <p className="text-sm text-gray-400 mb-4">قم بإدخال كلمة المرور الجديدة أدناه لحفظها في حسابك.</p>
-                            
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">كلمة المرور الجديدة</label>
-                                <input 
-                                    type="password" 
+                                <input
+                                    type="password"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none placeholder-gray-500"
@@ -140,8 +195,8 @@ const MerchantProfileModal: React.FC<MerchantProfileModalProps> = ({ merchant, o
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">تأكيد كلمة المرور</label>
-                                <input 
-                                    type="password" 
+                                <input
+                                    type="password"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none placeholder-gray-500"
@@ -155,7 +210,7 @@ const MerchantProfileModal: React.FC<MerchantProfileModalProps> = ({ merchant, o
                                 </div>
                             )}
 
-                            <button 
+                            <button
                                 onClick={handleSavePassword}
                                 className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg"
                             >
@@ -165,6 +220,14 @@ const MerchantProfileModal: React.FC<MerchantProfileModalProps> = ({ merchant, o
                     )}
                 </div>
             </div>
+            {isCropperOpen && tempImage && (
+                <ImageCropperModal
+                    imageSrc={tempImage}
+                    onCropComplete={handleCropComplete}
+                    onClose={() => { setIsCropperOpen(false); setTempImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    aspectRatio={1}
+                />
+            )}
         </div>
     );
 };

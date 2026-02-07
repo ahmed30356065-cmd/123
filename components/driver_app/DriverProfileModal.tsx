@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { User, AppTheme } from '../../types';
 import { XIcon, LogoutIconV2, SettingsIcon, ChevronLeftIcon, UserIcon, PhoneIcon, ClockIcon, CheckCircleIcon, MoonIcon, SunIcon, CameraIcon, EyeIcon, EyeOffIcon, VerifiedIcon, CrownIcon, StarIcon, RocketIcon, UploadIcon, ShieldCheckIcon } from '../icons';
+import ImageCropperModal from '../common/ImageCropperModal';
 
 interface DriverProfileModalProps {
     driver: User;
@@ -41,6 +42,10 @@ const DriverProfileModal: React.FC<DriverProfileModalProps> = ({ driver, onClose
     const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Cropper State
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const [tempImage, setTempImage] = useState<string | null>(null);
+
     const isShiftActive = driver.dailyLogStatus === 'active';
     const isAlwaysOpen = driver.dailyLogMode === 'always_open';
 
@@ -79,39 +84,34 @@ const DriverProfileModal: React.FC<DriverProfileModalProps> = ({ driver, onClose
         onUpdateUser(driver.id, updates);
     };
 
-    // New High Quality Resizer
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setIsProcessing(true);
             const reader = new FileReader();
-            reader.onloadend = () => {
-                const img = new Image();
-                img.src = reader.result as string;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1024;
-                    const scaleSize = MAX_WIDTH / img.width;
-
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                        ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'high';
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                        const result = canvas.toDataURL('image/jpeg', 0.9);
-                        setTimeout(() => {
-                            setImage(result);
-                            onUpdateUser(driver.id, { storeImage: result });
-                            setIsProcessing(false);
-                        }, 800);
-                    }
-                };
+            reader.onload = () => {
+                setTempImage(reader.result as string);
+                setIsCropperOpen(true);
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    const handleCropComplete = async (croppedBlob: Blob) => {
+        setIsProcessing(true);
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(croppedBlob);
+            reader.onloadend = () => {
+                const base64data = reader.result as string;
+                setImage(base64data);
+                onUpdateUser(driver.id, { storeImage: base64data });
+                setIsProcessing(false);
+                setIsCropperOpen(false);
+                setTempImage(null);
+            };
+        } catch (error) {
+            console.error("Error processing cropped image:", error);
+            setIsProcessing(false);
         }
     };
 
@@ -301,6 +301,14 @@ const DriverProfileModal: React.FC<DriverProfileModalProps> = ({ driver, onClose
                     )}
                 </div>
             </div>
+            {isCropperOpen && tempImage && (
+                <ImageCropperModal
+                    imageSrc={tempImage}
+                    onCropComplete={handleCropComplete}
+                    onClose={() => { setIsCropperOpen(false); setTempImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    aspectRatio={1}
+                />
+            )}
         </div>
     );
 };

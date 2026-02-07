@@ -3,6 +3,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { User, SupervisorPermission, Role } from '../../types';
 import { ChevronLeftIcon, CameraIcon, UploadIcon, EyeIcon, EyeOffIcon, MapPinIcon, SettingsIcon, TruckIconV2, GridIcon, ShieldCheckIcon, UtensilsIcon, ClockIcon, ChartBarIcon, MessageSquareIcon, TicketIcon, HeadsetIcon, StoreIcon, UsersIcon, CheckCircleIcon, ClipboardListIcon, BanknoteIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
+import ImageCropperModal from '../common/ImageCropperModal';
 
 interface EditUserModalProps {
     user: User;
@@ -134,6 +135,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
     const [image, setImage] = useState<string | null>(user.storeImage || null);
     const [isImageProcessing, setIsImageProcessing] = useState(false);
 
+    // Cropper State
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const [tempImage, setTempImage] = useState<string | null>(null);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const displayedAppName = appName || 'GOO NOW';
@@ -174,33 +179,28 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setIsImageProcessing(true);
             const reader = new FileReader();
-            reader.onloadend = () => {
-                const img = new Image();
-                img.src = reader.result as string;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1024;
-                    const scaleSize = MAX_WIDTH / img.width;
-
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                        ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'high';
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                        setTimeout(() => {
-                            setImage(canvas.toDataURL('image/jpeg', 0.9));
-                            setIsImageProcessing(false);
-                        }, 800);
-                    }
-                };
+            reader.onload = () => {
+                setTempImage(reader.result as string);
+                setIsCropperOpen(true);
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    const handleCropComplete = async (croppedBlob: Blob) => {
+        setIsImageProcessing(true);
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(croppedBlob);
+            reader.onloadend = () => {
+                setImage(reader.result as string);
+                setIsImageProcessing(false);
+            };
+        } catch (error) {
+            console.error("Error cropping:", error);
+            setIsImageProcessing(false);
+            setError("حدث خطأ أثناء معالجة الصورة.");
         }
     };
 
@@ -293,6 +293,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
 
     return (
         <div className="fixed inset-0 bg-[#111] z-[60] overflow-y-auto animate-fadeIn flex flex-col">
+            {isCropperOpen && tempImage && (
+                <ImageCropperModal
+                    imageSrc={tempImage}
+                    onCropComplete={handleCropComplete}
+                    onClose={() => { setIsCropperOpen(false); setTempImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    aspectRatio={1}
+                />
+            )}
 
             {/* Header */}
             <div className="flex-none bg-[#1a1a1a] border-b border-[#333] px-4 pt-safe h-16 box-content flex items-center justify-between sticky top-0 z-20 shadow-lg">
