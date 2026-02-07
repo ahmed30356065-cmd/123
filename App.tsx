@@ -150,9 +150,11 @@ const App: React.FC = () => {
         if (currentUser) {
             if (NativeBridge.isAndroid()) {
                 // Android Subscription
-                setAndroidRole(currentUser.role, currentUser.id);
+                setAndroidRole(currentUser.role, currentUser.id, currentUser.status);
             } else {
                 // Web Subscription (Admin/Supervisor on PC)
+                if (currentUser.status === 'suspended') return; // 🛑 Suspended user check
+
                 if (window.Notification && Notification.permission !== 'granted') {
                     Notification.requestPermission();
                 }

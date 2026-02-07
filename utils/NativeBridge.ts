@@ -115,9 +115,9 @@ if (typeof window !== 'undefined') {
     window.onBackPressed = NativeBridge.handleBackPress;
 }
 
-export const setAndroidRole = (role: string, userId?: string) => {
+export const setAndroidRole = (role: string, userId?: string, status?: string) => {
     if (NativeBridge.isAndroid()) {
-        console.log(`[NativeBridge] Configuring Role: ${role}, ID: ${userId}`);
+        console.log(`[NativeBridge] Configuring Role: ${role}, ID: ${userId}, Status: ${status}`);
 
         // 1. Tell Android about the UI Role
         window.Android?.setAppRole?.(role);
@@ -132,13 +132,27 @@ export const setAndroidRole = (role: string, userId?: string) => {
         // We explicitly unsubscribe to ensure clean state
         const allTopics = [
             'admin', 'drivers', 'merchants', 'users', 'driver', 'merchant', 'user', 'supervisor', 'supervisors',
-            'admin_v2', 'drivers_v2', 'merchants_v2', 'users_v2', 'supervisors_v2', 'all_users_v2'
+            'admin_v2', 'drivers_v2', 'merchants_v2', 'users_v2', 'supervisors_v2', 'all_users_v2',
+            // Also add private topics to cleanup list if we can predict them? 
+            // We can't predict IDs easily, but the native side might handle 'unsubscribe all' better?
+            // For now, relying on explicit unsubscribe if possible.
         ];
+        // If we have a userId, we can also unsubscribe from our OWN old private topics (e.g. if role changed)
+        if (userId) {
+            allTopics.push(`${effectiveRole}_${userId}_v2`);
+        }
+
         allTopics.forEach(t => {
             if (window.Android?.unsubscribeFromTopic) {
                 try { window.Android.unsubscribeFromTopic(t); } catch (e) { }
             }
         });
+
+        // 🛑 SUSPENDED CHECK: If suspended, STOP HERE. Do not subscribe to anything.
+        if (status === 'suspended') {
+            console.log('[NativeBridge] User suspended. Aborting subscription logic.');
+            return;
+        }
 
         // Anti-Leak: If I am a merchant, I must NOT listen to driver channels
         if (effectiveRole === 'merchant' && userId) {
