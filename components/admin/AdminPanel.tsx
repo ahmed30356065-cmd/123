@@ -404,9 +404,17 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 });
             } else {
                 // Force scroll to top for new views
+                // Use double-pass to defeat potential render/browser scroll persistence on shared containers
+                if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+
                 requestAnimationFrame(() => {
                     if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
                 });
+
+                // Fallback for slower renders
+                setTimeout(() => {
+                    if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+                }, 50);
             }
         }
     }, [view]);
