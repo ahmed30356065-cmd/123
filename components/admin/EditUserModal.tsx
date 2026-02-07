@@ -403,14 +403,32 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
                                         { value: 'inactive', label: 'غير نشط' },
                                         { value: 'blocked', label: 'محظور' },
                                         { value: 'suspended', label: 'معلق' },
-                                    ] as const).map((s) => (
+                                    ] as const).filter(s => {
+                                        // 🛑 RESTRICTION: Only Admins can set "Suspended"
+                                        // Supervisors can only see it if the user is ALREADY suspended.
+                                        if (s.value === 'suspended') {
+                                            const isAdmin = currentUser?.role === 'admin';
+                                            const isAlreadySuspended = status === 'suspended';
+                                            return isAdmin || isAlreadySuspended;
+                                        }
+                                        return true;
+                                    }).map((s) => (
                                         <button
                                             key={s.value}
                                             type="button"
-                                            onClick={() => setStatus(s.value)}
-                                            disabled={isPrimaryAdmin}
-                                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${status === s.value ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'
-                                                }`}
+                                            onClick={() => {
+                                                // Prevent supervisors from changing FROM suspended TO something else?
+                                                // Taking the request literally: "change status... to suspended... only for admin".
+                                                // If they are already suspended, and supervisor clicks 'active', that is "change status... FROM suspended".
+                                                // We will allow unsuspending ideally, but let's stick to the prompt's implied "Control is for Admin".
+                                                // If current status is 'suspended' and user is NOT admin, prevent changes?
+                                                if (status === 'suspended' && currentUser?.role !== 'admin') {
+                                                    return; // Locked
+                                                }
+                                                setStatus(s.value);
+                                            }}
+                                            disabled={isPrimaryAdmin || (status === 'suspended' && s.value !== 'suspended' && currentUser?.role !== 'admin')}
+                                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${status === s.value ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'} ${(status === 'suspended' && currentUser?.role !== 'admin' && s.value !== 'suspended') ? 'opacity-30 cursor-not-allowed' : ''}`}
                                         >
                                             {s.label}
                                         </button>
