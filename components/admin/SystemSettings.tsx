@@ -396,10 +396,6 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                     return showToast('قاعدة البيانات فارغة بالفعل. تم تصفير العداد.', 'success');
                 }
 
-                // --- BACKUP STEP ---
-                const backupId = `orders_reset_backup_${new Date().toISOString().replace(/[:.]/g, '-')}`;
-                setProgressConfig(p => ({ ...p, title: 'نسخ احتياطي للطوارئ 🛡️', message: `جاري تأمين ${total} سجل قبل الحذف...`, total, current: 0 }));
-
                 const batchSize = 400;
                 const chunks = [];
                 for (let i = 0; i < total; i += batchSize) {
@@ -407,21 +403,10 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                 }
 
                 let processedCount = 0;
-                // Backup Loop
-                for (const chunk of chunks) {
-                    const batch = firebase.firestore().batch();
-                    chunk.forEach(doc => {
-                        batch.set(firebase.firestore().collection(backupId).doc(doc.id), doc.data());
-                    });
-                    await batch.commit();
-                    processedCount += chunk.length;
-                    setProgressConfig(p => ({ ...p, current: processedCount }));
-                }
 
                 // --- DELETE STEP ---
-                setProgressConfig(p => ({ ...p, title: 'حذف البيانات 🗑️', message: `تم النسخ (${backupId}).\nجاري حذف البيانات نهائياً...`, total, current: 0 }));
+                setProgressConfig(p => ({ ...p, title: 'حذف البيانات 🗑️', message: `جاري حذف ${total} سجل نهائياً...`, total, current: 0 }));
 
-                processedCount = 0;
                 for (const chunk of chunks) {
                     const batch = firebase.firestore().batch();
                     chunk.forEach(doc => {
@@ -435,8 +420,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                 // --- RESET COUNTER ---
                 await updateData('counters', 'orders', { lastId: 0 });
 
-                showToast(`تم الحذف الشامل بنجاح!\nالنسخة الاحتياطية: ${backupId}`, 'success');
-                setTimeout(() => window.location.reload(), 2000);
+                showToast(`تم الحذف الشامل وتصفير العداد بنجاح!`, 'success');
+                setTimeout(() => window.location.reload(), 1500);
 
             } catch (e: any) {
                 console.error(e);
