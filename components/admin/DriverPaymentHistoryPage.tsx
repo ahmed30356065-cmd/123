@@ -56,33 +56,36 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
         if (companyShare > totalFees) companyShare = totalFees;
 
         // Manual Dailies Logic
-        let dailiesAmount = 0;
-        let dailiesCount = 0;
+        let dailiesAmount = 0; // Commission/Company Share from Dailies
+        let dailiesOrdersCount = 0; // Actual sum of orders count
+        let dailiesTotalFees = 0; // Fees collected from Dailies
+
         if (payment.reconciledManualDailyIds && payment.reconciledManualDailyIds.length > 0) {
             const relevantDailies = manualDailies.filter(d => payment.reconciledManualDailyIds?.includes(d.id));
-            dailiesCount = relevantDailies.length;
+            dailiesOrdersCount = relevantDailies.reduce((sum, d) => sum + (d.ordersCount || 0), 0);
             dailiesAmount = relevantDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
+            dailiesTotalFees = relevantDailies.reduce((sum, d) => sum + (d.totalDeliveryFees || 0), 0);
         }
 
+        // Add Dailies Commission to Company Share
         companyShare += dailiesAmount;
-        // Driver share logic adjustment:
-        // Originally: driverShare = totalFees - companyShare.
-        // With dailies: companyShare now includes dailies.
-        // So driverShare = totalFees - (FeesCommission + Dailies).
-        // This is mathematically correct as "Net to Driver" is reduced by Dailies debt.
 
-        const driverShare = totalFees - companyShare; // This might go negative if debt > fees, which is correct.
+        // Total Collected = Orders Fees + Manual Dailies Fees
+        const totalCollected = totalFees + dailiesTotalFees;
+
+        // Driver Share = Total Collected - Company Share (Commission)
+        const driverShare = totalCollected - companyShare;
 
         return {
             ...payment,
             verifiedCount: count,
-            verifiedDailiesCount: dailiesCount,
+            verifiedDailiesCount: dailiesOrdersCount, // Now storing sum of orders
             dailiesAmount: dailiesAmount,
             companyShare: companyShare,
             driverShare: driverShare,
-            verifiedTotalCollected: totalFees,
+            verifiedTotalCollected: totalCollected,
             verifiedAmount: payment.amount,
-            isValid: count > 0 || dailiesCount > 0
+            isValid: count > 0 || dailiesOrdersCount > 0
         };
     };
 
