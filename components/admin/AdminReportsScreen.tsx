@@ -4,7 +4,17 @@ import { Order, User, Payment, OrderStatus } from '../../types';
 import { ChartBarIcon, DollarSignIcon, TruckIconV2, CheckCircleIcon, ClockIcon, UsersIcon, StoreIcon, TrendingUpIcon, TrendingDownIcon, XIcon, CalendarIcon, ClipboardListIcon, SearchIcon, UserIcon, MapPinIcon, CoinsIcon, TrashIcon, ExclamationIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
-import { ManualDaily } from '../../types';
+import { ManualDaily, MonthlyReport } from '../../types';
+import { addData, batchSaveData, subscribeToCollection } from '../../services/firebase';
+
+const getBusinessDate = (date: Date) => {
+    const d = new Date(date);
+    if (d.getHours() < 6) {
+        d.setDate(d.getDate() - 1);
+    }
+    d.setHours(0, 0, 0, 0);
+    return d;
+};
 
 interface AdminReportsScreenProps {
     orders: Order[];
@@ -185,273 +195,128 @@ const DailyReportModal: React.FC<{
 
 // ... (Main Screen)
 
-export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders: allOrders, users, payments, currentUser, manualDailies = [] }) => {
-    // ...
+const ReportCriteriaModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    type: 'driver' | 'merchant';
+    users: User[];
+    onGenerate: (userId: string, dateRange: { type: 'all' | 'custom'; start?: string; end?: string }) => void;
+}> = ({ isOpen, onClose, type, users, onGenerate }) => {
+    const [selectedUserId, setSelectedUserId] = useState('');
+    const [dateType, setDateType] = useState<'all' | 'custom'>('all');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
 
-    // Stats Memo Logic Update
-    const stats = useMemo(() => {
-        const deliveredOrders = orders.filter(o => o.status === OrderStatus.Delivered);
-        const totalRevenue = deliveredOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-        const totalDeliveryFees = deliveredOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+    useAndroidBack(() => {
+        if (isOpen) { onClose(); return true; }
+        return false;
+    }, [isOpen]);
 
-        let totalCommission = 0;
-        deliveredOrders.forEach(o => {
-            const driver = users.find(u => u?.id === o.driverId);
-            if (driver) {
-                let comm = 0;
-                if (driver.commissionType === 'fixed') {
-                    comm = (driver.commissionRate || 0);
-                } else {
-                    comm = (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
-                }
-                if (comm > 0) totalCommission += comm;
-            }
+    const filteredUsers = useMemo(() => {
+        return users.filter(u => u?.role === type && (u?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u?.phone?.includes(searchTerm)));
+    }, [users, type, searchTerm]);
+
+    if (!isOpen) return null;
+
+    const handleGenerate = () => {
+        if (!selectedUserId) return;
+        onGenerate(selectedUserId, {
+            type: dateType,
+            start: dateType === 'custom' ? startDate : undefined,
+            end: dateType === 'custom' ? endDate : undefined
         });
-
-        // Add Manual Dailies to Total Commission
-        const totalManualAmount = manualDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
-        totalCommission += totalManualAmount;
-
-        // Monthly Calculation
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-
-        const monthlyOrders = deliveredOrders.filter(o => {
-            const d = (o.deliveredAt as any)?.seconds ? new Date((o.deliveredAt as any).seconds * 1000) : new Date(o.deliveredAt || o.createdAt);
-            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        });
-
-        const monthlyRevenue = monthlyOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-
-        let monthlyCommission = 0;
-        monthlyOrders.forEach(o => {
-            const driver = users.find(u => u?.id === o.driverId);
-            if (driver) {
-                let comm = 0;
-                if (driver.commissionType === 'fixed') {
-                    comm = (driver.commissionRate || 0);
-                } else {
-                    comm = (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
-                }
-                if (comm > 0) monthlyCommission += comm;
-            }
-        });
-
-        // Add Monthly Manual Dailies
-        const monthlyManualDailies = manualDailies.filter(d => {
-            const date = new Date(d.dayDate);
-            return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-        });
-        const monthlyManualAmount = monthlyManualDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
-        monthlyCommission += monthlyManualAmount;
-
-        return {
-            orderCount: orders.length + manualDailies.reduce((acc, d) => acc + d.ordersCount, 0),
-            deliveredCount: deliveredOrders.length,
-            cancelledCount: orders.filter(o => o.status === OrderStatus.Cancelled).length,
-            pendingCount: orders.filter(o => o.status === OrderStatus.Pending).length,
-            totalRevenue,
-            totalDeliveryFees,
-            totalCommission,
-            merchantsCount: users.filter(u => u?.role === 'merchant').length,
-            driversCount: users.filter(u => u?.role === 'driver').length,
-            monthlyRevenue,
-            monthlyCommission,
-            commission15PercentTotal: totalCommission * 0.15,
-            commission15PercentMonthly: monthlyCommission * 0.15
-        };
-    }, [orders, users, manualDailies]);
-
-
-    // ... rest of component
-    const generateReportData = (userId: string, dateRange: { type: 'all' | 'custom'; start?: string; end?: string }) => {
-        const user = users.find(u => u?.id === userId);
-        if (!user) return;
-
-        let filteredOrders = orders.filter(o => user.role === 'driver' ? o.driverId === userId : o.merchantId === userId);
-
-        // Filter Manual Dailies
-        let filteredManualDailies: ManualDaily[] = [];
-        if (user.role === 'driver') {
-            filteredManualDailies = manualDailies.filter(d => d.driverId === userId);
-        }
-
-        let dateLabel = "منذ بدء العمل";
-
-        if (dateRange.type === 'custom' && dateRange.start && dateRange.end) {
-            const start = new Date(dateRange.start);
-            const end = new Date(dateRange.end);
-            end.setHours(23, 59, 59);
-
-            filteredOrders = filteredOrders.filter(o => {
-                const d = new Date(o.createdAt);
-                return d >= start && d <= end;
-            });
-
-            filteredManualDailies = filteredManualDailies.filter(d => {
-                const dDate = new Date(d.dayDate);
-                return dDate >= start && dDate <= end; // Approximate time check (dayDate is usually YYYY-MM-DD)
-            });
-
-            dateLabel = `من ${dateRange.start} إلى ${dateRange.end}`;
-        }
-
-        // ... calculation logic ...
-        // We need to inject "Fake Orders" for Manual Dailies into the orders list for display, or pass them separately.
-        // Transforming Manual Dailies to Fake Orders for display:
-
-        const manualDailyOrders: any[] = filteredManualDailies.map(d => ({
-            id: 'MANUAL-' + d.id.slice(-6),
-            status: OrderStatus.Delivered,
-            totalPrice: 0,
-            deliveryFee: d.totalDeliveryFees || 0, // Approx
-            createdAt: new Date(d.dayDate),
-            merchantName: 'يومية يدوية',
-            customer: { address: `إضافة يدوية: ${d.ordersCount} طلبات` },
-            type: 'manual_daily',
-            actualAmount: d.amount // Store actual commission amount here for display
-        }));
-
-        const allDisplayOrders = [...filteredOrders, ...manualDailyOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-        // Recalculate App Commission
-        // ... (existing logic) ...
-        // Add manual dailies amount to appCommission
-        const manualCommission = filteredManualDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
-        // appCommission += manualCommission; (Inject this into the existing reduction logic)
-
-        // ...
-
-        // Wait, I can't easily paste the whole function. I will just replace the generateReportData block.
-        // But first let's fix the Stats logic and Props.
-
-        // Returning shortened content for the tool but keeping logic in mind.
+        onClose();
     };
 
     return (
-        <div className="h-full flex flex-col animate-slide-up relative">
-            {/* ... */}
-            {dailyReportOpen && <DailyReportModal isOpen={dailyReportOpen} onClose={() => setDailyReportOpen(false)} orders={orders} users={users} manualDailies={manualDailies} />}
-            {/* ... */}
-        </div>
-    );
-};
-const [selectedUserId, setSelectedUserId] = useState('');
-const [dateType, setDateType] = useState<'all' | 'custom'>('all');
-const [startDate, setStartDate] = useState('');
-const [endDate, setEndDate] = useState('');
-const [searchTerm, setSearchTerm] = useState('');
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+            <div className="bg-[#1e293b] w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl overflow-hidden animate-pop-in flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+                <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-[#151e2d]">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        {type === 'driver' ? <TruckIconV2 className="w-5 h-5 text-blue-400" /> : <StoreIcon className="w-5 h-5 text-purple-400" />}
+                        {type === 'driver' ? 'تقرير مندوب مفصل' : 'تقرير تاجر مفصل'}
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800"><XIcon className="w-5 h-5" /></button>
+                </div>
 
-useAndroidBack(() => {
-    if (isOpen) { onClose(); return true; }
-    return false;
-}, [isOpen]);
-
-const filteredUsers = useMemo(() => {
-    return users.filter(u => u?.role === type && (u?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u?.phone?.includes(searchTerm)));
-}, [users, type, searchTerm]);
-
-if (!isOpen) return null;
-
-const handleGenerate = () => {
-    if (!selectedUserId) return;
-    onGenerate(selectedUserId, {
-        type: dateType,
-        start: dateType === 'custom' ? startDate : undefined,
-        end: dateType === 'custom' ? endDate : undefined
-    });
-    onClose();
-};
-
-return (
-    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
-        <div className="bg-[#1e293b] w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl overflow-hidden animate-pop-in flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
-            <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-[#151e2d]">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    {type === 'driver' ? <TruckIconV2 className="w-5 h-5 text-blue-400" /> : <StoreIcon className="w-5 h-5 text-purple-400" />}
-                    {type === 'driver' ? 'تقرير مندوب مفصل' : 'تقرير تاجر مفصل'}
-                </h3>
-                <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800"><XIcon className="w-5 h-5" /></button>
-            </div>
-
-            <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                {/* User Selection */}
-                <div className="space-y-3">
-                    <label className="text-xs font-bold text-gray-400 block">اختر {type === 'driver' ? 'المندوب' : 'التاجر'}</label>
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="بحث بالاسم أو الرقم..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full bg-[#0f172a] border border-gray-600 rounded-xl py-3 px-4 pl-10 text-white text-sm focus:border-blue-500 outline-none"
-                        />
-                        <SearchIcon className="absolute left-3 top-3.5 w-4 h-4 text-gray-500" />
+                <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                    {/* User Selection */}
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-gray-400 block">اختر {type === 'driver' ? 'المندوب' : 'التاجر'}</label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="بحث بالاسم أو الرقم..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="w-full bg-[#0f172a] border border-gray-600 rounded-xl py-3 px-4 pl-10 text-white text-sm focus:border-blue-500 outline-none"
+                            />
+                            <SearchIcon className="absolute left-3 top-3.5 w-4 h-4 text-gray-500" />
+                        </div>
+                        <div className="max-h-40 overflow-y-auto bg-[#0f172a] border border-gray-600 rounded-xl custom-scrollbar">
+                            {filteredUsers.length > 0 ? (
+                                filteredUsers.map(u => (
+                                    <button
+                                        key={u.id}
+                                        onClick={() => setSelectedUserId(u.id)}
+                                        className={`w-full flex items-center justify-between p-3 text-right hover:bg-gray-800 border-b border-gray-700/50 last:border-0 transition-colors ${selectedUserId === u.id ? 'bg-blue-900/20 text-blue-400' : 'text-gray-300'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                                                {u.storeImage ? <img src={u.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-4 h-4" />}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold">{u.name}</p>
+                                                <p className="text-[10px] opacity-70 font-mono">{u.phone}</p>
+                                            </div>
+                                        </div>
+                                        {selectedUserId === u.id && <CheckCircleIcon className="w-4 h-4" />}
+                                    </button>
+                                ))
+                            ) : (
+                                <p className="p-4 text-center text-xs text-gray-500">لا توجد نتائج</p>
+                            )}
+                        </div>
                     </div>
-                    <div className="max-h-40 overflow-y-auto bg-[#0f172a] border border-gray-600 rounded-xl custom-scrollbar">
-                        {filteredUsers.length > 0 ? (
-                            filteredUsers.map(u => (
-                                <button
-                                    key={u.id}
-                                    onClick={() => setSelectedUserId(u.id)}
-                                    className={`w-full flex items-center justify-between p-3 text-right hover:bg-gray-800 border-b border-gray-700/50 last:border-0 transition-colors ${selectedUserId === u.id ? 'bg-blue-900/20 text-blue-400' : 'text-gray-300'}`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
-                                            {u.storeImage ? <img src={u.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-4 h-4" />}
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold">{u.name}</p>
-                                            <p className="text-[10px] opacity-70 font-mono">{u.phone}</p>
-                                        </div>
-                                    </div>
-                                    {selectedUserId === u.id && <CheckCircleIcon className="w-4 h-4" />}
-                                </button>
-                            ))
-                        ) : (
-                            <p className="p-4 text-center text-xs text-gray-500">لا توجد نتائج</p>
+
+                    {/* Date Range */}
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-gray-400 block">الفترة الزمنية</label>
+                        <div className="flex bg-[#0f172a] p-1 rounded-xl border border-gray-600">
+                            <button onClick={() => setDateType('all')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${dateType === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>منذ بدء العمل</button>
+                            <button onClick={() => setDateType('custom')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${dateType === 'custom' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>فترة محددة</button>
+                        </div>
+
+                        {dateType === 'custom' && (
+                            <div className="grid grid-cols-2 gap-3 animate-fadeIn">
+                                <div>
+                                    <label className="text-[10px] text-gray-500 mb-1 block">من</label>
+                                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-[#0f172a] border border-gray-600 rounded-lg py-2 px-3 text-white text-xs outline-none focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-gray-500 mb-1 block">إلى</label>
+                                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-[#0f172a] border border-gray-600 rounded-lg py-2 px-3 text-white text-xs outline-none focus:border-blue-500" />
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
 
-                {/* Date Range */}
-                <div className="space-y-3">
-                    <label className="text-xs font-bold text-gray-400 block">الفترة الزمنية</label>
-                    <div className="flex bg-[#0f172a] p-1 rounded-xl border border-gray-600">
-                        <button onClick={() => setDateType('all')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${dateType === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>منذ بدء العمل</button>
-                        <button onClick={() => setDateType('custom')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${dateType === 'custom' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}>فترة محددة</button>
-                    </div>
-
-                    {dateType === 'custom' && (
-                        <div className="grid grid-cols-2 gap-3 animate-fadeIn">
-                            <div>
-                                <label className="text-[10px] text-gray-500 mb-1 block">من</label>
-                                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-[#0f172a] border border-gray-600 rounded-lg py-2 px-3 text-white text-xs outline-none focus:border-blue-500" />
-                            </div>
-                            <div>
-                                <label className="text-[10px] text-gray-500 mb-1 block">إلى</label>
-                                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-[#0f172a] border border-gray-600 rounded-lg py-2 px-3 text-white text-xs outline-none focus:border-blue-500" />
-                            </div>
-                        </div>
-                    )}
+                <div className="p-5 border-t border-gray-700 bg-[#151e2d]">
+                    <button
+                        onClick={handleGenerate}
+                        disabled={!selectedUserId || (dateType === 'custom' && (!startDate || !endDate))}
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <ClipboardListIcon className="w-5 h-5" />
+                        عرض التقرير
+                    </button>
                 </div>
             </div>
-
-            <div className="p-5 border-t border-gray-700 bg-[#151e2d]">
-                <button
-                    onClick={handleGenerate}
-                    disabled={!selectedUserId || (dateType === 'custom' && (!startDate || !endDate))}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
-                >
-                    <ClipboardListIcon className="w-5 h-5" />
-                    عرض التقرير
-                </button>
-            </div>
         </div>
-    </div>
-);
-
+    );
+};
 
 const ReportResultsModal: React.FC<{
     isOpen: boolean;
@@ -589,213 +454,39 @@ const ReportResultsModal: React.FC<{
     );
 }
 
-// Helper for Business Date logic
-const getBusinessDate = (date: Date) => {
-    const d = new Date(date);
-    if (d.getHours() < 6) {
-        d.setDate(d.getDate() - 1);
-    }
-    d.setHours(0, 0, 0, 0);
-    return d;
-};
 
-const DailyReportModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    orders: Order[];
-    users: User[];
-    manualDailies?: ManualDaily[];
-}> = ({ isOpen, onClose, orders, users, manualDailies = [] }) => {
-    const dailyStats = useMemo(() => {
-        if (!isOpen) return null;
 
-        const todayBusinessDate = getBusinessDate(new Date());
+const StatBox: React.FC<{
+    title: string;
+    value: string;
+    subValue: string;
+    icon: React.ReactNode;
+    color: string;
+    trend?: 'up' | 'down';
+    trendValue?: string;
+}> = ({ title, value, subValue, icon, color, trend, trendValue }) => (
+    <div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700/50 flex flex-col justify-between relative overflow-hidden group hover:border-gray-600 transition-all">
+        <div className={`absolute top-0 right-0 w-24 h-24 ${color} opacity-5 blur-2xl rounded-full -mr-10 -mt-10 transition-all group-hover:opacity-10`} />
 
-        // Filter orders for "Today" (6 AM today to 6 AM tomorrow)
-        const todayOrders = orders.filter((o: Order) => {
-            const oDate = (o.createdAt as any).seconds ? new Date((o.createdAt as any).seconds * 1000) : new Date(o.createdAt);
-            return getBusinessDate(oDate).getTime() === todayBusinessDate.getTime();
-        });
-
-        // Filter Manual Dailies for "Today"
-        const todayDailies = manualDailies.filter(d => {
-            const dDate = new Date(d.dayDate); // Manual daily date is YYYY-MM-DD
-            dDate.setHours(0, 0, 0, 0); // Normalize
-            // Note: Manual Daily date is string YYYY-MM-DD. getBusinessDate expects Date object.
-            // If d.dayDate is T00:00:00, it's already "start of day".
-            // Let's assume dayDate corresponds to the business day intended.
-            const checkDate = getBusinessDate(new Date(d.dayDate));
-            return checkDate.getTime() === todayBusinessDate.getTime();
-        });
-
-        const delivered = todayOrders.filter((o: Order) => o.status === OrderStatus.Delivered);
-        const cancelled = todayOrders.filter(o => o.status === OrderStatus.Cancelled);
-        const pending = todayOrders.filter(o => o.status === OrderStatus.Pending);
-
-        const totalRevenue = delivered.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-        const totalDeliveryFees = delivered.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
-
-        let totalCommission = 0;
-        const driverPerformance: Record<string, { name: string, count: number, total: number }> = {};
-
-        delivered.forEach(o => {
-            const driver = users.find((u: User) => u?.id === o.driverId);
-            if (driver) {
-                let comm = 0;
-                if (driver.commissionType === 'fixed') {
-                    comm = (driver.commissionRate || 0);
-                } else {
-                    comm = (o.deliveryFee || 0) * ((driver.commissionRate || 0) / 100);
-                }
-
-                if (comm > 0) totalCommission += comm;
-
-                if (!driverPerformance[driver.id]) {
-                    driverPerformance[driver.id] = { name: driver.name, count: 0, total: 0 };
-                }
-                driverPerformance[driver.id].count += 1;
-                driverPerformance[driver.id].total += (o.deliveryFee || 0);
-            }
-        });
-
-        // Add Manual Dailies (Pure Commission)
-        const totalManualAmount = todayDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
-        totalCommission += totalManualAmount;
-
-        // Add Manual Dailies to Driver Performance (Count only)
-        todayDailies.forEach(d => {
-            const driver = users.find((u: User) => u?.id === d.driverId);
-            if (driver) {
-                if (!driverPerformance[driver.id]) {
-                    driverPerformance[driver.id] = { name: driver.name, count: 0, total: 0 };
-                }
-                driverPerformance[driver.id].count += (d.ordersCount || 0);
-            }
-        });
-
-        const topDrivers = Object.values(driverPerformance)
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
-
-        const adminShare = totalCommission * 0.15;
-
-        return {
-            date: todayBusinessDate,
-            count: todayOrders.length + todayDailies.reduce((acc, d) => acc + d.ordersCount, 0),
-            deliveredCount: delivered.length,
-            cancelledCount: cancelled.length,
-            pendingCount: pending.length,
-            totalRevenue,
-            totalDeliveryFees,
-            totalCommission,
-            adminShare,
-            topDrivers,
-            manualCount: todayDailies.length,
-            manualAmount: totalManualAmount
-        };
-    }, [isOpen, orders, users, manualDailies]);
-
-    if (!isOpen || !dailyStats) return null;
-
-    return (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
-            <div className="bg-[#0f172a] w-full max-w-3xl max-h-[90vh] rounded-3xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                <div className="px-6 py-4 border-b border-gray-800 bg-[#1e293b] flex justify-between items-center sticky top-0 z-10">
-                    <div>
-                        <h2 className="text-xl font-black text-white flex items-center gap-2">
-                            التقرير اليومي
-                            <span className="text-[10px] bg-blue-600/20 text-blue-300 px-2 py-0.5 rounded border border-blue-500/20">
-                                {dailyStats.date.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'short' })}
-                            </span>
-                        </h2>
-                    </div>
-                    <button onClick={onClose} className="p-1.5 bg-gray-800 rounded-lg text-gray-400 hover:text-white transition-all">
-                        <XIcon className="w-5 h-5" />
-                    </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="bg-gray-800/40 p-3 rounded-xl border border-gray-700/50 flex flex-col items-center">
-                            <span className="text-[10px] text-gray-500 font-bold mb-1">الكل (شامل اليدوي)</span>
-                            <span className="text-2xl font-black text-white">{dailyStats.count}</span>
-                        </div>
-                        <div className="bg-green-500/5 p-3 rounded-xl border border-green-500/10 flex flex-col items-center">
-                            <span className="text-[10px] text-green-500/70 font-bold mb-1">توصيل</span>
-                            <span className="text-2xl font-black text-green-400">{dailyStats.deliveredCount}</span>
-                        </div>
-                        <div className="bg-red-500/5 p-3 rounded-xl border border-red-500/10 flex flex-col items-center">
-                            <span className="text-[10px] text-red-500/70 font-bold mb-1">إلغاء</span>
-                            <span className="text-2xl font-black text-red-400">{dailyStats.cancelledCount}</span>
-                        </div>
-                        <div className="bg-yellow-500/5 p-3 rounded-xl border border-yellow-500/10 flex flex-col items-center">
-                            <span className="text-[10px] text-yellow-500/70 font-bold mb-1">انتظار</span>
-                            <span className="text-2xl font-black text-yellow-400">{dailyStats.pendingCount}</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-[#161f32] rounded-2xl p-5 border border-gray-800 relative overflow-hidden">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 relative z-10">
-                            <div className="flex justify-between items-center border-b border-gray-700/50 pb-2">
-                                <span className="text-xs text-gray-400">إجمالي المبيعات</span>
-                                <span className="text-lg font-bold text-white">{dailyStats.totalRevenue.toLocaleString()} <span className="text-[10px] text-gray-600">ج.م</span></span>
-                            </div>
-                            <div className="flex justify-between items-center border-b border-gray-700/50 pb-2">
-                                <span className="text-xs text-gray-400">رسوم التوصيل</span>
-                                <span className="text-lg font-bold text-blue-400">{dailyStats.totalDeliveryFees.toLocaleString()} <span className="text-[10px] text-gray-600">ج.م</span></span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-gray-400">أرباح التطبيق (شامل اليدوي)</span>
-                                <span className="text-xl font-black text-green-400">{dailyStats.totalCommission.toLocaleString()} <span className="text-[10px] text-gray-600">ج.م</span></span>
-                            </div>
-                            {dailyStats.manualAmount > 0 && (
-                                <div className="flex justify-between items-center bg-yellow-900/10 -m-1 p-1 px-3 rounded-lg border border-yellow-500/10 mt-1">
-                                    <span className="text-xs text-yellow-500/70 font-bold">منها يوميات يدوية ({dailyStats.manualCount})</span>
-                                    <span className="text-sm font-black text-yellow-500">{dailyStats.manualAmount.toLocaleString()} <span className="text-[10px]">ج.م</span></span>
-                                </div>
-                            )}
-                            <div className="flex justify-between items-center bg-orange-900/10 -m-1 p-1 px-3 rounded-lg border border-orange-500/10 mt-2">
-                                <span className="text-xs text-orange-400 font-bold">نسبة الإدارة (15%)</span>
-                                <span className="text-lg font-black text-orange-400">{dailyStats.adminShare.toLocaleString()} <span className="text-[10px]">ج.م</span></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 className="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
-                            <TruckIconV2 className="w-4 h-4" />
-                            النشاط الأعلى
-                        </h3>
-                        <div className="space-y-2">
-                            {dailyStats.topDrivers.length > 0 ? (
-                                dailyStats.topDrivers.slice(0, 3).map((d, i) => (
-                                    <div key={i} className="flex items-center justify-between p-2.5 bg-gray-800/40 rounded-lg border border-gray-700/30">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded bg-gray-700 flex items-center justify-center text-xs font-bold text-white">{i + 1}</div>
-                                            <span className="text-xs font-bold text-gray-300">{d.name}</span>
-                                        </div>
-                                        <span className="text-xs font-bold text-blue-400">{d.count} طلب</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="text-xs text-gray-600 text-center py-2">لا توجد بيانات</p>
-                            )}
-                        </div>
-                    </div>
-
-                </div>
+        <div className="flex justify-between items-start mb-4 relative z-10">
+            <div className={`p-3 ${color.replace('bg-', 'bg-').replace('500', '500/10')} rounded-xl text-${color.replace('bg-', '').replace('500', '400')}`}>
+                {icon}
             </div>
+            {trend && (
+                <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${trend === 'up' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                    {trend === 'up' ? <TrendingUpIcon className="w-3 h-3" /> : <TrendingDownIcon className="w-3 h-3" />}
+                    <span>{trendValue}</span>
+                </div>
+            )}
         </div>
-    );
-};
 
-// --- Main Screen ---
-
-import { addData, batchSaveData, updateData, subscribeToCollection } from '../../services/firebase';
-import { MonthlyReport } from '../../types';
-
-// ... (Existing Imports)
+        <div className="relative z-10">
+            <h3 className="text-2xl font-black text-white mb-1">{value}</h3>
+            <p className="text-xs text-gray-400 font-medium mb-1">{title}</p>
+            <p className="text-[10px] text-gray-500">{subValue}</p>
+        </div>
+    </div>
+);
 
 // --- Helper for formatting Money ---
 const formatMoney = (amount: number) => amount.toLocaleString('en-US', { maximumFractionDigits: 1 });
