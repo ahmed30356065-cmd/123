@@ -304,8 +304,59 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
         }, 'danger');
     };
 
-    // --- Renumber Logic (Simplified for brevity) ---
-    const handleRenumberOrders = () => { /* Preserved */ showToast('قريباً', 'info'); };
+    // --- Renumber Logic ---
+    const handleRenumberOrders = async () => {
+        const startStr = await showPrompt('إعادة ترتيب المعرفات', 'سيتم إعادة تسمية كل الطلبات القديمة والجديدة بتسلسل يبدأ من:', '1000', 'number');
+        if (!startStr) return;
+        const startNum = parseInt(startStr);
+        if (isNaN(startNum)) return showToast('رقم غير صحيح', 'error');
+
+        openConfirmModal('⚠️ إجراء خطير', 'سيتم تغيير معرفات (IDs) كل الطلبات في النظام. هل أنت متأكد؟', async () => {
+            setIsLoading(true);
+            setProgressConfig({ isOpen: true, title: 'جاري إعادة الترتيب', message: 'جاري جلب البيانات...', total: 100, current: 0 });
+
+            try {
+                // 1. Fetch ALL orders (sorted by creation time)
+                const snapshot = await firebase.firestore().collection('orders').orderBy('createdAt', 'asc').get();
+                const total = snapshot.size;
+                if (total === 0) throw new Error('لا توجد طلبات');
+
+                setProgressConfig(p => ({ ...p, message: `تم العثور على ${total} طلب. جاري المعالجة...`, total }));
+
+                const batchSize = 400; // Firestore batch limit is 500
+                const chunks = [];
+                for (let i = 0; i < total; i += batchSize) {
+                    chunks.push(snapshot.docs.slice(i, i + batchSize));
+                }
+
+                let currentId = startNum;
+                let processed = 0;
+
+                for (const chunk of chunks) {
+                    const batch = firebase.firestore().batch();
+                    chunk.forEach(doc => {
+                        // Keep the ID as string
+                        const newId = String(currentId++);
+                        batch.update(doc.ref, { id: newId });
+                    });
+                    await batch.commit();
+                    processed += chunk.length;
+                    setProgressConfig(p => ({ ...p, current: processed }));
+                }
+
+                // Update Counter
+                await updateData('counters', 'orders', { lastId: currentId - 1 });
+
+                showToast('تم إعادة الترتيب بنجاح!', 'success');
+            } catch (e: any) {
+                console.error(e);
+                showToast(`فشل: ${e.message}`, 'error');
+            } finally {
+                setIsLoading(false);
+                setProgressConfig(p => ({ ...p, isOpen: false }));
+            }
+        }, 'danger');
+    };
     const handleBackupOrders = () => { showToast('قريباً', 'info'); };
 
 
@@ -583,6 +634,16 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                                         <div className="text-right">
                                             <h3 className="text-sm font-bold text-gray-200">حذف نطاق (IDs)</h3>
                                             <p className="text-[10px] text-gray-500">حذف مجموعة محددة بالأرقام (لإصلاح الأخطاء)</p>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <button onClick={handleRenumberOrders} className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-800 border border-gray-700 hover:border-yellow-500/40 hover:bg-yellow-500/5 transition-all group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center group-hover:text-yellow-500 transition-colors"><RefreshCwIcon className="w-5 h-5" /></div>
+                                        <div className="text-right">
+                                            <h3 className="text-sm font-bold text-gray-200">إعادة ترتيب المعرفات (Renumber)</h3>
+                                            <p className="text-[10px] text-gray-500">إعادة تسلسل معرفات الطلبات ID بدءاً من رقم محدد</p>
                                         </div>
                                     </div>
                                 </button>
