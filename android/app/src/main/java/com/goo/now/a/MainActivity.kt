@@ -23,6 +23,10 @@ import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.FirebaseException
 import java.util.concurrent.TimeUnit
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
+import android.app.DownloadManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -128,6 +132,15 @@ class MainActivity : AppCompatActivity() {
             println("FCM Token: ${task.result}")
         }
 
+        // Register Download Receiver
+        registerReceiver(onDownloadComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            android.content.Context.RECEIVER_EXPORTED) 
+        // Note: RECEIVER_EXPORTED is required for Android 14+ if not system broadcast, 
+        // but DOWNLOAD_COMPLETE is system, so standard register might suffice or RECEIVER_NOT_EXPORTED.
+        // However, DownloadManager broadcasts are system, so just registerReceiver(onDownloadComplete, IntentFilter(...)) works on older APIs.
+        // For targeting Android 14 (API 34), we need to specify flags.
+        // Let's use a safe registration helper or simple check.
+        
         
         // Handle Initial Intent (Notification Click from Cold Start)
         handleIntent(intent)
@@ -397,13 +410,14 @@ class MainActivity : AppCompatActivity() {
                     request.setMimeType("application/vnd.android.package-archive")
                     
                     val dm = activity.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-                    dm.enqueue(request)
+                    // Capture ID to track completion
+                    activity.downloadId = dm.enqueue(request)
                     
-                    android.util.Log.d("APK_DOWNLOAD", "Download started: $fileName")
+                    android.util.Log.d("APK_DOWNLOAD", "Download started: $fileName, ID: ${activity.downloadId}")
                     
                     android.widget.Toast.makeText(
                         activity.applicationContext,
-                        "جاري تحميل التحديث... سيتم فتح التثبيت بعد الانتهاء",
+                        "جاري تحميل التحديث... سيتم فتح التثبيت تلقائياً عند الانتهاء",
                         android.widget.Toast.LENGTH_LONG
                     ).show()
                     
@@ -599,7 +613,39 @@ class MainActivity : AppCompatActivity() {
         )
         android.util.Log.d("NetworkMonitor", "Network status changed: $status")
     }
-    
+
+    // --- AUTO UPDATE INSTALLER ---
+    private var downloadId: Long = -1
+
+    private val onDownloadComplete = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+            if (downloadId == id) {
+                // It's our APK!
+                val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                val cursor = dm.query(query)
+                
+                if (cursor.moveToFirst()) {
+                    val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                    if (DownloadManager.STATUS_SUCCESSFUL == cursor.getInt(statusIndex)) {
+                        val uriIndex = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)
+                        val uriString = cursor.getString(uriIndex)
+                        val contentUri = dm.getUriForDownloadedFile(downloadId)
+                        
+                        if (contentUri != null) {
+                            val install = Intent(Intent.ACTION_VIEW)
+                            install.setDataAndType(contentUri, "application/vnd.android.package-archive")
+                            install.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            startActivity(install)
+                        }
+                    }
+                }
+                cursor.close()
+            }
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         
@@ -607,6 +653,11 @@ class MainActivity : AppCompatActivity() {
         networkCallback?.let {
             connectivityManager.unregisterNetworkCallback(it)
         }
+        
+        // Unregister download receiver
+        try {
+            unregisterReceiver(onDownloadComplete)
+        } catch (e: Exception) {}
     }
 
     // Splash Interface - Added to allow JS to control splash visibility

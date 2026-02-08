@@ -419,6 +419,12 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
 
                 console.log('[UPDATE CHECK]', debugInfo);
 
+                // ⛔ BLOCK NON-ANDROID (iPhone/Web)
+                if (!NativeBridge.isAndroid()) {
+                    console.log('[UPDATE CHECK] ❌ Not Android (Web/iOS). Skipping update check.');
+                    return;
+                }
+
                 if (conf.isActive && conf.version !== localVer) {
                     // 1. Check Target Roles
                     if (conf.target_roles && Array.isArray(conf.target_roles) && conf.target_roles.length > 0) {
