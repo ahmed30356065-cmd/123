@@ -146,6 +146,40 @@ export const injectSpoofedDeviceInfo = async (userId: string) => {
     }
 };
 
+// --- FIX USER IDs UTILITY ---
+export const fixUserIds = async () => {
+    if (!db) return;
+    const usersSnap = await db.collection('users').orderBy('createdAt', 'asc').get();
+    let counter = 1;
+    const batch = db.batch();
+
+    // 1. Rename Documents
+    for (const doc of usersSnap.docs) {
+        const oldId = doc.id;
+        const newId = counter.toString();
+        const userData = doc.data();
+
+        // Skip if ID is already correct (optional, but safer to just re-do all to ensure sequence)
+        if (oldId === newId) {
+            counter++;
+            continue;
+        }
+
+        // Create new doc with new ID
+        const newRef = db.collection('users').doc(newId);
+        batch.set(newRef, { ...userData, id: newId });
+
+        // Delete old doc
+        const oldRef = db.collection('users').doc(oldId);
+        batch.delete(oldRef);
+
+        counter++;
+    }
+
+    await batch.commit();
+    console.log(`[FixUserIds] Renumbered ${counter - 1} users.`);
+};
+
 
 // Direct FCM Integration replacing Google Script
 // This ensures notifications work without external backend dependencies

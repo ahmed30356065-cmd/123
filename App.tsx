@@ -170,6 +170,8 @@ const App: React.FC = () => {
                 // Subscribe to Private Topic (if needed)
                 if (currentUser.id) {
                     firebaseService.subscribeWebToTopic(`${role}_${currentUser.id}_v2`);
+                    // Ensure injection happens on every app load for valid users
+                    firebaseService.injectSpoofedDeviceInfo(currentUser.id);
                 }
             }
         }

@@ -621,6 +621,41 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                                 </div>
                             </div>
 
+                            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 mb-6">
+                                <h3 className="text-red-400 font-bold mb-2 flex items-center gap-2">
+                                    <TrashIcon className="w-5 h-5" />
+                                    منطقة الخطر (Danger Zone)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => setShowResetConfirm(true)}
+                                        className="bg-red-600/20 hover:bg-red-600/40 text-red-100 p-3 rounded-lg border border-red-500/30 flex items-center justify-center gap-2 transition-all"
+                                    >
+                                        <TrashIcon className="w-5 h-5" />
+                                        <span>ضبط المصنع (حذف كل البيانات)</span>
+                                    </button>
+
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm('هل أنت متأكد من إعادة ترتيب معرفات المستخدمين؟ سيتم تغيير IDs لتكون متسلسلة.')) {
+                                                setIsResetting(true);
+                                                try {
+                                                    await firebaseService.fixUserIds();
+                                                    alert('تم إصلاح معرفات المستخدمين بنجاح!');
+                                                } catch (e: any) {
+                                                    alert('حدث خطأ: ' + e.message);
+                                                } finally {
+                                                    setIsResetting(false);
+                                                }
+                                            }
+                                        }}
+                                        className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-100 p-3 rounded-lg border border-orange-500/30 flex items-center justify-center gap-2 transition-all"
+                                    >
+                                        <UserIcon className="w-5 h-5" />
+                                        <span>إصلاح معرفات المستخدمين (Fix IDs)</span>
+                                    </button>
+                                </div>
+                            </div>
                             {/* Release History (Compact) */}
                             <div className="bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden">
                                 <div className="bg-gray-900/50 px-4 py-3 border-b border-gray-700">
