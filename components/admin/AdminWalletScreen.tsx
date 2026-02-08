@@ -258,21 +258,27 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                             !order.isArchived
                     );
 
-                    const totalFees = unreconciledOrders.reduce((sum, order) => sum + (order.deliveryFee || 0), 0);
-                    const commissionRate = driver.commissionRate || 0;
 
                     // Manual Dailies Calculation
                     const driverDailies = manualDailies.filter(d => d.driverId === driver.id && !d.reconciled);
-                    const dailiesAmount = driverDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
+                    const manualDailiesCommission = driverDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
+                    const manualDailiesTotalFees = driverDailies.reduce((sum, d) => sum + (d.totalDeliveryFees || 0), 0);
+
+                    // Update Total Fees to include Manual Dailies Fees
+                    // "Total Collection" now includes both Orders Fees + Manual Dailies Fees
+                    const totalFees = unreconciledOrders.reduce((sum, order) => sum + (order.deliveryFee || 0), 0) + manualDailiesTotalFees;
 
                     let companyShare = 0;
                     if (driver.commissionType === 'fixed') {
                         companyShare = unreconciledOrders.length * commissionRate;
                     } else {
-                        companyShare = totalFees * (commissionRate / 100);
+                        // For percentage commission, we calculate based on Orders Total Fees ONLY (Manual Daily Amount is already the calculated commission)
+                        const ordersTotalFees = unreconciledOrders.reduce((sum, order) => sum + (order.deliveryFee || 0), 0);
+                        companyShare = ordersTotalFees * (commissionRate / 100);
                     }
 
-                    companyShare += dailiesAmount; // Add manual dailies to total claimable
+                    // Add Manual Dailies COMMISSION to Total Owing
+                    companyShare += manualDailiesCommission;
 
 
                     // Net for Driver Calculation Fix:
@@ -330,18 +336,20 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center mb-1">
                                         <h4 className="text-xs font-bold text-gray-400">إجمالي المديونية (غير مسواة)</h4>
-                                        <span className="text-[10px] bg-gray-700 px-2 py-0.5 rounded text-gray-300">{unreconciledOrders.length} طلبات</span>
+                                        <span className="text-[10px] bg-gray-700 px-2 py-0.5 rounded text-gray-300">
+                                            {unreconciledOrders.length + driverDailies.length} عمليات
+                                        </span>
                                     </div>
                                     <FinancialRow label="إجمالي التحصيل" value={totalFees} colorClass="text-blue-400" />
                                     <FinancialRow label={`العمولة المستحقة (${commissionLabel})`} value={companyShare} colorClass="text-red-400" />
-                                    {dailiesAmount > 0 && (
+                                    {manualDailiesCommission > 0 && (
                                         <div className="flex flex-col gap-2 mt-1 bg-yellow-900/10 p-2 rounded-lg border border-yellow-500/10">
                                             <div className="flex justify-between items-baseline border-b border-yellow-500/10 pb-1">
                                                 <span className="text-xs text-yellow-500/80 font-bold flex items-center gap-1">
                                                     <ExclamationIcon className="w-3 h-3" />
                                                     يوميات يدوية ({driverDailies.length})
                                                 </span>
-                                                <span className="text-xs font-black text-yellow-500">+ {dailiesAmount} ج.م</span>
+                                                <span className="text-xs font-black text-yellow-500">+ {manualDailiesCommission} ج.م</span>
                                             </div>
                                             <div className="space-y-1">
                                                 {driverDailies.map(daily => (
