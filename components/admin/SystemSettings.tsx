@@ -215,9 +215,9 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
             });
             setUpdateUrl(url);
             showToast('تم رفع الملف بنجاح', 'success');
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            showToast('فشل رفع الملف', 'error');
+            showToast(`فشل رفع الملف: ${error.message || 'خطأ غير معروف'}`, 'error');
         } finally {
             setIsUploading(false);
             setUploadProgress(100);
@@ -425,12 +425,18 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                                                 <input placeholder="2.0.0" value={newVersion} onChange={(e) => setNewVersion(e.target.value)} className="w-full bg-gray-900 border border-gray-700 px-3 py-2 rounded-lg text-sm text-white focus:border-red-500 outline-none font-mono" />
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] text-gray-500 font-bold">ملف APK</label>
+                                                <label className="text-[10px] text-gray-500 font-bold">رابط التحديث (ملف APK)</label>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => apkInputRef.current?.click()} className={`flex-1 rounded-lg border border-dashed border-gray-600 hover:border-red-500 hover:bg-red-500/5 transition-all flex items-center justify-center gap-2 ${isUploading ? 'opacity-50' : ''}`}>
+                                                    <input
+                                                        value={updateUrl}
+                                                        onChange={(e) => setUpdateUrl(e.target.value)}
+                                                        placeholder="https://example.com/app.apk"
+                                                        className="flex-1 bg-gray-900 border border-gray-700 px-3 py-2 rounded-lg text-xs text-white focus:border-red-500 outline-none dir-ltr"
+                                                    />
+                                                    <button onClick={() => apkInputRef.current?.click()} className={`px-4 rounded-lg border border-dashed border-gray-600 hover:border-red-500 hover:bg-red-500/5 transition-all flex items-center justify-center gap-2 ${isUploading ? 'opacity-50' : ''}`}>
                                                         {isUploading ? <span className="text-xs font-bold text-red-500">{uploadProgress}%</span> : <UploadIcon className="w-4 h-4 text-gray-400" />}
                                                     </button>
-                                                    <input type="file" ref={apkInputRef} accept=".apk" hidden onChange={handleApkUpload} />
+                                                    <input type="file" ref={apkInputRef} accept=".apk" hidden onChange={handleApkUpload} onClick={(e) => (e.target as any).value = null} />
                                                 </div>
                                             </div>
                                         </div>
