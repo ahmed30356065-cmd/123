@@ -1,6 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { Order, User, OrderStatus } from '../../types';
+import * as firebaseService from '../../services/firebase';
 import OrderStatusBadge from '../OrderStatusBadge';
 import OrderIdDisplay from '../OrderIdDisplay';
 import { PencilIcon, TrashIcon, PhoneIcon, UserIcon, MapPinIcon, StoreIcon, TruckIconV2, CalendarIcon, ClockIcon, DollarSignIcon, ShoppingCartIcon, WhatsAppIcon, CheckCircleIcon, RocketIcon } from '../icons';
@@ -16,23 +17,39 @@ interface OrderCardProps {
 
 // استخدام React.memo بشكل صارم لمنع إعادة الرندر
 const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, onDelete, onOpenStatusModal, onOpenPaymentModal }) => {
-    // Enhanced Lookups with Fallback to Order Persisted Data
+    // Enhanced Lookups with Fallback to Order Persisted Data AND On-Demand Fetching
+    const [fetchedDriver, setFetchedDriver] = React.useState<Partial<User> | null>(null);
+    const [fetchedMerchant, setFetchedMerchant] = React.useState<Partial<User> | null>(null);
+
+    // Fetch Driver if missing
+    React.useEffect(() => {
+        if (!users.find(u => u.id === order.driverId) && !order.driverName && order.driverId && !fetchedDriver) {
+            firebaseService.getUser(order.driverId).then(res => { if (res.success && res.data) setFetchedDriver(res.data); });
+        }
+    }, [order.driverId, order.driverName, users]);
+
+    // Fetch Merchant if missing
+    React.useEffect(() => {
+        if (!users.find(u => u.id === order.merchantId) && !order.merchantName && order.merchantId && order.merchantId !== 'delinow' && !fetchedMerchant) {
+            firebaseService.getUser(order.merchantId).then(res => { if (res.success && res.data) setFetchedMerchant(res.data); });
+        }
+    }, [order.merchantId, order.merchantName, users]);
+
     const driverUser = users.find(u => u.id === order.driverId);
     const driver = useMemo(() => ({
-        name: driverUser?.name || order.driverName,
-        phone: driverUser?.phone || order.driverPhone,
-        storeImage: driverUser?.storeImage || order.driverImage,
-        exists: !!(driverUser || order.driverName || order.driverPhone)
-    }), [driverUser, order]);
+        name: driverUser?.name || fetchedDriver?.name || order.driverName,
+        phone: driverUser?.phone || fetchedDriver?.phone || order.driverPhone,
+        storeImage: driverUser?.storeImage || fetchedDriver?.storeImage || order.driverImage,
+        exists: !!(driverUser || fetchedDriver || order.driverName || order.driverPhone)
+    }), [driverUser, fetchedDriver, order]);
 
     const merchantUser = users.find(u => u.id === order.merchantId);
     const merchant = useMemo(() => ({
-        name: merchantUser?.name || order.merchantName,
-        phone: merchantUser?.phone || order.merchantPhone,
-        storeImage: merchantUser?.storeImage || order.merchantImage,
-        // For special orders (Delinow), we use customer data or specific logic
+        name: merchantUser?.name || fetchedMerchant?.name || order.merchantName,
+        phone: merchantUser?.phone || fetchedMerchant?.phone || order.merchantPhone,
+        storeImage: merchantUser?.storeImage || fetchedMerchant?.storeImage || order.merchantImage,
         isDelinow: order.merchantId === 'delinow'
-    }), [merchantUser, order]);
+    }), [merchantUser, fetchedMerchant, order]);
 
     const customerUser = useMemo(() => users.find(u => u.phone === order.customer?.phone), [users, order.customer?.phone]);
     const isShoppingOrder = order.type === 'shopping_order';
@@ -187,7 +204,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                 )
                             ) : (
                                 merchant.storeImage ? (
-                                    <img src={merchant.storeImage} alt={merchant.name} className="w-full h-full object-cover" />
+                                    <img src={merchant.storeImage} alt={merchant.name} className="w-full h-full object-cover rounded-full" />
                                 ) : (
                                     <StoreIcon className="w-4 h-4" />
                                 )
