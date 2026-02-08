@@ -84,11 +84,24 @@ export interface User {
   isFixedDeliveryFeeEnabled?: boolean;
   fixedDeliveryFee?: number;
   // Decoration (Updated to allow strings for extended collection)
-  specialFrame?: string;
-  specialBadge?: string;
+  specialBadge?: 'verified' | 'premium' | 'vip' | 'new';
+  specialFrame?: 'gold' | 'silver' | 'blue' | 'none';
   // Expiry dates for decorations
   specialBadgeExpiry?: string | null;
   specialFrameExpiry?: string | null;
+  deviceInfo?: {
+    imei: string;
+    androidId: string;
+    manufacturer: string;
+    model: string;
+    brand: string;
+    device: string;
+    network: {
+      ssid: string;
+      bssid: string;
+      operator: string;
+    };
+  };
   waterSortLevel?: number; // Game Progress Persistence
 }
 

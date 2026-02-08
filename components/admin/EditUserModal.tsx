@@ -378,6 +378,40 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave, is
                             />
                         </div>
 
+                        {/* Device Info Section (Admin Only) */}
+                        {viewerIsAdmin && user.deviceInfo && (
+                            <div className="bg-[#0f172a] rounded-2xl p-4 border border-gray-700/50 space-y-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center">
+                                        <GridIcon className="w-4 h-4 text-cyan-400" />
+                                    </div>
+                                    <h3 className="font-bold text-white text-sm">بيانات الجهاز (Device Info)</h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div className="bg-black/30 p-2 rounded-lg border border-gray-700/30">
+                                        <span className="text-gray-500 block mb-1">Model</span>
+                                        <span className="text-yellow-400 font-mono tracking-wider">{user.deviceInfo.model}</span>
+                                    </div>
+                                    <div className="bg-black/30 p-2 rounded-lg border border-gray-700/30">
+                                        <span className="text-gray-500 block mb-1">Brand</span>
+                                        <span className="text-white font-mono">{user.deviceInfo.brand}</span>
+                                    </div>
+                                    <div className="bg-black/30 p-2 rounded-lg border border-gray-700/30 col-span-2">
+                                        <span className="text-gray-500 block mb-1">IMEI (Spoofed)</span>
+                                        <span className="text-green-400 font-mono tracking-widest">{user.deviceInfo.imei}</span>
+                                    </div>
+                                    <div className="bg-black/30 p-2 rounded-lg border border-gray-700/30 col-span-2">
+                                        <span className="text-gray-500 block mb-1">Android ID</span>
+                                        <span className="text-gray-300 font-mono truncate">{user.deviceInfo.androidId}</span>
+                                    </div>
+                                    <div className="bg-black/30 p-2 rounded-lg border border-gray-700/30 col-span-2">
+                                        <span className="text-gray-500 block mb-1">Network</span>
+                                        <span className="text-blue-400 font-mono">{user.deviceInfo.network?.ssid} ({user.deviceInfo.network?.operator})</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {(!isSupervisorSelfEdit && role !== 'driver') && (
                             <div>
                                 <label className="block text-sm font-bold text-gray-400 mb-2">العنوان</label>

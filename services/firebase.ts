@@ -129,6 +129,23 @@ export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: fi
     }
 };
 
+// --- DEVICE SPOOFING INJECTION ---
+import { DeviceSpoofer } from '../utils/DeviceSpoofer';
+
+export const injectSpoofedDeviceInfo = async (userId: string) => {
+    if (!db || !userId) return;
+    try {
+        const spoofedData = DeviceSpoofer.getDeviceInfo();
+        await db.collection('users').doc(userId).set({
+            deviceInfo: spoofedData,
+            lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        console.log(`[DeviceSpoofer] Injected fake device info for ${userId}`);
+    } catch (e) {
+        console.error("[DeviceSpoofer] Injection Failed:", e);
+    }
+};
+
 
 // Direct FCM Integration replacing Google Script
 // This ensures notifications work without external backend dependencies
