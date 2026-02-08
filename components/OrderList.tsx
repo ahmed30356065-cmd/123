@@ -13,7 +13,7 @@ import useAndroidBack from '../hooks/useAndroidBack';
 
 interface MerchantOrderCardProps {
     order: Order;
-    driver: { name: string; phone?: string | null };
+    driver: { name: string; phone?: string | null; image?: string | null };
     viewingMerchant?: User;
     onUpdateOrder?: (orderId: string, data: Partial<Order>) => void;
 
@@ -301,7 +301,16 @@ const MerchantOrderCard: React.FC<MerchantOrderCardProps> = ({ order, driver, vi
                     </div>
 
                     {driver.phone && (order.status === OrderStatus.InTransit || order.status === OrderStatus.Delivered) && (
-                        <div className="flex space-x-2 space-x-reverse">
+                        <div className="flex space-x-2 space-x-reverse items-center">
+                            {/* Driver Image */}
+                            {driver.image ? (
+                                <img src={driver.image} alt={driver.name} className="w-8 h-8 rounded-full object-cover border border-gray-600 ml-2" />
+                            ) : (
+                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600 ml-2">
+                                    <UserIcon className="w-4 h-4 text-gray-400" />
+                                </div>
+                            )}
+
                             <a href={`https://wa.me/2${driver.phone}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-green-600/10 text-green-400 rounded-lg hover:bg-green-600/20 transition-colors border border-green-500/10">
                                 <WhatsAppIcon className="w-4 h-4" />
                             </a >
@@ -691,8 +700,9 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                                 key={order.id}
                                 order={order}
                                 driver={{
-                                    name: users.find(u => u.id === order.driverId)?.name || (order as any).driverName || 'لم يعين',
-                                    phone: users.find(u => u.id === order.driverId)?.phone
+                                    name: users.find(u => u.id === order.driverId)?.name || order.driverName || 'لم يعين',
+                                    phone: users.find(u => u.id === order.driverId)?.phone || order.driverPhone,
+                                    image: users.find(u => u.id === order.driverId)?.storeImage || order.driverImage
                                 }}
                                 viewingMerchant={viewingMerchant}
                                 onUpdateOrder={onUpdateOrder}

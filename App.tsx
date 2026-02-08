@@ -426,12 +426,20 @@ const App: React.FC = () => {
                     }}
                     assignDriverAndSetStatus={(id, dr, fe, st) => {
                         // 1. Optimistic Update
-                        const driverName = users.find(u => u.id === dr)?.name || dr;
-                        registerOptimisticUpdate(id, { driverId: dr, deliveryFee: fe, status: st });
-                        setOrders(prev => prev.map(o => o.id === id ? { ...o, driverId: dr, deliveryFee: fe, status: st, driverName: driverName } : o));
+                        const driverObj = users.find(u => u.id === dr);
+                        const driverName = driverObj?.name || dr;
+                        const driverPhone = driverObj?.phone;
+                        const driverImage = driverObj?.storeImage; // Use storeImage as avatar usually
+
+                        const updates: any = { driverId: dr, deliveryFee: fe, status: st, driverName: driverName };
+                        if (driverPhone) updates.driverPhone = driverPhone;
+                        if (driverImage) updates.driverImage = driverImage;
+
+                        registerOptimisticUpdate(id, updates);
+                        setOrders(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
 
                         // 2. Server Update
-                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st, driverName: driverName })
+                        firebaseService.updateData('orders', id, updates)
                             .catch(err => showNotify('فشل تعيين المندوب', 'error'));
 
                         logAction('update', 'الطلبات', `تم تعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
@@ -594,12 +602,20 @@ const App: React.FC = () => {
                     }}
                     assignDriverAndSetStatus={(id, dr, fe, st) => {
                         // 1. Optimistic Update
-                        const driverName = users.find(u => u.id === dr)?.name || dr;
-                        registerOptimisticUpdate(id, { driverId: dr, deliveryFee: fe, status: st });
-                        setOrders(prev => prev.map(o => o.id === id ? { ...o, driverId: dr, deliveryFee: fe, status: st, driverName: driverName } : o));
+                        const driverObj = users.find(u => u.id === dr);
+                        const driverName = driverObj?.name || dr;
+                        const driverPhone = driverObj?.phone;
+                        const driverImage = driverObj?.storeImage;
+
+                        const updates: any = { driverId: dr, deliveryFee: fe, status: st, driverName: driverName };
+                        if (driverPhone) updates.driverPhone = driverPhone;
+                        if (driverImage) updates.driverImage = driverImage;
+
+                        registerOptimisticUpdate(id, updates);
+                        setOrders(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
 
                         // 2. Server Update
-                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st, driverName: driverName })
+                        firebaseService.updateData('orders', id, updates)
                             .catch(err => showNotify('فشل تعيين المندوب', 'error'));
 
                         logAction('update', 'الطلبات', `قام المشرف بتعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
@@ -792,7 +808,9 @@ const App: React.FC = () => {
                             const finalId = preFetchedId || await firebaseService.generateUniqueIdSafe('ORD-');
 
                             const newOrder: Order = {
-                                ...d, id: finalId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request'
+                                ...d, id: finalId, merchantId: currentUser.id, merchantName: currentUser.name, status: OrderStatus.Pending, createdAt: new Date(), type: 'delivery_request',
+                                merchantPhone: currentUser.phone,
+                                merchantImage: currentUser.storeImage
                             };
 
                             // 2. Optimistic UI Update (Immediate)

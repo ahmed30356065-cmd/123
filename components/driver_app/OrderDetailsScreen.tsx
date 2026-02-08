@@ -41,7 +41,13 @@ const ContactActions: React.FC<{ phone: string }> = ({ phone }) => {
 const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, listType, driver, onAcceptOrder, onUpdateStatus, onBack, theme }) => {
     const [fee, setFee] = useState(order.deliveryFee ? order.deliveryFee.toString() : '');
     const [error, setError] = useState('');
-    const merchant = users.find(u => u.id === order.merchantId);
+    // Enhanced Merchant Lookup: Use User object if available, otherwise fallback to Order persisted data
+    const merchantUser = users.find(u => u.id === order.merchantId);
+    const merchant = {
+        name: merchantUser?.name || order.merchantName || 'تاجر',
+        phone: merchantUser?.phone || order.merchantPhone,
+        image: merchantUser?.storeImage || order.merchantImage
+    };
 
     const handleAcceptClick = () => {
         const deliveryFee = parseFloat(fee);
@@ -224,7 +230,10 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
                             <div className="mt-4 pt-3 border-t border-white/5">
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
-                                        <span className="text-xs text-purple-400 font-bold flex items-center gap-1"><BuildingStorefrontIcon className="w-3 h-3" /> التاجر</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-purple-400 font-bold flex items-center gap-1"><BuildingStorefrontIcon className="w-3 h-3" /> التاجر</span>
+                                            {merchant.image && <img src={merchant.image} alt={merchant.name} className="w-5 h-5 rounded-full object-cover border border-purple-500/30" />}
+                                        </div>
                                         <span className="text-sm text-white font-bold block mt-1">{merchant.name}</span>
                                     </div>
                                     {merchant.phone && (

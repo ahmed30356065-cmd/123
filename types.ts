@@ -169,6 +169,8 @@ export interface Order {
   };
   driverId?: string; // Assigned Driver
   driverName?: string;
+  driverPhone?: string; // Persisted Driver Phone
+  driverImage?: string; // Persisted Driver Image
   notes?: string;
   rating?: number;
   customerPhone?: string;
@@ -177,6 +179,8 @@ export interface Order {
   archiveMonth?: string; // e.g., "فبراير 2024" - displayed with order ID after archiving
 
   // New Fields for Merchant Feature
+  merchantPhone?: string; // Persisted Merchant Phone
+  merchantImage?: string; // Persisted Merchant Image (Logo)
   customOrderNumber?: string;
   paymentStatus?: 'paid' | 'unpaid';
   isVodafoneCash?: boolean;
