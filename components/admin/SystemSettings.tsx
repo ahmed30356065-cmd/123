@@ -317,17 +317,35 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
 
             try {
                 // 1. Fetch ALL orders (sorted by creation time)
+                setProgressConfig(p => ({ ...p, isOpen: true, title: 'جاري التحضير', message: 'جاري جلب البيانات...', total: 100, current: 0 }));
                 const snapshot = await firebase.firestore().collection('orders').orderBy('createdAt', 'asc').get();
                 const total = snapshot.size;
                 if (total === 0) throw new Error('لا توجد طلبات');
 
-                setProgressConfig(p => ({ ...p, message: `تم العثور على ${total} طلب. جاري المعالجة...`, total }));
+                // --- BACKUP STEP ---
+                const backupId = `orders_backup_${new Date().toISOString().replace(/[:.]/g, '-')}`;
+                setProgressConfig(p => ({ ...p, title: 'نسخ احتياطي 🛡️', message: `جاري تأمين ${total} طلب في نسخة احتياطية...`, total, current: 0 }));
 
-                const batchSize = 400; // Firestore batch limit is 500
+                const batchSize = 400;
                 const chunks = [];
                 for (let i = 0; i < total; i += batchSize) {
                     chunks.push(snapshot.docs.slice(i, i + batchSize));
                 }
+
+                let backedUpCount = 0;
+                for (const chunk of chunks) {
+                    const batch = firebase.firestore().batch();
+                    chunk.forEach(doc => {
+                        const backupRef = firebase.firestore().collection(backupId).doc(doc.id);
+                        batch.set(backupRef, doc.data());
+                    });
+                    await batch.commit();
+                    backedUpCount += chunk.length;
+                    setProgressConfig(p => ({ ...p, current: backedUpCount }));
+                }
+                // --- END BACKUP ---
+
+                setProgressConfig(p => ({ ...p, title: 'إعادة الترتيب 🔢', message: `تم النسخ الاحتياطي بنجاح (${backupId}).\nجاري إعادة ترتيب المعرفات...`, total, current: 0 }));
 
                 let currentId = startNum;
                 let processed = 0;
@@ -347,7 +365,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                 // Update Counter
                 await updateData('counters', 'orders', { lastId: currentId - 1 });
 
-                showToast('تم إعادة الترتيب بنجاح!', 'success');
+                showToast(`تم بنجاح! تم إنشاء نسخة احتياطية: ${backupId}`, 'success');
             } catch (e: any) {
                 console.error(e);
                 showToast(`فشل: ${e.message}`, 'error');
