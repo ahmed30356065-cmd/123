@@ -4,6 +4,7 @@ import { User, Order, OrderStatus, Message, SliderImage, SliderConfig, AuditLog,
 import * as firebaseService from '../services/firebase';
 import { setAndroidRole, safeStringify, NativeBridge, logoutAndroid } from '../utils/NativeBridge';
 import { AppStorage, SafeLocalStorage } from '../utils/storage';
+import { APP_VERSION } from '../src/version';
 
 export const DEFAULT_FIREBASE_CONFIG = {
     apiKey: "AIzaSyC4bv_RLpS-jxunMs7nWjux806bYk6XnVY",
@@ -70,7 +71,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         isPointsEnabled: true
     });
 
-    const [appConfig, setAppConfig] = useState<AppConfig>(() => SafeLocalStorage.get('app_config_cache', { appName: 'GOO NOW', appVersion: 'VERSION 1.0.5' }));
+    const [appConfig, setAppConfig] = useState<AppConfig>(() => SafeLocalStorage.get('app_config_cache', { appName: 'GOO NOW', appVersion: `VERSION ${APP_VERSION}` }));
 
     const [updateConfig, setUpdateConfig] = useState<UpdateConfig | null>(null);
     const [showUpdate, setShowUpdate] = useState(false);
@@ -386,7 +387,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
             if (aConf) {
                 const newAppConfig = {
                     appName: aConf.appName || 'GOO NOW',
-                    appVersion: aConf.appVersion || 'VERSION 1.0.5',
+                    appVersion: aConf.appVersion || `VERSION ${APP_VERSION}`,
                     customFont: aConf.customFont,
                     games: aConf.games || [], // Fix: Load games from config
                     isGamesEnabled: aConf.isGamesEnabled // Fix: Load games toggle state
@@ -400,7 +401,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                 const conf = updateData as unknown as UpdateConfig;
                 setUpdateConfig(conf);
 
-                const localVer = '2.0.0'; // HARDCODED BUILD VERSION
+                const localVer = APP_VERSION; // DYNAMIC BUILD VERSION
 
                 // DEBUG: Show what we're checking
                 const debugInfo = `

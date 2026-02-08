@@ -56,10 +56,15 @@ const DailyReportModal: React.FC<{
         const pending = todayOrders.filter(o => o.status === OrderStatus.Pending);
 
         const totalRevenue = delivered.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-        const totalDeliveryFees = delivered.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+        let totalDeliveryFees = delivered.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
 
-        // Manual Dailies Total Amount
+        // Manual Dailies Total Amount (App Profit)
         const totalManualDailiesAmount = todayDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
+
+        // Manual Dailies Total Delivery Fees (Driver Revenue + App Profit from Manual)
+        const totalManualDeliveryFees = todayDailies.reduce((sum, d) => sum + (d.totalDeliveryFees || 0), 0);
+
+        totalDeliveryFees += totalManualDeliveryFees;
 
         let totalCommission = 0;
         const driverPerformance: Record<string, { name: string, count: number, total: number }> = {};
@@ -554,7 +559,11 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders: 
             const lastRegularOrderId = getMaxId(regularOrders, 'ORD-');
             const lastShoppingOrderId = getMaxId(shoppingOrders, 'S-');
 
-            // Calculate comprehensive metrics
+            // 1. Snapshot Manual Dailies for this month (Assuming we archive ALL current manual dailies as they are reset monthly?)
+            // Or better, filter those created/dated in the current archiving scope. 
+            // Since manual dailies are usually added day-by-day, we can take all 'visible' ones if the intention is to clear the board.
+            const snapshotDailies = [...manualDailies];
+
             const deliveredOrders = snapshotOrders.filter(o => o.status === OrderStatus.Delivered);
             const cancelledOrders = snapshotOrders.filter(o => o.status === OrderStatus.Cancelled);
 
@@ -604,6 +613,17 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders: 
                     }
                 }
             });
+
+            // --- Add Manual Dailies to Archive Totals ---
+            const totalManualFees = snapshotDailies.reduce((sum, d) => sum + (d.totalDeliveryFees || 0), 0); // Add Total Fees from Manual
+            const totalManualProfit = snapshotDailies.reduce((sum, d) => sum + (d.amount || 0), 0); // App Profit from Manual
+
+            totalFees += totalManualFees; // Update Global Fees
+            totalProf += totalManualProfit; // Update Global Profit
+            // Revenue from manual dailies is tricky. Usually distinct from App Revenue.
+            // If we want 'Total System Throughput', we might add it. 
+            // But usually 'Total Revenue' implies 'Order Value'. Manual dailies might not track 'Order Value' perfectly, just fees/commission.
+            // We'll leave Total Revenue as Order Revenue for now to avoid inflation with unknown data.
 
             // Create comprehensive monthly report
             const report: MonthlyReport = {
@@ -782,7 +802,15 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({ orders: 
         // Calculate Specific Summaries
         const delivered = filteredOrders.filter(o => o.status === OrderStatus.Delivered);
         const totalRevenue = delivered.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-        const totalDelivery = delivered.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+
+        // Base Delivery Fees from App Orders
+        let totalDelivery = delivered.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+
+        // Add Manual Daily Delivery Fees to Total Delivery
+        // This ensures that when we calculate Driver Earnings (Total Delivery - Commission), it remains mathematically consistent.
+        // Driver Earnings = (App Delivery Fees + Manual Delivery Fees) - (App Commission + Manual App Profit)
+        const manualDeliveryFees = filteredManualDailies.reduce((sum, d) => sum + (d.totalDeliveryFees || 0), 0);
+        totalDelivery += manualDeliveryFees;
 
         let appCommission = 0;
         let driverEarnings = 0;

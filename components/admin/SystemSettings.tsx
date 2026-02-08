@@ -12,6 +12,7 @@ import {
 import firebase from 'firebase/compat/app';
 import { AppConfig, UpdateLog } from '../../types';
 import PromptModal from './PromptModal';
+import { APP_VERSION } from '../../src/version';
 
 // --- Types ---
 interface SystemSettingsProps {
@@ -161,7 +162,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
 
     // General Config
     const [appName, setAppName] = useState('GOO NOW');
-    const [appVersion, setAppVersion] = useState('1.0.0');
+    const [appVersion, setAppVersion] = useState(APP_VERSION);
 
     // Updates
     const [newVersion, setNewVersion] = useState('');
@@ -338,7 +339,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                         </div>
                         <div>
                             <h1 className="text-xl font-bold tracking-tight text-white">إعدادات النظام</h1>
-                            <p className="text-[10px] text-gray-400 font-mono tracking-wider">{appName.toUpperCase()} v{appVersion}</p>
+                            <p className="text-[10px] text-gray-400 font-mono tracking-wider">{appName.toUpperCase()} v{APP_VERSION}</p>
                         </div>
                     </div>
                 </div>
