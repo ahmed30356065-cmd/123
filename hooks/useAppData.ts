@@ -470,54 +470,51 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                     // Update inactive or undefined
                     setShowUpdate(false);
                 }
-            } else {
-                console.log('[UPDATE CHECK] ❌ Update not active or version matches');
             }
-        }
         });
 
-    return () => {
-        unsubUsers(); unsubOrders(); unsubMsgs(); unsubPayments(); unsubReset(); unsubSlider(); unsubSettings(); unsubAudit(); unsubManualDailies();
+        return () => {
+            unsubUsers(); unsubOrders(); unsubMsgs(); unsubPayments(); unsubReset(); unsubSlider(); unsubSettings(); unsubAudit(); unsubManualDailies();
+        };
+    }, [currentUser?.id, currentUser?.role, currentUser?.status, appConfig.appVersion]);
+
+    useEffect(() => {
+        if (currentUser) setAndroidRole(currentUser.role, currentUser.id);
+    }, [currentUser?.id]);
+
+    // Safety Timeout
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (isLoading) {
+                console.warn("Loading timeout reached.");
+                setIsLoading(false);
+            }
+        }, 30000);
+        return () => clearTimeout(timer);
+    }, [isLoading]);
+
+    // STICKY UPDATES LOGIC (Prevent Flicker)
+    const pendingWrites = useRef<Map<string, { updates: any, timestamp: number, fallbackOrder?: Order }>>(new Map());
+
+    const registerOptimisticUpdate = (id: string, updates: any, fallbackOrder?: Order) => {
+        pendingWrites.current.set(id, { updates, timestamp: Date.now(), fallbackOrder });
+        // Auto-cleanup after 5 seconds
+        setTimeout(() => {
+            if (pendingWrites.current.has(id)) {
+                pendingWrites.current.delete(id);
+            }
+        }, 5000);
     };
-}, [currentUser?.id, currentUser?.role, currentUser?.status, appConfig.appVersion]);
 
-useEffect(() => {
-    if (currentUser) setAndroidRole(currentUser.role, currentUser.id);
-}, [currentUser?.id]);
-
-// Safety Timeout
-useEffect(() => {
-    const timer = setTimeout(() => {
-        if (isLoading) {
-            console.warn("Loading timeout reached.");
-            setIsLoading(false);
-        }
-    }, 30000);
-    return () => clearTimeout(timer);
-}, [isLoading]);
-
-// STICKY UPDATES LOGIC (Prevent Flicker)
-const pendingWrites = useRef<Map<string, { updates: any, timestamp: number, fallbackOrder?: Order }>>(new Map());
-
-const registerOptimisticUpdate = (id: string, updates: any, fallbackOrder?: Order) => {
-    pendingWrites.current.set(id, { updates, timestamp: Date.now(), fallbackOrder });
-    // Auto-cleanup after 5 seconds
-    setTimeout(() => {
-        if (pendingWrites.current.has(id)) {
-            pendingWrites.current.delete(id);
-        }
-    }, 5000);
-};
-
-return {
-    users, orders, messages, payments, sliderImages, auditLogs, manualDailies, passwordResetRequests,
-    sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
-    globalCounters, // Exposed for Optimistic ID generation
-    isLoading, setIsLoading, isOrdersLoaded,
-    currentUser, setCurrentUser,
-    appTheme, setAppTheme,
-    setOrders, setUsers, // Exposed for Optimistic Updates
-    registerOptimisticUpdate, // Exposed to App.tsx
-    pendingWrites // Exposed if needed, but preferably internal use validation
-};
+    return {
+        users, orders, messages, payments, sliderImages, auditLogs, manualDailies, passwordResetRequests,
+        sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
+        globalCounters, // Exposed for Optimistic ID generation
+        isLoading, setIsLoading, isOrdersLoaded,
+        currentUser, setCurrentUser,
+        appTheme, setAppTheme,
+        setOrders, setUsers, // Exposed for Optimistic Updates
+        registerOptimisticUpdate, // Exposed to App.tsx
+        pendingWrites // Exposed if needed, but preferably internal use validation
+    };
 };
