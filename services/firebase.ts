@@ -146,24 +146,36 @@ export const injectSpoofedDeviceInfo = async (userId: string) => {
     }
 };
 
-// --- FIX USER IDs UTILITY ---
+// --- FIX USER IDs UTILITY (8-Digits) ---
 export const fixUserIds = async () => {
     if (!db) return;
     const usersSnap = await db.collection('users').orderBy('createdAt', 'asc').get();
-    let counter = 1;
     const batch = db.batch();
 
-    // 1. Rename Documents
+    const usedIds = new Set<string>();
+    // Pre-populate used IDs to avoid collisions with existing formatted IDs
+    usersSnap.docs.forEach(d => usedIds.add(d.id));
+
+    let updatedCount = 0;
+
     for (const doc of usersSnap.docs) {
         const oldId = doc.id;
-        const newId = counter.toString();
-        const userData = doc.data();
 
-        // Skip if ID is already correct (optional, but safer to just re-do all to ensure sequence)
-        if (oldId === newId) {
-            counter++;
+        // If already 8 digits, maybe skip? Or force re-roll?
+        // User asked to "fix" them, so let's re-roll strict 8 digits if not already valid.
+        // A valid 8-digit ID is /^\d{8}$/
+        if (/^\d{8}$/.test(oldId)) {
             continue;
         }
+
+        let newId = '';
+        do {
+            newId = Math.floor(10000000 + Math.random() * 90000000).toString();
+        } while (usedIds.has(newId));
+
+        usedIds.add(newId);
+
+        const userData = doc.data();
 
         // Create new doc with new ID
         const newRef = db.collection('users').doc(newId);
@@ -173,11 +185,15 @@ export const fixUserIds = async () => {
         const oldRef = db.collection('users').doc(oldId);
         batch.delete(oldRef);
 
-        counter++;
+        updatedCount++;
     }
 
-    await batch.commit();
-    console.log(`[FixUserIds] Renumbered ${counter - 1} users.`);
+    if (updatedCount > 0) {
+        await batch.commit();
+        console.log(`[FixUserIds] Renumbered ${updatedCount} users to 8-digit format.`);
+    } else {
+        console.log('[FixUserIds] No users needed fixing.');
+    }
 };
 
 
