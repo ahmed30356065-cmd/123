@@ -259,6 +259,9 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                     );
 
 
+                    // Define commissionRate here as it was missing
+                    const commissionRate = driver.commissionRate || 0;
+
                     // Manual Dailies Calculation
                     const driverDailies = manualDailies.filter(d => d.driverId === driver.id && !d.reconciled);
                     const manualDailiesCommission = driverDailies.reduce((sum, d) => sum + (d.amount || 0), 0);
