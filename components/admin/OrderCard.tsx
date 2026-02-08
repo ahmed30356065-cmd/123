@@ -21,19 +21,19 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
     const [fetchedDriver, setFetchedDriver] = React.useState<Partial<User> | null>(null);
     const [fetchedMerchant, setFetchedMerchant] = React.useState<Partial<User> | null>(null);
 
-    // Fetch Driver if missing
+    // Fetch Driver if missing locally
     React.useEffect(() => {
-        if (!users.find(u => u.id === order.driverId) && !order.driverName && order.driverId && !fetchedDriver) {
+        if (order.driverId && !users.find(u => u.id === order.driverId) && !fetchedDriver) {
             firebaseService.getUser(order.driverId).then(res => { if (res.success && res.data) setFetchedDriver(res.data); });
         }
-    }, [order.driverId, order.driverName, users]);
+    }, [order.driverId, users]);
 
-    // Fetch Merchant if missing
+    // Fetch Merchant if missing locally
     React.useEffect(() => {
-        if (!users.find(u => u.id === order.merchantId) && !order.merchantName && order.merchantId && order.merchantId !== 'delinow' && !fetchedMerchant) {
+        if (order.merchantId && order.merchantId !== 'delinow' && !users.find(u => u.id === order.merchantId) && !fetchedMerchant) {
             firebaseService.getUser(order.merchantId).then(res => { if (res.success && res.data) setFetchedMerchant(res.data); });
         }
-    }, [order.merchantId, order.merchantName, users]);
+    }, [order.merchantId, users]);
 
     const driverUser = users.find(u => u.id === order.driverId);
     const driver = useMemo(() => ({
@@ -304,7 +304,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                 <div className="flex items-center gap-2">
                                     <div className="w-7 h-7 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                                         {driver.storeImage ? (
-                                            <img src={driver.storeImage} alt={driver.name || 'Driver'} className="w-full h-full object-cover" />
+                                            <img src={driver.storeImage} alt={driver.name || 'Driver'} className="w-full h-full object-cover rounded-full" />
                                         ) : (
                                             <UserIcon className="w-3.5 h-3.5 text-gray-400" />
                                         )}
