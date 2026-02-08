@@ -435,9 +435,9 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                         }
                     }
 
-                    // 2. Version Comparison
-                    const cleanRemote = conf.version.toLowerCase().replace(/[^0-9.]/g, '');
-                    const cleanLocal = localVer.toLowerCase().replace(/[^0-9.]/g, '');
+                    // 2. Version Comparison (SemVer)
+                    const cleanRemote = conf.version.replace(/[^0-9.]/g, '');
+                    const cleanLocal = localVer.replace(/[^0-9.]/g, '');
 
                     const remoteParts = cleanRemote.split('.').map(Number);
                     const localParts = cleanLocal.split('.').map(Number);
@@ -452,70 +452,72 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
                         if (r < l) { isRemoteNewer = false; break; }
                     }
 
-                    if (isRemoteNewer || (conf.forceUpdate && conf.version === localVer)) {
+                    if (isRemoteNewer) {
                         const skippedVersion = localStorage.getItem('skipped_update_version');
-                        console.log('[UPDATE CHECK] Skipped version in storage:', skippedVersion);
-
+                        // Show if forced OR not skipped
                         if (conf.forceUpdate || skippedVersion !== conf.version) {
-                            console.log('[UPDATE CHECK] ✅ SHOWING UPDATE SCREEN');
+                            console.log('[UPDATE CHECK] ✅ New version found. Showing update screen.');
                             setShowUpdate(true);
                         } else {
-                            console.log('[UPDATE CHECK] ❌ User already skipped this version');
+                            console.log('[UPDATE CHECK] ❌ User skipped this version.');
+                            setShowUpdate(false);
                         }
                     } else {
-                        console.log('[UPDATE CHECK] ❌ Remote version is not newer');
+                        console.log('[UPDATE CHECK] ❌ App is up to date.');
+                        setShowUpdate(false);
                     }
-                } else if (conf.isActive && conf.forceUpdate && conf.version === localVer) {
-                    console.log('[UPDATE CHECK] ✅ Force update for same version - SHOWING UPDATE SCREEN');
-                    setShowUpdate(true);
                 } else {
-                    console.log('[UPDATE CHECK] ❌ Update not active or version matches');
+                    // Update inactive or undefined
+                    setShowUpdate(false);
                 }
+            } else {
+                console.log('[UPDATE CHECK] ❌ Update not active or version matches');
             }
+        }
         });
 
-        return () => {
-            unsubUsers(); unsubOrders(); unsubMsgs(); unsubPayments(); unsubReset(); unsubSlider(); unsubSettings(); unsubAudit(); unsubManualDailies();
-        };
-    }, [currentUser?.id, currentUser?.role, currentUser?.status, appConfig.appVersion]);
-
-    useEffect(() => {
-        if (currentUser) setAndroidRole(currentUser.role, currentUser.id);
-    }, [currentUser?.id]);
-
-    // Safety Timeout
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (isLoading) {
-                console.warn("Loading timeout reached.");
-                setIsLoading(false);
-            }
-        }, 30000);
-        return () => clearTimeout(timer);
-    }, [isLoading]);
-
-    // STICKY UPDATES LOGIC (Prevent Flicker)
-    const pendingWrites = useRef<Map<string, { updates: any, timestamp: number, fallbackOrder?: Order }>>(new Map());
-
-    const registerOptimisticUpdate = (id: string, updates: any, fallbackOrder?: Order) => {
-        pendingWrites.current.set(id, { updates, timestamp: Date.now(), fallbackOrder });
-        // Auto-cleanup after 5 seconds
-        setTimeout(() => {
-            if (pendingWrites.current.has(id)) {
-                pendingWrites.current.delete(id);
-            }
-        }, 5000);
+    return () => {
+        unsubUsers(); unsubOrders(); unsubMsgs(); unsubPayments(); unsubReset(); unsubSlider(); unsubSettings(); unsubAudit(); unsubManualDailies();
     };
+}, [currentUser?.id, currentUser?.role, currentUser?.status, appConfig.appVersion]);
 
-    return {
-        users, orders, messages, payments, sliderImages, auditLogs, manualDailies, passwordResetRequests,
-        sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
-        globalCounters, // Exposed for Optimistic ID generation
-        isLoading, setIsLoading, isOrdersLoaded,
-        currentUser, setCurrentUser,
-        appTheme, setAppTheme,
-        setOrders, setUsers, // Exposed for Optimistic Updates
-        registerOptimisticUpdate, // Exposed to App.tsx
-        pendingWrites // Exposed if needed, but preferably internal use validation
-    };
+useEffect(() => {
+    if (currentUser) setAndroidRole(currentUser.role, currentUser.id);
+}, [currentUser?.id]);
+
+// Safety Timeout
+useEffect(() => {
+    const timer = setTimeout(() => {
+        if (isLoading) {
+            console.warn("Loading timeout reached.");
+            setIsLoading(false);
+        }
+    }, 30000);
+    return () => clearTimeout(timer);
+}, [isLoading]);
+
+// STICKY UPDATES LOGIC (Prevent Flicker)
+const pendingWrites = useRef<Map<string, { updates: any, timestamp: number, fallbackOrder?: Order }>>(new Map());
+
+const registerOptimisticUpdate = (id: string, updates: any, fallbackOrder?: Order) => {
+    pendingWrites.current.set(id, { updates, timestamp: Date.now(), fallbackOrder });
+    // Auto-cleanup after 5 seconds
+    setTimeout(() => {
+        if (pendingWrites.current.has(id)) {
+            pendingWrites.current.delete(id);
+        }
+    }, 5000);
+};
+
+return {
+    users, orders, messages, payments, sliderImages, auditLogs, manualDailies, passwordResetRequests,
+    sliderConfig, pointsConfig, appConfig, updateConfig, showUpdate, setShowUpdate,
+    globalCounters, // Exposed for Optimistic ID generation
+    isLoading, setIsLoading, isOrdersLoaded,
+    currentUser, setCurrentUser,
+    appTheme, setAppTheme,
+    setOrders, setUsers, // Exposed for Optimistic Updates
+    registerOptimisticUpdate, // Exposed to App.tsx
+    pendingWrites // Exposed if needed, but preferably internal use validation
+};
 };
