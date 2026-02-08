@@ -648,7 +648,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 {view === 'logs' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AuditLogsScreen logs={props.auditLogs} onClearLogs={props.onClearLogs} /></PullToRefresh></div>}
                 {view === 'loyalty' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} /></PullToRefresh></div>}
                 {view === 'support' && <AdminSupportScreen users={props.users} currentUser={props.user} onBack={() => setView('orders')} />}
-                {view === 'settings' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><SystemSettings onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} /></PullToRefresh></div>}
+                {view === 'settings' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><SystemSettings onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} currentUser={props.user} /></PullToRefresh></div>}
                 {view === 'games' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><GamesManager appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig!} /></PullToRefresh></div>}
             </main>
 
