@@ -12,8 +12,8 @@ android {
         applicationId = "com.goo.now.a"
         minSdk = 24
         targetSdk = 34
-        versionCode = 230
-        versionName = "2.0.30"
+        versionCode = 231
+        versionName = "2.0.31"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

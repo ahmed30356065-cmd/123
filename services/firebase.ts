@@ -161,16 +161,16 @@ export const fixUserIds = async () => {
     for (const doc of usersSnap.docs) {
         const oldId = doc.id;
 
-        // If already 8 digits, maybe skip? Or force re-roll?
+        // If already 8 digits (prefixed with ID:), maybe skip? Or force re-roll?
         // User asked to "fix" them, so let's re-roll strict 8 digits if not already valid.
-        // A valid 8-digit ID is /^\d{8}$/
-        if (/^\d{8}$/.test(oldId)) {
+        // A valid 8-digit ID with prefix is /^ID:\d{8}$/
+        if (/^ID:\d{8}$/.test(oldId)) {
             continue;
         }
 
         let newId = '';
         do {
-            newId = Math.floor(10000000 + Math.random() * 90000000).toString();
+            newId = 'ID:' + Math.floor(10000000 + Math.random() * 90000000).toString();
         } while (usedIds.has(newId));
 
         usedIds.add(newId);

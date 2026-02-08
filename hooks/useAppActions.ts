@@ -21,7 +21,7 @@ export const useAppActions = ({ users, orders, messages, payments = [], manualDa
         while (!isUnique) {
             // Generate 8 random digits
             const random8 = Math.floor(10000000 + Math.random() * 90000000).toString();
-            newId = random8;
+            newId = 'ID:' + random8;
             // Check uniqueness
             if (!allUsers.some(u => u.id === newId)) {
                 isUnique = true;

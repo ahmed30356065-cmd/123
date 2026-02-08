@@ -49,7 +49,6 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
             await onSave({
                 driverId,
                 date,
-                date,
                 count: Number(count),
                 note,
                 amount,

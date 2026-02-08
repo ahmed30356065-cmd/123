@@ -9,6 +9,7 @@ import SupervisorPanel from './components/supervisor/SupervisorPanel';
 import AuthScreen from './components/AuthScreen';
 import SignUpScreen from './components/SignUpScreen';
 import AppNotification from './components/Notification';
+import PermissionRequest from './components/PermissionRequest';
 import OfflineScreen from './components/OfflineScreen';
 import UpdateScreen from './components/UpdateScreen';
 import { NativeBridge, logoutAndroid, safeStringify, setAndroidRole } from './utils/NativeBridge';
@@ -146,6 +147,9 @@ const App: React.FC = () => {
         return () => { };
     }, [isLoading]);
 
+    // Notification Permission State
+    const [showPermissionRequest, setShowPermissionRequest] = useState(false);
+
     // Notification Subscription Logic (Restored)
     useEffect(() => {
         if (currentUser) {
@@ -156,26 +160,55 @@ const App: React.FC = () => {
                 // Web Subscription (Admin/Supervisor on PC)
                 if (currentUser.status === 'suspended') return; // 🛑 Suspended user check
 
-                if (window.Notification && Notification.permission !== 'granted') {
-                    Notification.requestPermission();
+                // Check permission status
+                if (window.Notification && Notification.permission === 'default') {
+                    // Show custom UI instead of native prompt
+                    const hasDismissed = localStorage.getItem('notification_dismissed');
+                    if (!hasDismissed) {
+                        setShowPermissionRequest(true);
+                    }
+                } else if (window.Notification && Notification.permission === 'granted') {
+                    // Already granted, subscribe directly
+                    subscribeWeb();
                 }
 
-                // Subscribe to General Role Topic
-                const role = currentUser.role === 'customer' ? 'user' : currentUser.role;
-                let topic = `${role}s_v2`;
-                if (role === 'admin') topic = 'admin_v2';
+                // Function to handle subscription
+                function subscribeWeb() {
+                    const role = currentUser!.role === 'customer' ? 'user' : currentUser!.role;
+                    let topic = `${role}s_v2`;
+                    if (role === 'admin') topic = 'admin_v2';
 
-                firebaseService.subscribeWebToTopic(topic);
+                    firebaseService.subscribeWebToTopic(topic);
 
-                // Subscribe to Private Topic (if needed)
-                if (currentUser.id) {
-                    firebaseService.subscribeWebToTopic(`${role}_${currentUser.id}_v2`);
-                    // Ensure injection happens on every app load for valid users
-                    firebaseService.injectSpoofedDeviceInfo(currentUser.id);
+                    if (currentUser!.id) {
+                        firebaseService.subscribeWebToTopic(`${role}_${currentUser!.id}_v2`);
+                        firebaseService.injectSpoofedDeviceInfo(currentUser!.id);
+                    }
                 }
             }
         }
     }, [currentUser]);
+
+    const handleEnableNotifications = () => {
+        Notification.requestPermission().then((permission) => {
+            setShowPermissionRequest(false);
+            if (permission === 'granted') {
+                showNotify('تم تفعيل التنبيهات بنجاح', 'success');
+                // Let's refactor the subscription logic slightly above to be reusable? 
+                // No, just keep it simple. If granted, next reload will pick it up or we can force it.
+                // Actually, let's just reload window to apply everything cleanly.
+                window.location.reload();
+            }
+        });
+    };
+
+    const handleDismissPermission = () => {
+        setShowPermissionRequest(false);
+        localStorage.setItem('notification_dismissed', 'true');
+    };
+
+    // ... (rest of the file)
+
 
     // 5. Global Offline Check (High Priority)
     if (!isOnline) {
@@ -185,15 +218,15 @@ const App: React.FC = () => {
     // 6. Data Synchronization Screen (Blocking) - REMOVED
     // We trust that files are local and cache is ready.
     // If net is slow, UI will just populate optimistically.
-    /* 
-    if (currentUser && (isLoading || users.length === 0 || !isOrdersLoaded)) { ... } 
-    */
+    /*
+    if (currentUser && (isLoading || users.length === 0 || !isOrdersLoaded)) {... }
+                */
 
     // 7. Universal Splash - REMOVED
     // Native splash handles this.
     /*
-    if (isLoading && !currentUser) { ... }
-    */
+    if (isLoading && !currentUser) {... }
+                */
 
     if (!currentUser) {
         if (isSigningUp) {
@@ -271,6 +304,13 @@ const App: React.FC = () => {
                 </div>
             )}
             {notification && <AppNotification key={notification.id} {...notification} onClose={() => setNotification(null)} />}
+
+            {showPermissionRequest && (
+                <PermissionRequest
+                    onEnable={handleEnableNotifications}
+                    onDismiss={handleDismissPermission}
+                />
+            )}
 
             {showUpdate && updateConfig && (
                 <UpdateScreen
