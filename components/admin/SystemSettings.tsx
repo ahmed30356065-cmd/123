@@ -390,50 +390,55 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
             }
 
             console.log('Opening confirm modal');
-            openConfirmModal('⚠️ تدمير شامل للبيانات', 'سيتم حذف جميع الطلبات وتصفير العداد إلى 1. لا يمكن التراجع عن هذا الإجراء!\n\nسيتم إنشاء نسخة احتياطية تلقائياً قبل الحذف.', async () => {
+            openConfirmModal('⚠️ تدمير شامل للبيانات', 'سيتم حذف (الطلبات، اليوميات، المدفوعات، السجلات) وتصفير العداد.\n\nلا يمكن التراجع عن هذا الإجراء!', async () => {
                 console.log('Modal confirmed, starting delete process');
                 setIsLoading(true);
-                setProgressConfig({ isOpen: true, title: 'جاري الفورمات ☢️', message: 'جاري جلب البيانات...', total: 100, current: 0 });
+                setProgressConfig({ isOpen: true, title: 'جاري الفورمات ☢️', message: 'جاري تحليل البيانات...', total: 100, current: 0 });
 
                 try {
-                    // --- RECURSIVE DELETE LOOP ---
-                    // We keep deleting until the collection is empty to handle > 500 records or pagination limits
-                    let deletedTotal = 0;
-                    let isEmpty = false;
+                    // Helper to delete a collection recursively
+                    const deleteCollection = async (collectionName: string, label: string) => {
+                        let deletedCount = 0;
+                        let isEmpty = false;
+                        while (!isEmpty) {
+                            const snapshot = await firebase.firestore().collection(collectionName).limit(400).get();
+                            if (snapshot.empty) {
+                                isEmpty = true;
+                                break;
+                            }
+                            const batch = firebase.firestore().batch();
+                            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                            await batch.commit();
+                            deletedCount += snapshot.size;
 
-                    while (!isEmpty) {
-                        // Fetch a batch of 400 (safe size)
-                        const snapshot = await firebase.firestore().collection('orders').limit(400).get();
-
-                        if (snapshot.empty) {
-                            isEmpty = true;
-                            break;
+                            setProgressConfig(p => ({
+                                ...p,
+                                title: `جاري حذف ${label}`,
+                                message: `تم حذف ${deletedCount} سجل من ${label}...`,
+                                current: p.current + snapshot.size
+                            }));
+                            await new Promise(r => setTimeout(r, 100));
                         }
+                        return deletedCount;
+                    };
 
-                        const batch = firebase.firestore().batch();
-                        snapshot.docs.forEach(doc => {
-                            batch.delete(doc.ref);
-                        });
+                    // 1. Delete Orders
+                    const deletedOrders = await deleteCollection('orders', 'الطلبات');
 
-                        await batch.commit();
-                        deletedTotal += snapshot.size;
+                    // 2. Delete Manual Dailies (Financial Logs)
+                    const deletedDailies = await deleteCollection('manual_dailies', 'اليوميات');
 
-                        setProgressConfig(p => ({
-                            ...p,
-                            title: 'تنظيف عميق 🧹',
-                            message: `تم حذف ${deletedTotal} سجل... جاري الفحص عن المزيد`,
-                            total: deletedTotal + 100, // Dynamic progress
-                            current: deletedTotal
-                        }));
+                    // 3. Delete Payments (Wallet History)
+                    const deletedPayments = await deleteCollection('payments', 'المدفوعات');
 
-                        // Small delay to prevent rate limiting
-                        await new Promise(r => setTimeout(r, 200));
-                    }
+                    // 4. Delete Audit Logs
+                    const deletedLogs = await deleteCollection('audit_logs', 'سجلات النظام');
 
                     // --- RESET COUNTER ---
                     await updateData('counters', 'orders', { lastId: 0 });
 
-                    showToast(`تم تنظيف قاعدة البيانات بالكامل (${deletedTotal} سجل) وتصفير العداد!`, 'success');
+                    const totalDeleted = deletedOrders + deletedDailies + deletedPayments + deletedLogs;
+                    showToast(`تم التصفير الشامل! (تم حذف ${totalDeleted} سجل)`, 'success');
                     setTimeout(() => window.location.reload(), 2000);
 
                 } catch (e: any) {
