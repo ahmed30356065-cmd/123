@@ -653,23 +653,29 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                                             </button>
 
                                             <button
-                                                onClick={async () => {
-                                                    if (confirm('هل أنت متأكد من إعادة ترتيب معرفات المستخدمين؟ سيتم تغيير IDs لتكون متسلسلة.')) {
-                                                        setIsResetting(true);
-                                                        try {
-                                                            await firebaseService.fixUserIds();
-                                                            alert('تم إصلاح معرفات المستخدمين بنجاح!');
-                                                        } catch (e: any) {
-                                                            alert('حدث خطأ: ' + e.message);
-                                                        } finally {
-                                                            setIsResetting(false);
-                                                        }
-                                                    }
+                                                onClick={() => {
+                                                    openConfirmModal(
+                                                        'إصلاح معرفات المستخدمين',
+                                                        'هل أنت متأكد من إعادة ترتيب معرفات المستخدمين؟\nسيتم تغيير IDs لتكون متسلسلة ومميزة (8 أرقام).\nلا يمكن التراجع عن هذا الإجراء.',
+                                                        async () => {
+                                                            setIsResetting(true);
+                                                            try {
+                                                                await fixUserIds();
+                                                                showToast('تم إصلاح معرفات المستخدمين بنجاح!', 'success');
+                                                            } catch (e: any) {
+                                                                showToast('حدث خطأ: ' + e.message, 'error');
+                                                            } finally {
+                                                                setIsResetting(false);
+                                                            }
+                                                        },
+                                                        'info'
+                                                    );
                                                 }}
-                                                className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-100 p-3 rounded-lg border border-orange-500/30 flex items-center justify-center gap-2 transition-all"
+                                                disabled={isResetting}
+                                                className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-100 p-3 rounded-lg border border-orange-500/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-wait"
                                             >
-                                                <UsersIcon className="w-5 h-5" />
-                                                <span>إصلاح معرفات المستخدمين (Fix IDs)</span>
+                                                {isResetting ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <UsersIcon className="w-5 h-5" />}
+                                                <span>{isResetting ? 'جاري الإصلاح...' : 'إصلاح معرفات المستخدمين (Fix IDs)'}</span>
                                             </button>
                                         </div>
                                     </div>
