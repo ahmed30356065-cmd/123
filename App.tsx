@@ -498,7 +498,7 @@ const App: React.FC = () => {
 
             {currentUser.role === 'supervisor' && (
                 <SupervisorPanel
-                    user={currentUser} users={users} orders={orders} payments={payments}
+                    user={currentUser} users={users} orders={orders} payments={payments} manualDailies={manualDailies} logAction={logAction}
                     passwordResetRequests={passwordResetRequests}
                     resolvePasswordResetRequest={(phone) => {
                         firebaseService.deleteData('reset_requests', phone);

@@ -31,6 +31,7 @@ interface SupervisorPanelProps {
   orders: Order[];
   users: User[];
   payments: Payment[];
+  manualDailies?: any[]; // Keep flexible or use ManualDaily[] if imported
   updateUser: (userId: string, updatedData: Partial<User>) => void;
   deleteUser: (userId: string) => void;
   deleteOrder: (orderId: string) => void;
@@ -61,6 +62,7 @@ interface SupervisorPanelProps {
   deleteMessage: (id: string) => void;
   passwordResetRequests: { phone: string; requestedAt: Date }[];
   resolvePasswordResetRequest: (phone: string) => void;
+  logAction: (actionType: 'create' | 'update' | 'delete' | 'financial', target: string, details: string) => void;
   // Slider Props
   sliderImages: any[];
   sliderConfig: any;
@@ -72,6 +74,7 @@ interface SupervisorPanelProps {
   currentTheme?: any;
   onUpdateTheme?: (appType: 'driver' | 'merchant' | 'customer' | 'admin', config: any) => void;
   onOpenPaymentModal?: (order: Order) => void;
+  getNewId?: () => Promise<string>;
 }
 
 const SideMenuItem: React.FC<{ icon: React.ReactNode, label: string, onClick: () => void, isActive?: boolean, danger?: boolean }> = ({ icon, label, onClick, isActive, danger }) => (
@@ -360,7 +363,7 @@ const SupervisorPanel: React.FC<SupervisorPanelProps> = (props) => {
         )}
 
         {view === 'add_order' && (
-          <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={async (data) => { await props.adminAddOrder(data as any); }} />
+          <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={async (data) => { await props.adminAddOrder(data as any); }} getNewId={props.getNewId} />
         )}
 
         {view === 'notifications' && (
