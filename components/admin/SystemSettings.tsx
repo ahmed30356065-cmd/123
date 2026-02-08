@@ -387,41 +387,45 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
             setProgressConfig({ isOpen: true, title: 'جاري الفورمات ☢️', message: 'جاري جلب البيانات...', total: 100, current: 0 });
 
             try {
-                // 1. Fetch ALL orders
-                const snapshot = await firebase.firestore().collection('orders').get();
-                const total = snapshot.size;
-                if (total === 0) {
-                    // Even if empty, reset counter
-                    await updateData('counters', 'orders', { lastId: 0 });
-                    return showToast('قاعدة البيانات فارغة بالفعل. تم تصفير العداد.', 'success');
-                }
+                // --- RECURSIVE DELETE LOOP ---
+                // We keep deleting until the collection is empty to handle > 500 records or pagination limits
+                let deletedTotal = 0;
+                let isEmpty = false;
 
-                const batchSize = 400;
-                const chunks = [];
-                for (let i = 0; i < total; i += batchSize) {
-                    chunks.push(snapshot.docs.slice(i, i + batchSize));
-                }
+                while (!isEmpty) {
+                    // Fetch a batch of 400 (safe size)
+                    const snapshot = await firebase.firestore().collection('orders').limit(400).get();
 
-                let processedCount = 0;
+                    if (snapshot.empty) {
+                        isEmpty = true;
+                        break;
+                    }
 
-                // --- DELETE STEP ---
-                setProgressConfig(p => ({ ...p, title: 'حذف البيانات 🗑️', message: `جاري حذف ${total} سجل نهائياً...`, total, current: 0 }));
-
-                for (const chunk of chunks) {
                     const batch = firebase.firestore().batch();
-                    chunk.forEach(doc => {
+                    snapshot.docs.forEach(doc => {
                         batch.delete(doc.ref);
                     });
+
                     await batch.commit();
-                    processedCount += chunk.length;
-                    setProgressConfig(p => ({ ...p, current: processedCount }));
+                    deletedTotal += snapshot.size;
+
+                    setProgressConfig(p => ({
+                        ...p,
+                        title: 'تنظيف عميق 🧹',
+                        message: `تم حذف ${deletedTotal} سجل... جاري الفحص عن المزيد`,
+                        total: deletedTotal + 100, // Dynamic progress
+                        current: deletedTotal
+                    }));
+
+                    // Small delay to prevent rate limiting
+                    await new Promise(r => setTimeout(r, 200));
                 }
 
                 // --- RESET COUNTER ---
                 await updateData('counters', 'orders', { lastId: 0 });
 
-                showToast(`تم الحذف الشامل وتصفير العداد بنجاح!`, 'success');
-                setTimeout(() => window.location.reload(), 1500);
+                showToast(`تم تنظيف قاعدة البيانات بالكامل (${deletedTotal} سجل) وتصفير العداد!`, 'success');
+                setTimeout(() => window.location.reload(), 2000);
 
             } catch (e: any) {
                 console.error(e);
