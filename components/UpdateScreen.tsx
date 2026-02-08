@@ -50,8 +50,9 @@ const UpdateScreen: React.FC<UpdateScreenProps> = ({ config, onDismiss }) => {
             // We use a safe check for the Android bridge
             const androidBridge = (window as any).Android;
             const isNativeAvailable = typeof androidBridge !== 'undefined' && typeof androidBridge.downloadAndInstallApk === 'function';
+            const isApk = config.type === 'apk' || config.url.endsWith('.apk') || config.url.includes('.apk');
 
-            if (isNativeAvailable && config.type === 'apk') {
+            if (isNativeAvailable && isApk) {
                 addLog("Using Native Android Installer");
                 setStatusText('جاري التحميل والتثبيت...');
 

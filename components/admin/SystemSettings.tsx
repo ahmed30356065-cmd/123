@@ -236,7 +236,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                     const payload = {
                         version: newVersion, url: updateUrl, notes: updateNotes,
                         target_roles: targetRoles, timestamp: new Date().toISOString(),
-                        isActive: true, forceUpdate: true
+                        isActive: true, forceUpdate: true,
+                        type: 'apk'
                     };
                     await addData('app_updates', payload);
                     await updateData('settings', 'app_update', { ...payload, id: 'app_update' });
