@@ -238,10 +238,9 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
 
                                                     {/* Orders */}
                                                     <div className="flex flex-col items-center md:items-start px-2 md:px-0">
-                                                        <span className="text-[10px] text-gray-500 mb-0.5">الطلبات / يوميات</span>
+                                                        <span className="text-[10px] text-gray-500 mb-0.5">الطلبات</span>
                                                         <span className="text-sm font-bold text-white">
-                                                            {payment.verifiedCount}
-                                                            {payment.verifiedDailiesCount > 0 && <span className="text-yellow-500 text-xs"> +{payment.verifiedDailiesCount}</span>}
+                                                            {payment.verifiedCount + (payment.verifiedDailiesCount || 0)}
                                                         </span>
                                                     </div>
 
@@ -256,7 +255,6 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                                         <span className="text-[10px] text-red-500/70 mb-0.5">للشركة</span>
                                                         <span className="text-sm font-bold text-red-400">
                                                             {Math.round(payment.companyShare)}
-                                                            {payment.dailiesAmount > 0 && <span className="text-[9px] text-yellow-500/80 block leading-none">تتضمن {payment.dailiesAmount} ج.م يوميات</span>}
                                                         </span>
                                                     </div>
 

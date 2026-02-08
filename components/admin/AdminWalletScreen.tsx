@@ -79,9 +79,10 @@ interface AdminWalletScreenProps {
     onDeletePayment: (paymentId: string) => void;
     currentUser: User;
     manualDailies?: ManualDaily[];
+    logAction: (actionType: 'create' | 'update' | 'delete' | 'financial', target: string, details: string) => void;
 }
 
-const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, payments, updateUser, handleDriverPayment, onDeletePayment, currentUser, manualDailies = [] }) => {
+const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, payments, updateUser, handleDriverPayment, onDeletePayment, currentUser, manualDailies = [], logAction }) => {
     const [historyDriver, setHistoryDriver] = useState<User | null>(null);
     const [payingDriverInfo, setPayingDriverInfo] = useState<{ driver: User; amount: number } | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -169,6 +170,11 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
             };
 
             await firebaseService.updateData('manual_dailies', newId, newDaily);
+
+            // Log the action
+            const driverName = users.find(u => u.id === data.driverId)?.name || 'Unknown Driver';
+            logAction('financial', 'إضافة يومية', `تم إضافة يومية للمندوب ${driverName} بقيمة ${data.amount} ج.م (${data.count} طلبات)`);
+
             setShowManualDailyModal(false);
             setSelectedDriverForDaily(null);
         } catch (e) {
