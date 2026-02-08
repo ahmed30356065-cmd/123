@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react'; // Fix: Explicitly import hooks
 import { Order, User, OrderStatus } from '../../types';
 import * as firebaseService from '../../services/firebase';
 import OrderStatusBadge from '../OrderStatusBadge';
@@ -18,18 +18,18 @@ interface OrderCardProps {
 // استخدام React.memo بشكل صارم لمنع إعادة الرندر
 const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, onDelete, onOpenStatusModal, onOpenPaymentModal }) => {
     // Enhanced Lookups with Fallback to Order Persisted Data AND On-Demand Fetching
-    const [fetchedDriver, setFetchedDriver] = React.useState<Partial<User> | null>(null);
-    const [fetchedMerchant, setFetchedMerchant] = React.useState<Partial<User> | null>(null);
+    const [fetchedDriver, setFetchedDriver] = useState<Partial<User> | null>(null);
+    const [fetchedMerchant, setFetchedMerchant] = useState<Partial<User> | null>(null);
 
     // Fetch Driver if missing locally
-    React.useEffect(() => {
+    useEffect(() => {
         if (order.driverId && !users.find(u => u.id === order.driverId) && !fetchedDriver) {
             firebaseService.getUser(order.driverId).then(res => { if (res.success && res.data) setFetchedDriver(res.data); });
         }
     }, [order.driverId, users]);
 
     // Fetch Merchant if missing locally
-    React.useEffect(() => {
+    useEffect(() => {
         if (order.merchantId && order.merchantId !== 'delinow' && !users.find(u => u.id === order.merchantId) && !fetchedMerchant) {
             firebaseService.getUser(order.merchantId).then(res => { if (res.success && res.data) setFetchedMerchant(res.data); });
         }
