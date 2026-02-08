@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Order, User, OrderStatus, Payment } from '../../types';
-import { UserIcon, WalletIcon, ReceiptIcon, ClockIcon, CheckCircleIcon, XIcon, CashIcon, ExclamationIcon } from '../icons';
+import { UserIcon, WalletIcon, ReceiptIcon, ClockIcon, CheckCircleIcon, XIcon, CashIcon, ExclamationIcon, TrashIcon } from '../icons';
 import DriverPaymentHistoryPage from './DriverPaymentHistoryPage';
 import ManualDailyModal from './ManualDailyModal';
 import ConfirmationModal from './ConfirmationModal';
@@ -182,6 +182,18 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
         }
     };
 
+    const handleDeleteDaily = async (id: string, driverName: string) => {
+        if (window.confirm(`هل أنت متأكد من حذف اليومية اليدوية للمندوب ${driverName}؟`)) {
+            try {
+                await firebaseService.deleteData('manual_dailies', id);
+                logAction('delete', 'حذف يومية', `تم حذف يومية يدوية للمندوب ${driverName}`);
+            } catch (e) {
+                console.error("Error deleting daily:", e);
+                alert("حدث خطأ أثناء الحذف");
+            }
+        }
+    };
+
     // Android Back Button Handler
     useAndroidBack(() => {
         // 1. Close History Page (Detailed View) - Returns to Wallet Main
@@ -262,7 +274,12 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
 
                     companyShare += dailiesAmount; // Add manual dailies to total claimable
 
-                    const driverShare = totalFees - (companyShare - dailiesAmount);
+
+                    // Net for Driver Calculation Fix:
+                    // If companyShare includes dailiesAmount (which is owed by driver),
+                    // then Net = Total Collected Fees - Total Owing (Company Share)
+                    // If result matches 0, it means settled. If negative, driver owes money.
+                    const driverShare = totalFees - companyShare;
                     const commissionLabel = driver.commissionType === 'fixed'
                         ? `${commissionRate} ج.م/طلب`
                         : `${commissionRate}%`;
@@ -318,8 +335,31 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                                     <FinancialRow label="إجمالي التحصيل" value={totalFees} colorClass="text-blue-400" />
                                     <FinancialRow label={`العمولة المستحقة (${commissionLabel})`} value={companyShare} colorClass="text-red-400" />
                                     {dailiesAmount > 0 && (
-                                        <div className="flex justify-between items-baseline px-3 py-1">
-                                            <span className="text-xs text-yellow-500/70">+ {dailiesAmount} ج.م يوميات يدوية ({driverDailies.length})</span>
+                                        <div className="flex flex-col gap-2 mt-1 bg-yellow-900/10 p-2 rounded-lg border border-yellow-500/10">
+                                            <div className="flex justify-between items-baseline border-b border-yellow-500/10 pb-1">
+                                                <span className="text-xs text-yellow-500/80 font-bold flex items-center gap-1">
+                                                    <ExclamationIcon className="w-3 h-3" />
+                                                    يوميات يدوية ({driverDailies.length})
+                                                </span>
+                                                <span className="text-xs font-black text-yellow-500">+ {dailiesAmount} ج.م</span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                {driverDailies.map(daily => (
+                                                    <div key={daily.id} className="flex justify-between items-center bg-gray-800/50 rounded px-2 py-1.5 hover:bg-gray-700/50 transition-colors">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[10px] text-gray-300 font-bold">{daily.ordersCount} طلبات - {daily.amount} ج.م</span>
+                                                            <span className="text-[9px] text-gray-500 font-mono tracking-wide">{new Date(daily.dayDate).toLocaleDateString('ar-EG')}</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleDeleteDaily(daily.id, driver.name)}
+                                                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1.5 rounded-lg transition-all"
+                                                            title="حذف اليومية (تراجع)"
+                                                        >
+                                                            <TrashIcon className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                     <FinancialRow label="صافي للمندوب" value={driverShare} colorClass="text-green-400" />
