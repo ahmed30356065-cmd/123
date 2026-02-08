@@ -36,20 +36,33 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
     }, [order.merchantId, users]);
 
     const driverUser = users.find(u => u.id === order.driverId);
-    const driver = useMemo(() => ({
-        name: driverUser?.name || fetchedDriver?.name || order.driverName,
-        phone: driverUser?.phone || fetchedDriver?.phone || order.driverPhone,
-        storeImage: driverUser?.storeImage || fetchedDriver?.storeImage || order.driverImage,
-        exists: !!(driverUser || fetchedDriver || order.driverName || order.driverPhone)
-    }), [driverUser, fetchedDriver, order]);
+    const driverUser = users.find(u => u.id === order.driverId);
+    const driver = useMemo(() => {
+        let name = driverUser?.name || fetchedDriver?.name || order.driverName;
+        // Sanitize: If name equals ID, treat as null
+        if (name && order.driverId && name === order.driverId) name = undefined;
+
+        return {
+            name: name,
+            phone: driverUser?.phone || fetchedDriver?.phone || order.driverPhone,
+            storeImage: driverUser?.storeImage || fetchedDriver?.storeImage || order.driverImage,
+            exists: !!(driverUser || fetchedDriver || (name && name !== order.driverId) || order.driverPhone)
+        };
+    }, [driverUser, fetchedDriver, order]);
 
     const merchantUser = users.find(u => u.id === order.merchantId);
-    const merchant = useMemo(() => ({
-        name: merchantUser?.name || fetchedMerchant?.name || order.merchantName,
-        phone: merchantUser?.phone || fetchedMerchant?.phone || order.merchantPhone,
-        storeImage: merchantUser?.storeImage || fetchedMerchant?.storeImage || order.merchantImage,
-        isDelinow: order.merchantId === 'delinow'
-    }), [merchantUser, fetchedMerchant, order]);
+    const merchant = useMemo(() => {
+        let name = merchantUser?.name || fetchedMerchant?.name || order.merchantName;
+        // Sanitize
+        if (name && order.merchantId && name === order.merchantId) name = undefined;
+
+        return {
+            name: name,
+            phone: merchantUser?.phone || fetchedMerchant?.phone || order.merchantPhone,
+            storeImage: merchantUser?.storeImage || fetchedMerchant?.storeImage || order.merchantImage,
+            isDelinow: order.merchantId === 'delinow'
+        };
+    }, [merchantUser, fetchedMerchant, order]);
 
     const customerUser = useMemo(() => users.find(u => u.phone === order.customer?.phone), [users, order.customer?.phone]);
     const isShoppingOrder = order.type === 'shopping_order';
@@ -337,7 +350,11 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                 </div>
                                 <div className="min-w-0">
                                     <p className="text-[9px] text-gray-500 mb-0.5">المندوب (غير موجود)</p>
-                                    <p className="text-white text-xs font-bold truncate">{(order as any).driverName || 'غير معروف'}</p>
+                                    <p className="text-white text-xs font-bold truncate">
+                                        {(order as any).driverName && (order as any).driverName !== order.driverId
+                                            ? (order as any).driverName
+                                            : 'جاري التحميل...'}
+                                    </p>
                                 </div>
                             </div>
                         ) : (
