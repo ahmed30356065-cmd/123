@@ -360,6 +360,88 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
                 {canDelete && (
                     <FilterCard label="أدوات الحذف" icon={<TrashIcon />} isActive={isDeleteToolsOpen} onClick={() => setIsDeleteToolsOpen(true)} colorClasses="bg-red-500/20 text-red-400 border-red-500/30" />
                 )}
+
+                {/* Repair Data Tool (Admin Only) */}
+                {currentUser?.role === 'admin' && (
+                    <button
+                        onClick={async () => {
+                            const ordersToFix = orders.filter(o =>
+                                (o.driverId && (!o.driverName || o.driverName === 'غير معين' || o.driverName === o.driverId)) ||
+                                (o.merchantId && o.merchantId !== 'delinow' && (!o.merchantName || o.merchantName === o.merchantId))
+                            );
+
+                            if (ordersToFix.length === 0) {
+                                setLocalToast("جميع البيانات سليمة! لا توجد طلبات تحتاج لإصلاح.");
+                                setTimeout(() => setLocalToast(null), 3000);
+                                return;
+                            }
+
+                            if (!window.confirm(`تم العثور على ${ordersToFix.length} طلب ببيانات غير مكتملة. هل تريد إصلاحها الآن؟`)) return;
+
+                            let fixedCount = 0;
+                            const batch = [];
+
+                            // Import likely needed here, but assuming firebaseService is available or via props? 
+                            // Actually AdminOrdersScreen receives function props usually.
+                            // We can't easily import firebaseService here if it's not imported.
+                            // BUT wait, we can just use `editOrder` for each! It might be slow but safe.
+                            // BETTER: The props allow `editOrder`.
+
+                            setLocalToast(`جاري إصلاح ${ordersToFix.length} طلب...`);
+
+                            for (const order of ordersToFix) {
+                                const updates: any = {};
+                                let needsUpdate = false;
+
+                                // Fix Driver
+                                if (order.driverId) {
+                                    const dr = users.find(u => u.id === order.driverId);
+                                    if (dr) {
+                                        if (!order.driverName || order.driverName === 'غير معين' || order.driverName === order.driverId) {
+                                            updates.driverName = dr.name;
+                                            needsUpdate = true;
+                                        }
+                                        if (!order.driverPhone) { updates.driverPhone = dr.phone; needsUpdate = true; }
+                                        if (!order.driverImage) { updates.driverImage = dr.storeImage; needsUpdate = true; }
+                                    }
+                                }
+
+                                // Fix Merchant
+                                if (order.merchantId && order.merchantId !== 'delinow') {
+                                    const mr = users.find(u => u.id === order.merchantId);
+                                    if (mr) {
+                                        if (!order.merchantName || order.merchantName === order.merchantId) {
+                                            updates.merchantName = mr.name;
+                                            needsUpdate = true;
+                                        }
+                                        if (!order.merchantPhone) { updates.merchantPhone = mr.phone; needsUpdate = true; }
+                                        if (!order.merchantImage) { updates.merchantImage = mr.storeImage; needsUpdate = true; }
+                                    }
+                                }
+
+                                if (needsUpdate) {
+                                    // Use editOrder prop to save
+                                    // Note: editOrder in App.tsx now handles snapshotting too, but we are passing explicit fields here so it's fine.
+                                    // Actually we just passed the specific updates.
+                                    // We need to pass the FULL structure required by editOrder interface?
+                                    // The interface says: customer, notes, etc.
+                                    // Use a type assertion to bypass strict partial check since App.tsx just does updateData
+                                    editOrder(order.id, updates as any);
+                                    fixedCount++;
+                                }
+                            }
+
+                            setLocalToast(`تم إصلاح بيانات ${fixedCount} طلب بنجاح.`);
+                            setTimeout(() => setLocalToast(null), 4000);
+                        }}
+                        className="p-3 rounded-xl flex flex-col items-center justify-center text-center transition-all duration-200 border-2 border-orange-500/30 bg-orange-500/20 hover:bg-orange-500/30 min-w-[90px] focus:outline-none"
+                    >
+                        <div className="p-2 rounded-full mb-1 bg-orange-500/20">
+                            <RefreshCwIcon className="w-5 h-5 text-orange-400" />
+                        </div>
+                        <p className="text-gray-400 text-[10px] font-bold mb-1">إصلاح البيانات</p>
+                    </button>
+                )}
             </div>
 
             {/* Toast Notification */}

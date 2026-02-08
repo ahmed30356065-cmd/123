@@ -597,7 +597,30 @@ const App: React.FC = () => {
                         if (order && order.driverId && s !== OrderStatus.Pending) firebaseService.sendExternalNotification('driver', { title: "تحديث حالة", body: `الطلب ${id} أصبح ${s}`, targetId: order.driverId, url: `/?target=order&id=${id}` });
                     }}
                     editOrder={(id, d) => {
-                        firebaseService.updateData('orders', id, d);
+                        // Enhanced editOrder to snapshot details
+                        const updates: any = { ...d };
+
+                        // Snapshot Driver details if driverId is changing
+                        if (updates.driverId) {
+                            const driver = users.find(u => u.id === updates.driverId);
+                            if (driver) {
+                                updates.driverName = driver.name;
+                                updates.driverPhone = driver.phone;
+                                updates.driverImage = driver.storeImage;
+                            }
+                        }
+
+                        // Snapshot Merchant details if merchantId is changing
+                        if (updates.merchantId && updates.merchantId !== 'delinow') {
+                            const merchant = users.find(u => u.id === updates.merchantId);
+                            if (merchant) {
+                                updates.merchantName = merchant.name;
+                                updates.merchantPhone = merchant.phone;
+                                updates.merchantImage = merchant.storeImage;
+                            }
+                        }
+
+                        firebaseService.updateData('orders', id, updates);
                         logAction('update', 'الطلبات', `قام المشرف بتعديل تفاصيل الطلب رقم ${id}`);
                     }}
                     assignDriverAndSetStatus={(id, dr, fe, st) => {
