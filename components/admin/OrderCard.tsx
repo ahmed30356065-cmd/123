@@ -16,8 +16,24 @@ interface OrderCardProps {
 
 // استخدام React.memo بشكل صارم لمنع إعادة الرندر
 const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, onDelete, onOpenStatusModal, onOpenPaymentModal }) => {
-    const driver = useMemo(() => users.find(u => u.id === order.driverId), [users, order.driverId]);
-    const merchantUser = useMemo(() => users.find(u => u.id === order.merchantId), [users, order.merchantId]);
+    // Enhanced Lookups with Fallback to Order Persisted Data
+    const driverUser = users.find(u => u.id === order.driverId);
+    const driver = useMemo(() => ({
+        name: driverUser?.name || order.driverName,
+        phone: driverUser?.phone || order.driverPhone,
+        storeImage: driverUser?.storeImage || order.driverImage,
+        exists: !!(driverUser || order.driverName || order.driverPhone)
+    }), [driverUser, order]);
+
+    const merchantUser = users.find(u => u.id === order.merchantId);
+    const merchant = useMemo(() => ({
+        name: merchantUser?.name || order.merchantName,
+        phone: merchantUser?.phone || order.merchantPhone,
+        storeImage: merchantUser?.storeImage || order.merchantImage,
+        // For special orders (Delinow), we use customer data or specific logic
+        isDelinow: order.merchantId === 'delinow'
+    }), [merchantUser, order]);
+
     const customerUser = useMemo(() => users.find(u => u.phone === order.customer?.phone), [users, order.customer?.phone]);
     const isShoppingOrder = order.type === 'shopping_order';
 
@@ -163,22 +179,26 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                 <div className="flex flex-col bg-orange-900/10 p-3 rounded-xl border border-orange-500/10">
                     <div className="flex items-start gap-3 mb-2">
                         <div className="mt-1 p-1.5 rounded-full bg-orange-500/10 text-orange-400 flex-shrink-0 overflow-hidden w-8 h-8 flex items-center justify-center border border-orange-500/20">
-                            {order.merchantId === 'delinow' ? (
+                            {merchant.isDelinow ? (
                                 customerUser?.storeImage ? (
                                     <img src={customerUser.storeImage} alt="Customer" className="w-full h-full object-cover" />
                                 ) : (
                                     <UserIcon className="w-4 h-4" />
                                 )
                             ) : (
-                                <StoreIcon className="w-4 h-4" />
+                                merchant.storeImage ? (
+                                    <img src={merchant.storeImage} alt={merchant.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <StoreIcon className="w-4 h-4" />
+                                )
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-[10px] text-orange-400 font-bold mb-0.5">{order.merchantId === 'delinow' ? 'صاحب الطلب' : 'المرسل (التاجر)'}</p>
+                            <p className="text-[10px] text-orange-400 font-bold mb-0.5">{merchant.isDelinow ? 'صاحب الطلب' : 'المرسل (التاجر)'}</p>
                             <p className="text-white font-black text-sm truncate">
-                                {order.merchantId === 'delinow'
+                                {merchant.isDelinow
                                     ? (customerUser?.name || order.customer?.name || 'طلب خدمة خاصة')
-                                    : (merchantUser?.name || order.merchantName || 'طلب مباشر من العميل')}
+                                    : (merchant.name || 'غير معروف')}
                             </p>
                         </div>
                     </div>
@@ -236,21 +256,21 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                     </div>
 
                     {/* Merchant Phone (Left Aligned) */}
-                    {order.merchantId !== 'delinow' && (merchantUser?.phone || order.merchantId) && (
+                    {!merchant.isDelinow && (merchant.phone || order.merchantId) && (
                         <div className="flex justify-end pt-2 border-t border-orange-500/10 mt-1">
                             <div className="flex items-center gap-2" dir="ltr">
-                                {merchantUser?.phone && (
-                                    <a href={`https://wa.me/2${merchantUser.phone}`} target="_blank" rel="noopener noreferrer" className="p-1.5 flex-shrink-0 bg-green-500/10 text-green-400 rounded-lg hover:bg-green-500/20 transition-all border border-green-500/10 clickable" title="واتساب">
+                                {merchant.phone && (
+                                    <a href={`https://wa.me/2${merchant.phone}`} target="_blank" rel="noopener noreferrer" className="p-1.5 flex-shrink-0 bg-green-500/10 text-green-400 rounded-lg hover:bg-green-500/20 transition-all border border-green-500/10 clickable" title="واتساب">
                                         <WhatsAppIcon className="w-3.5 h-3.5" />
                                     </a>
                                 )}
-                                {merchantUser?.phone && (
-                                    <a href={`tel:${merchantUser.phone}`} className="p-1.5 flex-shrink-0 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all border border-blue-500/10 clickable" title="اتصال">
+                                {merchant.phone && (
+                                    <a href={`tel:${merchant.phone}`} className="p-1.5 flex-shrink-0 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all border border-blue-500/10 clickable" title="اتصال">
                                         <PhoneIcon className="w-3.5 h-3.5" />
                                     </a>
                                 )}
                                 <span className="text-xs text-gray-300 font-mono bg-black/20 px-2 py-1 rounded border border-gray-700 selectable font-bold tracking-wide">
-                                    {merchantUser?.phone || order.merchantId}
+                                    {merchant.phone || order.merchantId}
                                 </span>
                             </div>
                         </div>
@@ -261,20 +281,20 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                 <div className="grid grid-cols-2 gap-5 bg-gray-900/40 p-2 rounded-lg border border-gray-700/30">
                     {/* Left Column: Driver Info */}
                     <div className="flex flex-col justify-center pl-2">
-                        {driver ? (
+                        {driver.exists ? (
                             <div className="flex flex-col gap-1">
                                 {/* Avatar & Name */}
                                 <div className="flex items-center gap-2">
                                     <div className="w-7 h-7 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                                         {driver.storeImage ? (
-                                            <img src={driver.storeImage} alt={driver.name} className="w-full h-full object-cover" />
+                                            <img src={driver.storeImage} alt={driver.name || 'Driver'} className="w-full h-full object-cover" />
                                         ) : (
                                             <UserIcon className="w-3.5 h-3.5 text-gray-400" />
                                         )}
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-[9px] text-gray-500 mb-0.5">المندوب</p>
-                                        <p className="text-white text-xs font-bold truncate leading-tight">{driver.name}</p>
+                                        <p className="text-white text-xs font-bold truncate leading-tight">{driver.name || 'مجهول'}</p>
                                     </div>
                                 </div>
 

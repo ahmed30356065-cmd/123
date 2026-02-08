@@ -43,10 +43,26 @@ const OrderDetailsScreen: React.FC<OrderDetailsScreenProps> = ({ order, users, l
     const [error, setError] = useState('');
     // Enhanced Merchant Lookup: Use User object if available, otherwise fallback to Order persisted data
     const merchantUser = users.find(u => u.id === order.merchantId);
+
+    // State to hold fetched merchant logic if not found locally
+    const [fetchedMerchant, setFetchedMerchant] = useState<Partial<User> | null>(null);
+
+    // Effect: If merchant is missing from 'users' and 'order' details (Legacy Order), try to fetch it
+    useEffect(() => {
+        if (!merchantUser && order.merchantId && order.merchantId !== 'delinow' && !order.merchantPhone && !fetchedMerchant) {
+            console.log("Merchant details missing, fetching from server...", order.merchantId);
+            firebaseService.getUser(order.merchantId).then(res => {
+                if (res.success && res.data) {
+                    setFetchedMerchant(res.data);
+                }
+            });
+        }
+    }, [order.merchantId, merchantUser, order.merchantPhone]);
+
     const merchant = {
-        name: merchantUser?.name || order.merchantName || 'تاجر',
-        phone: merchantUser?.phone || order.merchantPhone,
-        image: merchantUser?.storeImage || order.merchantImage
+        name: merchantUser?.name || fetchedMerchant?.name || order.merchantName || 'تاجر',
+        phone: merchantUser?.phone || fetchedMerchant?.phone || order.merchantPhone,
+        image: merchantUser?.storeImage || fetchedMerchant?.storeImage || order.merchantImage
     };
 
     const handleAcceptClick = () => {
