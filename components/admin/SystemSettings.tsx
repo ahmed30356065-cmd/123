@@ -766,6 +766,19 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                 type={modalConfig.type}
             />
 
+            {/* Prompt Modal */}
+            {promptConfig.isOpen && (
+                <PromptModal
+                    title={promptConfig.title}
+                    message={promptConfig.message}
+                    placeholder={promptConfig.placeholder}
+                    defaultValue={promptConfig.defaultValue}
+                    inputType={promptConfig.inputType}
+                    onConfirm={promptConfig.onConfirm}
+                    onClose={promptConfig.onClose}
+                />
+            )}
+
             {/* Progress Modal */}
             {progressConfig.isOpen && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
