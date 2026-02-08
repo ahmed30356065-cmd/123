@@ -16,11 +16,18 @@ interface UseAppActionsProps {
 export const useAppActions = ({ users, orders, messages, payments = [], manualDailies = [], currentUser, showNotify }: UseAppActionsProps) => {
 
     const generateNextUserId = (allUsers: User[]) => {
-        const maxId = allUsers.reduce((max, u) => {
-            const num = parseInt(u.id);
-            return !isNaN(num) ? Math.max(max, num) : max;
-        }, 0);
-        return String(maxId + 1);
+        let newId = '';
+        let isUnique = false;
+        while (!isUnique) {
+            // Generate 8 random digits
+            const random8 = Math.floor(10000000 + Math.random() * 90000000).toString();
+            newId = `ID${random8}`;
+            // Check uniqueness
+            if (!allUsers.some(u => u.id === newId)) {
+                isUnique = true;
+            }
+        }
+        return newId;
     };
 
     const logAction = (actionType: 'create' | 'update' | 'delete' | 'financial', target: string, details: string) => {
