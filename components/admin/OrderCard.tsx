@@ -36,7 +36,6 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
     }, [order.merchantId, users]);
 
     const driverUser = users.find(u => u.id === order.driverId);
-    const driverUser = users.find(u => u.id === order.driverId);
     const driver = useMemo(() => {
         let name = driverUser?.name || fetchedDriver?.name || order.driverName;
         // Sanitize: If name equals ID, treat as null
