@@ -293,6 +293,16 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                     </div>
                                 )}
                             </div>
+                        ) : order.driverId ? (
+                            <div className="flex items-center gap-2 h-full">
+                                <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0">
+                                    <UserIcon className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] text-gray-500 mb-0.5">المندوب (غير موجود)</p>
+                                    <p className="text-white text-xs font-bold truncate">{(order as any).driverName || 'معرّف: ' + order.driverId}</p>
+                                </div>
+                            </div>
                         ) : (
                             <div className="flex items-center gap-2 h-full">
                                 <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0">

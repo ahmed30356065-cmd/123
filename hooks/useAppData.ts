@@ -229,20 +229,20 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
 
         if (!currentUser) {
             // Not logged in yet? Load ALL orders preemptively
-            // This ensures admin/supervisor sees data immediately after login
-            // For other roles, this will be filtered/refined after login
-            unsubOrders = firebaseService.subscribeToCollection('orders', (data) => {
+            // OPTIMIZATION: Limit to 500 latest orders to save Quota
+            unsubOrders = firebaseService.subscribeToQuery('orders', [], (data) => {
                 setOrders(data as Order[]);
                 AppStorage.set('cache_orders', data);
                 setIsOrdersLoaded(true);
-            });
+            }, { orderBy: { field: 'createdAt', direction: 'desc' }, limit: 500 });
         } else if (currentUser.role === 'admin' || currentUser.role === 'supervisor') {
             // 👑 Admin/Supervisor: See EVERYTHING (Firehose)
-            unsubOrders = firebaseService.subscribeToCollection('orders', (data) => {
+            // OPTIMIZATION: Limit to 500 latest orders to save Quota
+            unsubOrders = firebaseService.subscribeToQuery('orders', [], (data) => {
                 setOrders(data as Order[]);
                 AppStorage.set('cache_orders', data);
                 setIsOrdersLoaded(true);
-            });
+            }, { orderBy: { field: 'createdAt', direction: 'desc' }, limit: 500 });
         } else if (currentUser.role === 'merchant') {
             // 🏪 Merchant: See only orders from MY store
             // CRITICAL: Clear cache to prevent "Deleted" orders from showing up from local storage

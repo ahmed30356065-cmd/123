@@ -431,7 +431,7 @@ const App: React.FC = () => {
                         setOrders(prev => prev.map(o => o.id === id ? { ...o, driverId: dr, deliveryFee: fe, status: st, driverName: driverName } : o));
 
                         // 2. Server Update
-                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st })
+                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st, driverName: driverName })
                             .catch(err => showNotify('فشل تعيين المندوب', 'error'));
 
                         logAction('update', 'الطلبات', `تم تعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
@@ -599,7 +599,7 @@ const App: React.FC = () => {
                         setOrders(prev => prev.map(o => o.id === id ? { ...o, driverId: dr, deliveryFee: fe, status: st, driverName: driverName } : o));
 
                         // 2. Server Update
-                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st })
+                        firebaseService.updateData('orders', id, { driverId: dr, deliveryFee: fe, status: st, driverName: driverName })
                             .catch(err => showNotify('فشل تعيين المندوب', 'error'));
 
                         logAction('update', 'الطلبات', `قام المشرف بتعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);

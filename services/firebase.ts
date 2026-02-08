@@ -323,10 +323,13 @@ export const subscribeToCollection = (collectionName: string, callback: (data: a
 
 // --- SMART SUBSCRIPTION LOGIC (Phase 1) ---
 
+// --- SMART SUBSCRIPTION LOGIC (Phase 1) ---
+
 export const subscribeToQuery = (
     collectionName: string,
     constraints: { field: string; op: firebase.firestore.WhereFilterOp; value: any }[],
-    callback: (data: any[]) => void
+    callback: (data: any[]) => void,
+    options?: { limit?: number; orderBy?: { field: string; direction?: 'asc' | 'desc' } }
 ) => {
     if (!db) return () => { };
 
@@ -336,6 +339,16 @@ export const subscribeToQuery = (
     constraints.forEach(c => {
         query = query.where(c.field, c.op, c.value);
     });
+
+    // Apply OrderBy (Must be before limit)
+    if (options?.orderBy) {
+        query = query.orderBy(options.orderBy.field, options.orderBy.direction || 'desc');
+    }
+
+    // Apply Limit
+    if (options?.limit) {
+        query = query.limit(options.limit);
+    }
 
     const cache = new Map<string, any>();
     let initialLoadComplete = false;
@@ -367,6 +380,12 @@ export const subscribeToQuery = (
         if (hasChanges || !initialLoadComplete) {
             initialLoadComplete = true;
             const data = Array.from(cache.values());
+            // Re-sort locally if needed because Map iteration order isn't guaranteed to match Query order perfectly after updates?
+            // Actually Firestore snapshot keeps order, but we are using a Map cache.
+            // If we want to strictly respect the query order, we should rely on the snapshot docs?
+            // But we are building a cache. The cache keys are IDs.
+            // Data array will be loosely ordered by insertion time into Map unless we sort it.
+            // For now, let's just return the data. The UI usually sorts it again.
             callback(data);
         }
     }, (error) => console.error(`Query Subscription error [${collectionName}]:`, error));
@@ -601,9 +620,9 @@ export const uploadFile = async (
     const app = firebase.app();
 
     // Check if Storage Bucket is available
-    if (app.options.storageBucket) {
+    if ((app.options as any).storageBucket) {
         try {
-            console.log(`[Upload] Attempting Storage upload to ${app.options.storageBucket}...`);
+            console.log(`[Upload] Attempting Storage upload to ${(app.options as any).storageBucket}...`);
             const storage = firebase.storage();
             const storageRef = storage.ref();
             const fileRef = storageRef.child(`${path}/${Date.now()}_${file.name}`);
@@ -627,14 +646,19 @@ export const uploadFile = async (
                 );
             });
         } catch (e) {
-            console.log("Storage failed, trying Firestore Chunking...");
+            console.warn("Storage failed. Fallback disabled to save Quota.");
+            // console.log("Storage failed, trying Firestore Chunking...");
+            // return await uploadFileToFirestore(file, path, onProgress);
+            throw new Error("Storage Upload Failed and Database Fallback is disabled to prevent quota usage. Please check Storage Quota.");
         }
     } else {
-        console.log("No storage bucket defined. Using Firestore Chunking...");
+        // console.log("No storage bucket defined. Using Firestore Chunking...");
+        // return await uploadFileToFirestore(file, path, onProgress);
+        throw new Error("Storage Bucket not configured. Database Fallback is disabled.");
     }
 
     // Fallback: Upload to Firestore (Database)
-    return await uploadFileToFirestore(file, path, onProgress);
+    // return await uploadFileToFirestore(file, path, onProgress);
 };
 
 export const sendExternalNotification = async (targetType: string, data: { title: string, body: string, url?: string, targetId?: string }) => {

@@ -691,7 +691,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders, users, viewingMerchant, o
                                 key={order.id}
                                 order={order}
                                 driver={{
-                                    name: users.find(u => u.id === order.driverId)?.name || 'لم يعين',
+                                    name: users.find(u => u.id === order.driverId)?.name || (order as any).driverName || 'لم يعين',
                                     phone: users.find(u => u.id === order.driverId)?.phone
                                 }}
                                 viewingMerchant={viewingMerchant}
