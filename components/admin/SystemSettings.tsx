@@ -3,11 +3,12 @@ import {
     UploadIcon, CheckCircleIcon, XIcon, CloudIcon, BoltIcon,
     SettingsIcon, RocketIcon, ServerIcon, ActivityIcon, SaveIcon,
     AlertTriangleIcon, TrashIcon, MobileIcon, RefreshCwIcon,
-    CalendarIcon, ShieldCheckIcon, WifiIcon
+    CalendarIcon, ShieldCheckIcon, WifiIcon, UsersIcon
 } from '../icons';
 import {
     updateData, uploadFile, subscribeToCollection,
-    deleteData, addData, sendExternalNotification
+    deleteData, addData, sendExternalNotification,
+    fixUserIds
 } from '../../services/firebase';
 import firebase from 'firebase/compat/app';
 import { AppConfig, UpdateLog } from '../../types';
@@ -174,6 +175,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
     const [history, setHistory] = useState<UpdateLog[]>([]);
 
     const apkInputRef = useRef<HTMLInputElement>(null);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
 
     // Initial Load
     useEffect(() => {
@@ -627,33 +630,49 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                                     منطقة الخطر (Danger Zone)
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <button
-                                        onClick={() => setShowResetConfirm(true)}
-                                        className="bg-red-600/20 hover:bg-red-600/40 text-red-100 p-3 rounded-lg border border-red-500/30 flex items-center justify-center gap-2 transition-all"
-                                    >
-                                        <TrashIcon className="w-5 h-5" />
-                                        <span>ضبط المصنع (حذف كل البيانات)</span>
-                                    </button>
+    // Missing State Definitions
+                                    const [showResetConfirm, setShowResetConfirm] = useState(false);
+                                    const [isResetting, setIsResetting] = useState(false);
 
-                                    <button
-                                        onClick={async () => {
-                                            if (confirm('هل أنت متأكد من إعادة ترتيب معرفات المستخدمين؟ سيتم تغيير IDs لتكون متسلسلة.')) {
-                                                setIsResetting(true);
-                                                try {
-                                                    await firebaseService.fixUserIds();
-                                                    alert('تم إصلاح معرفات المستخدمين بنجاح!');
-                                                } catch (e: any) {
-                                                    alert('حدث خطأ: ' + e.message);
-                                                } finally {
-                                                    setIsResetting(false);
-                                                }
-                                            }
-                                        }}
-                                        className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-100 p-3 rounded-lg border border-orange-500/30 flex items-center justify-center gap-2 transition-all"
-                                    >
-                                        <UserIcon className="w-5 h-5" />
-                                        <span>إصلاح معرفات المستخدمين (Fix IDs)</span>
-                                    </button>
+                                    // ... (rest of the component)
+
+                                    return (
+                                    // ...
+                                    <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 mb-6">
+                                        <h3 className="text-red-400 font-bold mb-2 flex items-center gap-2">
+                                            <TrashIcon className="w-5 h-5" />
+                                            منطقة الخطر (Danger Zone)
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <button
+                                                onClick={() => setShowResetConfirm(true)}
+                                                className="bg-red-600/20 hover:bg-red-600/40 text-red-100 p-3 rounded-lg border border-red-500/30 flex items-center justify-center gap-2 transition-all"
+                                            >
+                                                <TrashIcon className="w-5 h-5" />
+                                                <span>ضبط المصنع (حذف كل البيانات)</span>
+                                            </button>
+
+                                            <button
+                                                onClick={async () => {
+                                                    if (confirm('هل أنت متأكد من إعادة ترتيب معرفات المستخدمين؟ سيتم تغيير IDs لتكون متسلسلة.')) {
+                                                        setIsResetting(true);
+                                                        try {
+                                                            await firebaseService.fixUserIds();
+                                                            alert('تم إصلاح معرفات المستخدمين بنجاح!');
+                                                        } catch (e: any) {
+                                                            alert('حدث خطأ: ' + e.message);
+                                                        } finally {
+                                                            setIsResetting(false);
+                                                        }
+                                                    }
+                                                }}
+                                                className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-100 p-3 rounded-lg border border-orange-500/30 flex items-center justify-center gap-2 transition-all"
+                                            >
+                                                <UsersIcon className="w-5 h-5" />
+                                                <span>إصلاح معرفات المستخدمين (Fix IDs)</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             {/* Release History (Compact) */}
