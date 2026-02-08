@@ -753,12 +753,24 @@ const App: React.FC = () => {
                         // 🔥 Register Sticky Update to prevent flicker (Force InTransit AND DriverID)
                         registerOptimisticUpdate(oid, {
                             status: OrderStatus.InTransit,
-                            driverId: did // <--- CRITICAL FIX: Ensure it stays in "My Orders" list
+                            driverId: did, // <--- CRITICAL FIX: Ensure it stays in "My Orders" list
+                            driverName: users.find(u => u.id === did)?.name || 'مكتب',
+                            driverPhone: users.find(u => u.id === did)?.phone,
+                            driverImage: users.find(u => u.id === did)?.storeImage
                         }, order);
 
                         setOrders(prev => prev.map(o => {
                             if (o.id === oid) {
-                                return { ...o, driverId: did, deliveryFee: fee, status: OrderStatus.InTransit };
+                                const drv = users.find(u => u.id === did);
+                                return {
+                                    ...o,
+                                    driverId: did,
+                                    deliveryFee: fee,
+                                    status: OrderStatus.InTransit,
+                                    driverName: drv?.name || 'مكتب',
+                                    driverPhone: drv?.phone,
+                                    driverImage: drv?.storeImage
+                                };
                             }
                             return o;
                         }));
@@ -766,7 +778,10 @@ const App: React.FC = () => {
                         const optimisticUpdate = {
                             driverId: did,
                             deliveryFee: fee,
-                            status: OrderStatus.InTransit // Force status update immediately
+                            status: OrderStatus.InTransit, // Force status update immediately
+                            driverName: users.find(u => u.id === did)?.name || 'مكتب',
+                            driverPhone: users.find(u => u.id === did)?.phone,
+                            driverImage: users.find(u => u.id === did)?.storeImage
                         };
 
                         // 2. Server Update (Background)

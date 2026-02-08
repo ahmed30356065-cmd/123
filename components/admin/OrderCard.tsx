@@ -287,7 +287,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                     </a>
                                 )}
                                 <span className="text-xs text-gray-300 font-mono bg-black/20 px-2 py-1 rounded border border-gray-700 selectable font-bold tracking-wide">
-                                    {merchant.phone || order.merchantId}
+                                    {merchant.phone || 'غير متوفر'}
                                 </span>
                             </div>
                         </div>
@@ -337,7 +337,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                 </div>
                                 <div className="min-w-0">
                                     <p className="text-[9px] text-gray-500 mb-0.5">المندوب (غير موجود)</p>
-                                    <p className="text-white text-xs font-bold truncate">{(order as any).driverName || 'معرّف: ' + order.driverId}</p>
+                                    <p className="text-white text-xs font-bold truncate">{(order as any).driverName || 'غير معروف'}</p>
                                 </div>
                             </div>
                         ) : (
