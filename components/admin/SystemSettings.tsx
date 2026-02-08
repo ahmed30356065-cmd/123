@@ -377,6 +377,77 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
     };
     const handleBackupOrders = () => { showToast('قريباً', 'info'); };
 
+    // --- Factory Reset Logic (New) ---
+    const handleFactoryResetOrders = async () => {
+        const confirmCode = await showPrompt('تأكيد الحذف النهائي', 'اكتب "حذف الكل" للتأكيد:', '', 'text');
+        if (confirmCode !== 'حذف الكل') return showToast('لم يتم التأكيد بشكل صحيح', 'info');
+
+        openConfirmModal('⚠️ تدمير شامل للبيانات', 'سيتم حذف جميع الطلبات وتصفير العداد إلى 1. لا يمكن التراجع عن هذا الإجراء!\n\nسيتم إنشاء نسخة احتياطية تلقائياً قبل الحذف.', async () => {
+            setIsLoading(true);
+            setProgressConfig({ isOpen: true, title: 'جاري الفورمات ☢️', message: 'جاري جلب البيانات...', total: 100, current: 0 });
+
+            try {
+                // 1. Fetch ALL orders
+                const snapshot = await firebase.firestore().collection('orders').get();
+                const total = snapshot.size;
+                if (total === 0) {
+                    // Even if empty, reset counter
+                    await updateData('counters', 'orders', { lastId: 0 });
+                    return showToast('قاعدة البيانات فارغة بالفعل. تم تصفير العداد.', 'success');
+                }
+
+                // --- BACKUP STEP ---
+                const backupId = `orders_reset_backup_${new Date().toISOString().replace(/[:.]/g, '-')}`;
+                setProgressConfig(p => ({ ...p, title: 'نسخ احتياطي للطوارئ 🛡️', message: `جاري تأمين ${total} سجل قبل الحذف...`, total, current: 0 }));
+
+                const batchSize = 400;
+                const chunks = [];
+                for (let i = 0; i < total; i += batchSize) {
+                    chunks.push(snapshot.docs.slice(i, i + batchSize));
+                }
+
+                let processedCount = 0;
+                // Backup Loop
+                for (const chunk of chunks) {
+                    const batch = firebase.firestore().batch();
+                    chunk.forEach(doc => {
+                        batch.set(firebase.firestore().collection(backupId).doc(doc.id), doc.data());
+                    });
+                    await batch.commit();
+                    processedCount += chunk.length;
+                    setProgressConfig(p => ({ ...p, current: processedCount }));
+                }
+
+                // --- DELETE STEP ---
+                setProgressConfig(p => ({ ...p, title: 'حذف البيانات 🗑️', message: `تم النسخ (${backupId}).\nجاري حذف البيانات نهائياً...`, total, current: 0 }));
+
+                processedCount = 0;
+                for (const chunk of chunks) {
+                    const batch = firebase.firestore().batch();
+                    chunk.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                    await batch.commit();
+                    processedCount += chunk.length;
+                    setProgressConfig(p => ({ ...p, current: processedCount }));
+                }
+
+                // --- RESET COUNTER ---
+                await updateData('counters', 'orders', { lastId: 0 });
+
+                showToast(`تم الحذف الشامل بنجاح!\nالنسخة الاحتياطية: ${backupId}`, 'success');
+                setTimeout(() => window.location.reload(), 2000);
+
+            } catch (e: any) {
+                console.error(e);
+                showToast(`فشل: ${e.message}`, 'error');
+            } finally {
+                setIsLoading(false);
+                setProgressConfig(p => ({ ...p, isOpen: false }));
+            }
+        }, 'danger');
+    };
+
 
     // --- Database Simulation ---
     const [dbStatus, setDbStatus] = useState<'connected' | 'checking'>('checking');
@@ -664,6 +735,17 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                                             <p className="text-[10px] text-gray-500">إعادة تسلسل معرفات الطلبات ID بدءاً من رقم محدد</p>
                                         </div>
                                     </div>
+                                </button>
+
+                                <button onClick={handleFactoryResetOrders} className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-800 border border-gray-700 hover:border-red-600 hover:bg-red-600/10 transition-all group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center group-hover:text-red-500 transition-colors"><TrashIcon className="w-5 h-5" /></div>
+                                        <div className="text-right">
+                                            <h3 className="text-sm font-bold text-gray-200">حذف جميع الطلبات (Factory Reset)</h3>
+                                            <p className="text-[10px] text-gray-500">حذف كامل قاعدة بيانات الطلبات وتصفير العداد إلى 0</p>
+                                        </div>
+                                    </div>
+                                    <AlertTriangleIcon className="w-5 h-5 text-red-500 animate-pulse" />
                                 </button>
                             </div>
                         </div>
