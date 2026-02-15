@@ -191,38 +191,19 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
 
             <form onSubmit={handleSubmit} className={`space-y-2 transition-opacity duration-300 ${status === 'success' ? 'opacity-0' : 'opacity-100'}`}>
 
-                {/* Extra Fields Section - Only if Enabled */}
+                {/* Extra Fields Section - Compact Layout */}
                 {merchant?.canManageOrderDetails && (
-                    <div className="bg-gray-700/30 p-2 rounded-xl border border-gray-600/50 space-y-2 animate-fadeIn">
-                        {/* Header Removed */}
+                    <div className="bg-gray-700/30 p-2.5 rounded-xl border border-gray-600/50 space-y-3 animate-fadeIn">
 
+                        {/* 1. Payment Status (Full Width) */}
                         <div>
-                            <label htmlFor="orderNum" className="block text-xs font-bold text-neutral-400 mb-1.5 flex items-center gap-1">
-                                <ReceiptIcon className="w-3.5 h-3.5" />
-                                رقم الطلب
-                            </label>
-                            <input
-                                ref={orderNumInputRef}
-                                type="tel"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                id="orderNum"
-                                value={customOrderNumber}
-                                onChange={(e) => setCustomOrderNumber(e.target.value)}
-                                disabled={status === 'submitting'}
-                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none disabled:opacity-50 font-mono text-center text-sm"
-                                placeholder="#1234"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-bold text-neutral-400 mb-1.5">حالة الدفع</label>
+                            <label className="block text-[10px] font-bold text-neutral-400 mb-1.5 opacity-80">حالة الدفع</label>
                             <div className="flex bg-gray-700 rounded-lg p-1 border border-gray-600 gap-1">
                                 <button
                                     type="button"
                                     onClick={() => setPaymentOption('unpaid')}
-                                    className={`flex-1 py-2 px-2 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === 'unpaid'
-                                        ? 'bg-red-500 text-white shadow-lg'
+                                    className={`flex-1 py-1.5 px-1 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === 'unpaid'
+                                        ? 'bg-red-500 text-white shadow-sm'
                                         : 'text-gray-400 hover:text-white hover:bg-gray-600'
                                         }`}
                                 >
@@ -232,8 +213,8 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                                 <button
                                     type="button"
                                     onClick={() => setPaymentOption('paid')}
-                                    className={`flex-1 py-2 px-2 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === 'paid'
-                                        ? 'bg-green-600 text-white shadow-lg'
+                                    className={`flex-1 py-1.5 px-1 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === 'paid'
+                                        ? 'bg-green-600 text-white shadow-sm'
                                         : 'text-gray-400 hover:text-white hover:bg-gray-600'
                                         }`}
                                 >
@@ -243,92 +224,86 @@ const NewOrderForm: React.FC<NewOrderFormProps> = ({ addOrder, merchant }) => {
                                 <button
                                     type="button"
                                     onClick={() => setPaymentOption('vodafone_cash')}
-                                    className={`flex-1 py-2 px-2 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === 'vodafone_cash'
-                                        ? 'bg-red-800 text-white shadow-lg'
+                                    className={`flex-1 py-1.5 px-1 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${paymentOption === 'vodafone_cash'
+                                        ? 'bg-red-800 text-white shadow-sm'
                                         : 'text-gray-400 hover:text-white hover:bg-gray-600'
                                         }`}
                                 >
-                                    <VodafoneIcon className="w-4 h-4" />
-                                    <span>فودافون كاش</span>
+                                    <VodafoneIcon className="w-3.5 h-3.5" />
+                                    <span>فودافون</span>
                                 </button>
                             </div>
                         </div>
 
-                        {paymentOption === 'paid' && (
-                            <div className="animate-fadeIn">
-                                <label htmlFor="paidAmount" className="block text-xs font-bold text-neutral-400 mb-1.5">المبلغ المدفوع (ج.م)</label>
+                        {/* 2. Compact Row (Order # | Price | Discount) */}
+                        <div className="grid grid-cols-3 gap-2">
+
+                            {/* Order Number */}
+                            <div>
+                                <label htmlFor="orderNum" className="block text-[10px] font-bold text-neutral-400 mb-1 text-center">رقم الطلب</label>
                                 <input
-                                    type="number"
-                                    id="paidAmount"
-                                    value={paidAmount}
-                                    onChange={(e) => setPaidAmount(e.target.value)}
+                                    ref={orderNumInputRef}
+                                    type="tel"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    id="orderNum"
+                                    value={customOrderNumber}
+                                    onChange={(e) => setCustomOrderNumber(e.target.value)}
                                     disabled={status === 'submitting'}
-                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none disabled:opacity-50 text-center text-sm"
-                                    placeholder="0.00"
-                                    step="0.01"
-                                    min="0"
-                                    inputMode="decimal"
+                                    className="w-full px-1 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-1 focus:ring-pink-500 focus:border-pink-500 outline-none disabled:opacity-50 font-mono text-center text-xs font-bold"
+                                    placeholder="#"
                                 />
                             </div>
-                        )}
 
-                        {paymentOption === 'unpaid' && (
-                            <div className="animate-fadeIn">
-                                <label htmlFor="unpaidAmount" className="block text-xs font-bold text-neutral-400 mb-1.5">المبلغ غير المدفوع (ج.م)</label>
+                            {/* Price (Dynamic based on Status) */}
+                            <div>
+                                <label className="block text-[10px] font-bold text-emerald-400 mb-1 text-center">السعر</label>
+                                {paymentOption === 'paid' && (
+                                    <input
+                                        type="number"
+                                        value={paidAmount}
+                                        onChange={(e) => setPaidAmount(e.target.value)}
+                                        disabled={status === 'submitting'}
+                                        className="w-full px-1 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder:text-neutral-600 focus:ring-1 focus:ring-green-500 focus:border-green-500 outline-none text-center text-xs font-bold"
+                                        placeholder="0"
+                                    />
+                                )}
+                                {paymentOption === 'unpaid' && (
+                                    <input
+                                        type="number"
+                                        value={unpaidAmount}
+                                        onChange={(e) => setUnpaidAmount(e.target.value)}
+                                        disabled={status === 'submitting'}
+                                        className="w-full px-1 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder:text-neutral-600 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none text-center text-xs font-bold"
+                                        placeholder="0"
+                                    />
+                                )}
+                                {paymentOption === 'vodafone_cash' && (
+                                    <input
+                                        type="number"
+                                        value={cashAmount}
+                                        onChange={(e) => setCashAmount(e.target.value)}
+                                        disabled={status === 'submitting'}
+                                        className="w-full px-1 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder:text-neutral-600 focus:ring-1 focus:ring-red-800 focus:border-red-800 outline-none text-center text-xs font-bold"
+                                        placeholder="0"
+                                    />
+                                )}
+                            </div>
+
+                            {/* Discount */}
+                            <div>
+                                <label className="block text-[10px] font-bold text-yellow-400 mb-1 text-center">الخصم</label>
                                 <input
                                     type="number"
-                                    id="unpaidAmount"
-                                    value={unpaidAmount}
-                                    onChange={(e) => setUnpaidAmount(e.target.value)}
+                                    value={deliveryDiscount}
+                                    onChange={(e) => setDeliveryDiscount(e.target.value)}
                                     disabled={status === 'submitting'}
-                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:opacity-50 text-center text-sm"
-                                    placeholder="0.00"
-                                    step="0.01"
-                                    min="0"
-                                    inputMode="decimal"
+                                    className="w-full px-1 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-yellow-400 placeholder:text-neutral-600 focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500 outline-none disabled:opacity-50 text-center text-xs font-bold"
+                                    placeholder="0"
                                 />
                             </div>
-                        )}
 
-                        {paymentOption === 'vodafone_cash' && (
-                            <div className="animate-fadeIn">
-                                <label htmlFor="cashAmount" className="block text-xs font-bold text-neutral-400 mb-1.5">مبلغ فودافون كاش (ج.م)</label>
-                                <input
-                                    type="number"
-                                    id="cashAmount"
-                                    value={cashAmount}
-                                    onChange={(e) => setCashAmount(e.target.value)}
-                                    disabled={status === 'submitting'}
-                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-neutral-100 placeholder:text-neutral-600 focus:ring-2 focus:ring-red-800 focus:border-red-800 outline-none disabled:opacity-50 text-center text-sm"
-                                    placeholder="0.00"
-                                    step="0.01"
-                                    min="0"
-                                    inputMode="decimal"
-                                />
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Discount Field - New */}
-                {merchant?.canManageOrderDetails && (
-                    <div className="bg-gray-700/30 p-2 rounded-xl border border-gray-600/50 animate-fadeIn mt-2">
-                        <label htmlFor="discount" className="block text-xs font-bold text-yellow-400 mb-1.5 flex items-center gap-1">
-                            <BanknoteIcon className="w-3.5 h-3.5" />
-                            خصم التوصيل (ج.م)
-                        </label>
-                        <input
-                            type="number"
-                            id="discount"
-                            value={deliveryDiscount}
-                            onChange={(e) => setDeliveryDiscount(e.target.value)}
-                            disabled={status === 'submitting'}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-yellow-400 placeholder:text-gray-600 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none disabled:opacity-50 text-center text-sm font-bold"
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                            inputMode="decimal"
-                        />
+                        </div>
                     </div>
                 )}
 

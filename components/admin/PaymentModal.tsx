@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Order } from '../../types';
-import { XIcon, CheckCircleIcon, DollarSignIcon, CalculatorIcon, CreditCardIcon, BanknoteIcon, ReceiptIcon, VodafoneIcon } from '../icons';
+import { XIcon, CheckCircleIcon, CreditCardIcon, BanknoteIcon, VodafoneIcon } from '../icons';
 
 interface PaymentModalProps {
     order: Order;
@@ -9,7 +9,7 @@ interface PaymentModalProps {
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) => {
-    // Determine initial status including 'collected'
+    // Determine initial status
     const getInitialStatus = () => {
         if (order.isCollected) return 'collected';
         if (order.isVodafoneCash) return 'vodafone';
@@ -18,61 +18,70 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
 
     const [status, setStatus] = useState<'paid' | 'unpaid' | 'vodafone' | 'collected'>(getInitialStatus());
 
-    // Amounts
-    const [paidAmount, setPaidAmount] = useState<string>(order.paidAmount?.toString() || '');
-    const [unpaidAmount, setUnpaidAmount] = useState<string>(order.unpaidAmount?.toString() || '');
+    // New Logic: Two main inputs "Price" (Total) and "Discount"
+    // Paid Amount is calculated automatically (Price - Discount)
 
-    // Price Analysis
-    const [originalPrice, setOriginalPrice] = useState<number>(0);
-    const [discount, setDiscount] = useState<number>(0);
-    const [finalPrice, setFinalPrice] = useState<number>(0);
+    // Initial State Setup
+    const [priceInput, setPriceInput] = useState<string>('');
+    const [discountInput, setDiscountInput] = useState<string>('');
 
-    // Calc total expected value (Delivery + Price)
+    // Derived values for display
+    const [netAmount, setNetAmount] = useState<number>(0);
+
     useEffect(() => {
-        let total = 0;
-        let disc = order.discount || 0;
+        // Initialize from order data
+        // If order.totalPrice represents the FINAL price (after discount in old logic),
+        // we need to reverse engineer or use what we have.
+        // Let's assume order.totalPrice is the BASE price we want to edit.
+        // OR if previously modified, maybe we stored originalPrice?
+        // Let's stick to: Input 1 = Total Price (Before Discount), Input 2 = Discount.
 
-        // Base Logic: 
-        // We need to reconstruct the "Original Price" before discount if possible.
-        // Assuming order.totalPrice IS the final price.
+        let initialPrice = order.totalPrice || 0;
+        let initialDiscount = order.discount || 0;
 
-        if (order.totalPrice) total = order.totalPrice;
+        // If we have a stored "originalPrice" maybe use that? 
+        // For now, let's assume order.totalPrice + order.discount = Original Price if logic was consistent.
+        // But user wants to SET the price. So let's just load current values.
 
-        // If we have a stored discount, the ORIGINAL was Total + Discount
-        const original = total + disc;
+        // If previously edited with this new logic:
+        // Price = paidAmount + discount (if paid fully)
 
-        setFinalPrice(total);
-        setDiscount(disc);
-        setOriginalPrice(original);
+        // Let's load straightforward:
+        setPriceInput((initialPrice + initialDiscount).toString());
+        setDiscountInput(initialDiscount.toString());
 
     }, [order]);
 
-    // Auto-fill logic when status changes
+    // Calculate Net Amount whenever inputs change
     useEffect(() => {
-        if ((status === 'paid' || status === 'collected') && paidAmount === '') {
-            setPaidAmount(finalPrice.toString());
-            setUnpaidAmount('0');
-        } else if (status === 'unpaid' && unpaidAmount === '') {
-            setUnpaidAmount(finalPrice.toString());
-            setPaidAmount('0');
-        }
-    }, [status, finalPrice]);
+        const p = parseFloat(priceInput) || 0;
+        const d = parseFloat(discountInput) || 0;
+        setNetAmount(Math.max(0, p - d));
+    }, [priceInput, discountInput]);
 
     const handleSave = () => {
+        const p = parseFloat(priceInput) || 0;
+        const d = parseFloat(discountInput) || 0;
+        const finalNet = Math.max(0, p - d);
+
         const updates = {
-            // Fix: 'collected' (Cash) should NOT mark order as 'paid' automatically per user request.
-            // It remains 'unpaid' until reconciled/received by admin.
             paymentStatus: (status === 'vodafone') ? 'paid' : (status === 'collected' ? 'unpaid' : status),
             isVodafoneCash: status === 'vodafone',
             isCollected: status === 'collected',
-            paidAmount: paidAmount ? parseFloat(paidAmount) : 0,
-            unpaidAmount: unpaidAmount ? parseFloat(unpaidAmount) : 0,
+
+            // Core Financial Updates
+            totalPrice: finalNet, // The actual money expected (Price - Discount)
+            discount: d,          // The discount amount
+
+            // Payment fields (Auto-calculated)
+            // If status is PAID or COLLECTED or VODAFONE, we assume full amount is paid/collected
+            paidAmount: (status === 'paid' || status === 'collected' || status === 'vodafone') ? finalNet : 0,
+            unpaidAmount: (status === 'unpaid') ? finalNet : 0,
         };
+
         onSave(order.id, updates);
         onClose();
     };
-
-    const commonInputStyle = "w-full px-4 py-3 border border-gray-600 bg-[#111] text-white rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-lg font-mono font-bold text-center";
 
     return (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
@@ -92,23 +101,33 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                 {/* Body */}
                 <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
 
-                    {/* Order Price Details (New) */}
-                    <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 space-y-3">
-                        <div className="flex justify-between items-center text-xs text-gray-400 border-b border-gray-700 pb-2">
-                            <span>السعر الأصلي</span>
-                            <span className="font-mono line-through text-red-400">{originalPrice.toLocaleString()} ج.م</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs text-yellow-500 border-b border-gray-700 pb-2">
-                            <span>قيمة الخصم</span>
-                            <span className="font-mono">-{discount.toLocaleString()} ج.م</span>
-                        </div>
-                        <div className="flex justify-between items-center pt-1">
-                            <span className="text-sm font-bold text-white">صافي المطلوب</span>
-                            <span className="text-2xl font-black text-emerald-400 font-mono">{finalPrice.toLocaleString()} ج.م</span>
-                        </div>
+                    {/* Net Amount Display */}
+                    <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 text-center">
+                        <span className="block text-xs text-gray-400 mb-1">صافي المطلوب (بعد الخصم)</span>
+                        <span className="text-3xl font-black text-emerald-400 font-mono tracking-wider">{netAmount.toLocaleString()} ج.م</span>
+                    </div>
 
-                        <div className="flex justify-center mt-2">
-                            <span className="text-[10px] bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full font-mono">#{order.id}</span>
+                    {/* Inputs Section: Price & Discount */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-[10px] font-bold text-blue-400 mb-1.5 text-center">السعر (قبل الخصم)</label>
+                            <input
+                                type="number"
+                                value={priceInput}
+                                onChange={(e) => setPriceInput(e.target.value)}
+                                className="w-full bg-[#111] border border-blue-500/30 rounded-lg py-2 px-1 text-white text-center font-mono font-bold text-lg focus:border-blue-500 outline-none"
+                                placeholder="0"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-red-400 mb-1.5 text-center">قيمة الخصم</label>
+                            <input
+                                type="number"
+                                value={discountInput}
+                                onChange={(e) => setDiscountInput(e.target.value)}
+                                className="w-full bg-[#111] border border-red-500/30 rounded-lg py-2 px-1 text-white text-center font-mono font-bold text-lg focus:border-red-500 outline-none"
+                                placeholder="0"
+                            />
                         </div>
                     </div>
 
@@ -158,34 +177,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                             </button>
                         </div>
                     </div>
-
-                    {/* Amounts Input Section */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-[10px] font-bold text-emerald-500 mb-1.5 text-center">المبلغ المدفوع</label>
-                            <input
-                                type="number"
-                                value={paidAmount}
-                                onChange={(e) => {
-                                    setPaidAmount(e.target.value);
-                                    // Logic: If I type 50 in Paid, remaining goes to Unpaid? 
-                                    // Or simple override? keeping simple override for now
-                                }}
-                                className={`w-full bg-[#111] border border-emerald-500/30 rounded-lg py-2 px-1 text-white text-center font-mono font-bold text-lg focus:border-emerald-500 outline-none`}
-                                placeholder="0"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-bold text-red-500 mb-1.5 text-center">المبلغ المتبقي</label>
-                            <input
-                                type="number"
-                                value={unpaidAmount}
-                                onChange={(e) => setUnpaidAmount(e.target.value)}
-                                className={`w-full bg-[#111] border border-red-500/30 rounded-lg py-2 px-1 text-white text-center font-mono font-bold text-lg focus:border-red-500 outline-none`}
-                                placeholder="0"
-                            />
-                        </div>
-                    </div>
                 </div>
 
                 {/* Footer */}
@@ -203,7 +194,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ order, onClose, onSave }) =
                         {status === 'collected' ? 'تأكيد التحصيل' : 'حفظ التغييرات'}
                     </button>
                     <p className="text-[10px] text-gray-500 text-center mt-2">
-                        {status === 'collected' ? 'سيتم وضع علامة "تم التحصيل" على الطلب وتسجيله كمدفوع' : 'سيتم تحديث حالة الدفع والمبالغ المالية'}
+                        {status === 'collected' ? 'سيتم وضع علامة "تم التحصيل" على الطلب وتسجيله كمدفوع' : 'سيتم تحديث سجل التاجر والمبالغ المالية'}
                     </p>
                 </div>
             </div>
