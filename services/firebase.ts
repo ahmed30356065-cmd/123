@@ -240,7 +240,7 @@ export const initFirebase = (config: any) => {
                 try {
                     db.settings({
                         ignoreUndefinedProperties: true,
-                        merge: true,
+                        // merge: true, // This is not a valid setting for db.settings in compat SDK
                         cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
                     });
                 } catch (e) {

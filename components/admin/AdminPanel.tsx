@@ -79,7 +79,8 @@ interface AdminPanelProps {
     onDeletePromo: (id: string) => void;
     onUpdatePointsConfig: (config: any) => void;
     appConfig?: AppConfig;
-    onUpdateAppConfig?: (config: AppConfig) => void;
+    onUpdateAppConfig: (conf: Partial<AppConfig>) => void;
+    onFactoryReset?: () => void;
     logAction: (actionType: 'create' | 'update' | 'delete' | 'financial', target: string, details: string) => void;
     getNewId?: () => Promise<string>; // Added prop
 }
@@ -183,6 +184,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
         // 1. Modals (Popups) - Close topmost first
         if (statusConfirmation) { setStatusConfirmation(null); return true; }
         if (deleteConfirmation) { setDeleteConfirmation(null); return true; }
+        if (editingPaymentOrder) { setEditingPaymentOrder(null); return true; }
         if (assigningDriverOrder) { setAssigningDriverOrder(null); return true; }
         if (transferOrder) { setTransferOrder(null); return true; }
         if (statusChangeOrder) { setStatusChangeOrder(null); return true; }
@@ -197,7 +199,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
 
         // 4. Default - Exit App
         return false;
-    }, [isSideMenuOpen, editingUser, viewingUser, statusChangeOrder, assigningDriverOrder, transferOrder, statusConfirmation, deleteConfirmation, view]);
+    }, [isSideMenuOpen, editingUser, viewingUser, statusChangeOrder, assigningDriverOrder, transferOrder, statusConfirmation, deleteConfirmation, editingPaymentOrder, view]);
 
     const realAdminData = useMemo(() => props.users.find(u => u.id === props.user.id) || props.user, [props.users, props.user]);
     const currentAdminMode = props.currentTheme?.admin?.mode || 'dark';
@@ -335,17 +337,24 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 await Promise.all(chunk.map(order => props.deleteOrder(order.id)));
             }
 
+            if (type === 'all') {
+                // RESET COUNTERS in correct path
+                await firebaseService.updateData('settings', 'counters', {
+                    'ORD-': 0,
+                    'S-': 0,
+                    'lastId': 0 // Old counter key just in case
+                });
+
+                // Refresh Local State if prop exists
+                if (props.onFactoryReset) {
+                    props.onFactoryReset();
+                }
+            }
+
             props.showNotification(
-                `✅ تم حذف ${ordersToDelete.length} طلب بنجاح من قاعدة البيانات\n\n${type === 'all' ? '🔄 جاري إعادة تحميل الصفحة...' : ''}`,
+                `✅ تم حذف ${ordersToDelete.length} طلب بنجاح من قاعدة البيانات`,
                 'success'
             );
-
-            // Reload page after deletion to ensure clean state and ID reset
-            if (type === 'all') {
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            }
         } catch (error) {
             console.error('Bulk delete error:', error);
             props.showNotification('❌ حدث خطأ أثناء الحذف', 'error');
@@ -416,7 +425,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             case 'logs': return <AuditLogsScreen logs={props.auditLogs} onClearLogs={props.onClearLogs} />;
             case 'loyalty': return <LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} />;
             case 'support': return <AdminSupportScreen users={props.users} currentUser={props.user} onBack={() => setView('orders')} />;
-            case 'settings': return <SystemSettings onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} />;
+            case 'settings': return <SystemSettings orders={props.orders} users={props.users} editOrder={props.editOrder} onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} currentUser={props.user} onFactoryReset={props.onFactoryReset} />;
             case 'games': return <GamesManager appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig!} />;
             default: return null;
         }
@@ -648,7 +657,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 {view === 'logs' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AuditLogsScreen logs={props.auditLogs} onClearLogs={props.onClearLogs} /></PullToRefresh></div>}
                 {view === 'loyalty' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} /></PullToRefresh></div>}
                 {view === 'support' && <AdminSupportScreen users={props.users} currentUser={props.user} onBack={() => setView('orders')} />}
-                {view === 'settings' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><SystemSettings onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} currentUser={props.user} /></PullToRefresh></div>}
+                {view === 'settings' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><SystemSettings orders={props.orders} users={props.users} editOrder={props.editOrder} onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} currentUser={props.user} /></PullToRefresh></div>}
                 {view === 'games' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><GamesManager appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig!} /></PullToRefresh></div>}
             </main>
 

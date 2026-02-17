@@ -44,10 +44,19 @@ const App: React.FC = () => {
         isLoading, setIsLoading, isOrdersLoaded,
         currentUser, setCurrentUser,
         appTheme, setAppTheme,
-        setOrders, setUsers,
+        setOrders, setUsers, setMessages, setPayments, setAuditLogs, setManualDailies, // Added for reset
         registerOptimisticUpdate,
         manualDailies // Added manualDailies
     } = useAppData(showNotify);
+
+    const handleFactoryResetLocal = () => {
+        setOrders([]);
+        setMessages([]);
+        setPayments([]);
+        setAuditLogs([]);
+        setManualDailies([]);
+        showNotify('تم تصفير البيانات محلياً بنجاح', 'success');
+    };
 
     // 2. Logic Hook
     const {
@@ -351,7 +360,13 @@ const App: React.FC = () => {
                             if (o.id === id) {
                                 const newO = { ...o, status: s };
                                 if (s === OrderStatus.Delivered) newO.deliveredAt = new Date();
-                                if (s === OrderStatus.Pending) { newO.driverId = undefined; newO.deliveryFee = undefined; } // Use undefined for clean removal
+                                if (s === OrderStatus.Pending) {
+                                    newO.driverId = undefined;
+                                    newO.deliveryFee = undefined;
+                                    newO.driverName = undefined;
+                                    newO.driverPhone = undefined;
+                                    newO.driverImage = undefined;
+                                }
                                 return newO;
                             }
                             return o;
@@ -361,7 +376,13 @@ const App: React.FC = () => {
                         // const order = orders.find(o => o.id === id);
                         const updates: any = { status: s };
                         if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
-                        if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
+                        if (s === OrderStatus.Pending) {
+                            updates.driverId = null;
+                            updates.deliveryFee = null;
+                            updates.driverName = null;
+                            updates.driverPhone = null;
+                            updates.driverImage = null;
+                        }
 
                         firebaseService.updateData('orders', id, updates).catch(err => {
                             console.error("Status update failed:", err);
@@ -543,6 +564,7 @@ const App: React.FC = () => {
                         firebaseService.updateData('settings', 'app_config', { id: 'app_config', ...conf });
                         logAction('update', 'إعدادات التطبيق', 'تم تحديث اسم التطبيق وإصداره');
                     }}
+                    onFactoryReset={handleFactoryResetLocal}
                 />
             )}
 
@@ -577,7 +599,13 @@ const App: React.FC = () => {
                             if (o.id === id) {
                                 const newO = { ...o, status: s };
                                 if (s === OrderStatus.Delivered) newO.deliveredAt = new Date();
-                                if (s === OrderStatus.Pending) { newO.driverId = undefined; newO.deliveryFee = undefined; }
+                                if (s === OrderStatus.Pending) {
+                                    newO.driverId = undefined;
+                                    newO.deliveryFee = undefined;
+                                    newO.driverName = undefined;
+                                    newO.driverPhone = undefined;
+                                    newO.driverImage = undefined;
+                                }
                                 return newO;
                             }
                             return o;
@@ -587,7 +615,13 @@ const App: React.FC = () => {
                         const order = orders.find(o => o.id === id);
                         const updates: any = { status: s };
                         if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
-                        if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
+                        if (s === OrderStatus.Pending) {
+                            updates.driverId = null;
+                            updates.deliveryFee = null;
+                            updates.driverName = null;
+                            updates.driverPhone = null;
+                            updates.driverImage = null;
+                        }
 
                         firebaseService.updateData('orders', id, updates).catch(err => {
                             console.error("Status update failed:", err);
@@ -751,7 +785,13 @@ const App: React.FC = () => {
                             if (o.id === id) {
                                 const newO = { ...o, status: s };
                                 if (s === OrderStatus.Delivered) newO.deliveredAt = new Date();
-                                if (s === OrderStatus.Pending) { newO.driverId = undefined; newO.deliveryFee = undefined; }
+                                if (s === OrderStatus.Pending) {
+                                    newO.driverId = undefined;
+                                    newO.deliveryFee = undefined;
+                                    newO.driverName = undefined;
+                                    newO.driverPhone = undefined;
+                                    newO.driverImage = undefined;
+                                }
                                 return newO;
                             }
                             return o;
@@ -760,7 +800,13 @@ const App: React.FC = () => {
                         // 2. Server Update (Background)
                         const updates: any = { status: s };
                         if (s === OrderStatus.Delivered) updates.deliveredAt = new Date();
-                        if (s === OrderStatus.Pending) { updates.driverId = null; updates.deliveryFee = null; }
+                        if (s === OrderStatus.Pending) {
+                            updates.driverId = null;
+                            updates.deliveryFee = null;
+                            updates.driverName = null;
+                            updates.driverPhone = null;
+                            updates.driverImage = null;
+                        }
                         firebaseService.updateData('orders', id, updates).catch(err => {
                             console.error("Status update failed:", err);
                             showNotify('فشل تحديث الحالة. تحقق من الانترنت.', 'error');

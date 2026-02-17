@@ -11,7 +11,7 @@ import {
     fixUserIds
 } from '../../services/firebase';
 import firebase from 'firebase/compat/app';
-import { AppConfig, UpdateLog } from '../../types';
+import { AppConfig, UpdateLog, Order, User } from '../../types';
 import PromptModal from './PromptModal';
 import { APP_VERSION } from '../../src/version';
 
@@ -22,6 +22,10 @@ interface SystemSettingsProps {
     onDisconnect?: () => void; // Legacy usage
     appConfig?: AppConfig;
     onUpdateAppConfig?: (config: AppConfig) => void;
+    orders?: Order[];
+    users?: User[];
+    editOrder?: (orderId: string, updatedData: any) => void;
+    onFactoryReset?: () => void;
 }
 
 // --- Components ---
@@ -115,7 +119,7 @@ const ToastNotification = ({ message, type, onClose }: { message: string, type: 
 };
 
 // --- Main Component ---
-const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess, onDisconnect, appConfig, onUpdateAppConfig }) => {
+const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess, onDisconnect, appConfig, onUpdateAppConfig, orders = [], users = [], editOrder, onFactoryReset }) => {
     const [activeTab, setActiveTab] = useState<'general' | 'updates' | 'maintenance' | 'database'>('general');
     const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{ msg: string, type: any } | null>(null);
@@ -380,6 +384,71 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
     };
     const handleBackupOrders = () => { showToast('قريباً', 'info'); };
 
+    const handleFixOrderData = async () => {
+        if (!orders || !users || !editOrder) {
+            showToast("البيانات غير متوفرة حالياً للإصلاح", "error");
+            return;
+        }
+
+        const ordersToFix = orders.filter(o =>
+            (o.driverId && (!o.driverName || o.driverName === 'غير معين' || o.driverName === o.driverId)) ||
+            (o.merchantId && o.merchantId !== 'delinow' && (!o.merchantName || o.merchantName === o.merchantId))
+        );
+
+        if (ordersToFix.length === 0) {
+            showToast("جميع البيانات سليمة! لا توجد طلبات تحتاج لإصلاح.", "info");
+            return;
+        }
+
+        openConfirmModal(
+            "إصلاح البيانات",
+            `تم العثور على ${ordersToFix.length} طلب ببيانات غير مكتملة. هل تريد إصلاحها الآن؟`,
+            async () => {
+                showToast(`جاري إصلاح ${ordersToFix.length} طلب...`, "info");
+                let fixedCount = 0;
+
+                for (const order of ordersToFix) {
+                    const updates: any = {};
+                    let needsUpdate = false;
+
+                    // Fix Driver
+                    if (order.driverId) {
+                        const dr = users.find(u => u.id === order.driverId);
+                        if (dr) {
+                            if (!order.driverName || order.driverName === 'غير معين' || order.driverName === order.driverId) {
+                                updates.driverName = dr.name;
+                                needsUpdate = true;
+                            }
+                            if (!order.driverPhone) { updates.driverPhone = dr.phone; needsUpdate = true; }
+                            if (!order.driverImage) { updates.driverImage = dr.storeImage; needsUpdate = true; }
+                        }
+                    }
+
+                    // Fix Merchant
+                    if (order.merchantId && order.merchantId !== 'delinow') {
+                        const mr = users.find(u => u.id === order.merchantId);
+                        if (mr) {
+                            if (!order.merchantName || order.merchantName === order.merchantId) {
+                                updates.merchantName = mr.name;
+                                needsUpdate = true;
+                            }
+                            if (!order.merchantPhone) { updates.merchantPhone = mr.phone; needsUpdate = true; }
+                            if (!order.merchantImage) { updates.merchantImage = mr.storeImage; needsUpdate = true; }
+                        }
+                    }
+
+                    if (needsUpdate) {
+                        editOrder(order.id, updates);
+                        fixedCount++;
+                    }
+                }
+
+                showToast(`تم إصلاح بيانات ${fixedCount} طلب بنجاح.`, "success");
+            },
+            "info"
+        );
+    };
+
     // --- Factory Reset Logic (New) ---
     const handleFactoryResetOrders = async () => {
         console.log('Factory Reset button clicked');
@@ -438,11 +507,19 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                     const deletedLogs = await deleteCollection('audit_logs', 'سجلات النظام');
 
                     // --- RESET COUNTER ---
-                    await updateData('counters', 'orders', { lastId: 0 });
+                    // Correct path is 'settings/counters' as used by sequential ID generation
+                    await updateData('settings', 'counters', {
+                        'ORD-': 0,
+                        'S-': 0,
+                        'lastId': 0
+                    });
 
                     const totalDeleted = deletedOrders + deletedDailies + deletedPayments + deletedLogs;
                     showToast(`تم التصفير الشامل! (تم حذف ${totalDeleted} سجل)`, 'success');
-                    setTimeout(() => window.location.reload(), 2000);
+
+                    if (onFactoryReset) {
+                        onFactoryReset();
+                    }
 
                 } catch (e: any) {
                     console.error(e);
@@ -812,6 +889,16 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                                         </div>
                                     </div>
                                     <AlertTriangleIcon className="w-5 h-5 text-red-500 animate-pulse" />
+                                </button>
+
+                                <button onClick={handleFixOrderData} className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-800 border border-gray-700 hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center group-hover:text-orange-500 transition-colors"><RefreshCwIcon className="w-5 h-5" /></div>
+                                        <div className="text-right">
+                                            <h3 className="text-sm font-bold text-gray-200">إصلاح بيانات الطلبات</h3>
+                                            <p className="text-[10px] text-gray-500">إصلاح أسماء المندوبين والمتاجر المفقودة في الطلبات القديمة</p>
+                                        </div>
+                                    </div>
                                 </button>
                             </div>
                         </div>

@@ -7,13 +7,13 @@ import { AppStorage, SafeLocalStorage } from '../utils/storage';
 import { APP_VERSION } from '../src/version';
 
 export const DEFAULT_FIREBASE_CONFIG = {
-    apiKey: "AIzaSyC4bv_RLpS-jxunMs7nWjux806bYk6XnVY",
-    authDomain: "goo-now-1ce44.firebaseapp.com",
-    databaseURL: "https://goo-now-1ce44-default-rtdb.firebaseio.com",
-    projectId: "goo-now-1ce44",
-    storageBucket: "goo-now-1ce44.firebasestorage.app",
-    messagingSenderId: "742306376566",
-    appId: "1:742306376566:android:9298a84980b239e528a857"
+    apiKey: "AIzaSyCzclhrtHAI4lNfqHaKJ6wh-Qr-skoPaZQ",
+    authDomain: "goo-now3.firebaseapp.com",
+    databaseURL: "https://goo-now3-default-rtdb.firebaseio.com",
+    projectId: "goo-now3",
+    storageBucket: "goo-now3.firebasestorage.app",
+    messagingSenderId: "966566737002",
+    appId: "1:966566737002:android:7ef09d74e85403d3154613"
 };
 
 const getActiveFirebaseConfig = () => {
@@ -350,10 +350,20 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
             setIsOrdersLoaded(true);
         }
 
-        const unsubMsgs = firebaseService.subscribeToCollection('messages', (data) => {
-            setMessages(data as Message[]);
-            AppStorage.set('cache_messages', data); // ASYNC STORAGE
-        });
+        // SMART DATA SUBSCRIPTION FOR MESSAGES
+        let unsubMsgs = () => { };
+        if (currentUser) {
+            const msgFilters = [];
+            // Non-admin roles only see messages addressed to them or everyone
+            if (currentUser.role !== 'admin') {
+                msgFilters.push({ field: 'targetId', op: 'in' as any, value: [currentUser.id, 'all', 'multiple'] });
+            }
+            // Limit to 100 latest messages
+            unsubMsgs = firebaseService.subscribeToQuery('messages', msgFilters, (data) => {
+                setMessages(data as Message[]);
+                AppStorage.set('cache_messages', data);
+            }, { orderBy: { field: 'createdAt', direction: 'desc' }, limit: 100 });
+        }
 
         const unsubPayments = firebaseService.subscribeToCollection('payments', (data) => setPayments(data as Payment[]));
         const unsubReset = firebaseService.subscribeToCollection('reset_requests', (data) => setPasswordResetRequests(data as any));
@@ -363,8 +373,9 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
             AppStorage.set('cache_slider', data); // ASYNC STORAGE
         });
 
-        const unsubAudit = firebaseService.subscribeToCollection('audit_logs', (data) => setAuditLogs(data as AuditLog[]));
-        const unsubManualDailies = firebaseService.subscribeToCollection('manual_dailies', (data) => setManualDailies(data as ManualDaily[]));
+        // Limit Audit Logs and Manual Dailies to last 100 entries to save bandwidth
+        const unsubAudit = firebaseService.subscribeToQuery('audit_logs', [], (data) => setAuditLogs(data as AuditLog[]), { orderBy: { field: 'createdAt', direction: 'desc' }, limit: 100 });
+        const unsubManualDailies = firebaseService.subscribeToQuery('manual_dailies', [], (data) => setManualDailies(data as ManualDaily[]), { orderBy: { field: 'createdAt', direction: 'desc' }, limit: 100 });
 
         const unsubSettings = firebaseService.subscribeToCollection('settings', (data) => {
             const sConf = data.find(s => s.id === 'slider_config');
@@ -513,7 +524,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         isLoading, setIsLoading, isOrdersLoaded,
         currentUser, setCurrentUser,
         appTheme, setAppTheme,
-        setOrders, setUsers, // Exposed for Optimistic Updates
+        setOrders, setUsers, setMessages, setPayments, setAuditLogs, setManualDailies, // Added setters for reset
         registerOptimisticUpdate, // Exposed to App.tsx
         pendingWrites // Exposed if needed, but preferably internal use validation
     };

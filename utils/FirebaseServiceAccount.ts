@@ -5,11 +5,17 @@
 // We are implementing this CLIENT-SIDE only per specific user request to avoid external scripts.
 
 export const SERVICE_ACCOUNT = {
-    "project_id": "goo-now-1ce44",
-    "private_key_id": "56b453f3324317c51dbfacd19f32bb364f9b5a84",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC8LfXvjw05i6QA\neGMpaExBT38HlBOar3Ykux8w38ZlYL/1+X/HCe0n/QS2Sb7NVKBUGVFxWTjlX5aG\ncGQeRYeSX9dJnohRE9IPbmu7I6YWX13mys6RSijKPQAxM7x9a9acVjbIaQyAP7V7\ndwjnl4+ICb+QVMpkz4F87P2s9algCOYt5NY+1YNujoGzAfiiDl598Ib3hlnwwWiA\na52aDY51baXEa3LrrmYKDqxJDe59nAdVWZJS79h09m34lLHgVtPBWzhUnQ70dRhl\n1ESI47dL2tEHb9wwgSMAB7iZv0Z59SwRHFr6+dsolzfcgZKWcwu2Gnno/NoV+CNT\nHvtis6K1AgMBAAECggEAAtcaFQK5OzWe2jz27jCQpL8Llp8xs+N9v9ctL4J+eZg+\nEtCFu7OBfK7by9k4GTGeS+FSnTMwtybmsY0aYxSUk8KA5YUQNKe9GMDcvRHa12VF\nbbmA6FN7YyC26Ic0i0YTPVUrICzpuePRnD/zMUpUfxlP5rXzlMBHCY4q1ASkiPpY\nGIxWuV9ilT0lzbri2+a7CjJMRPLpffFJyt7fGcXqin0Fg8xGsXnsCeC1iEwXksDW\nwqKGSqV7rShBfJxWvO1hn6cqUFuNlLTSmxeKE8w0RylIQNfQjJ1LMrv5fyo4SYUK\nEFiUMFDhta6LLQ5j93XaYl4Ri2TwpmLGgm/DqNCpkQKBgQDtBuAYEQ2Uhv7W4wUA\n+jnvbuZPDHFcLEFqUrXpu/vUoqTKRy7wG5vnD9NNr5gxPo9+wHKUevp67XftUmUv\npt9noy2bj+E4pIT22EUcTfLLXR4w31lZfszzWZoIzi9DT9ZEziv3T5/zm7ziW8HS\ng4knJIK3dJ9BUzPFEegWk6YivQKBgQDLPhyysZHw5lY+tRELd0frLIraTAALIjNe\nirUQIv4w8OA8Mvh9s2bGobM4CTscT3ZsghvDcGi1UEzceQa+Pb++qtl3c6IaI1G/\nqTawUSAXMAaqY9qgFjQVatvgljFjjNAegKt+0+wJIpdtSXorV+52Te2IXNySVfWc\ncTHdirA7WQKBgFdXz0BPGGgBDut0oKVpj+vRPAEpHqTOkhRyAiLtaLFEdeEsNfm4\n0sxkooLgD/8lhI86r35TivW9iBHl6O+UWILCOM44SNAsn+qua1kwyCV0XOm5hB1c\ngn2yKPbRs8zkIJseNkleCB0m6IWpNlUyr1nDNIAR85WI6WzXWmTnZ7MpAoGABbAF\nSZLijKVFgJe8lF+QKaqjcBx0W9tnKJwlGQCBsIjtHYInpgzhMWnRBB5uAwrOO5cg\ng8WfiINowzq3z5cWyJUrZMZdoPGgFgb8Os7qYPu9FAObWKOGbZsB8DUDyM9l+5SK\nOBBiKJdJOYu22YOqbrEblpdSrN2u8+PPC24YJHECgYEAmLxOkqzcDiPHaoWBygRt\nMMIctJTkgQfTzvLK0zWwBQIEd0hEe7J59g4gIepFQGFmX40hsVJKcgmk45EVfGSE\nL2g2suJ5GV838jB0tioO0QQLo6RdDCfZ6Se6+Bp0AusZ4pg4Fe2q6dp/xVJQgcb/\nG1UYnMbznK6Kq3HHG6lYCLU=\n-----END PRIVATE KEY-----\n",
-    "client_email": "firebase-adminsdk-fbsvc@goo-now-1ce44.iam.gserviceaccount.com",
-    "token_uri": "https://oauth2.googleapis.com/token"
+  "type": "service_account",
+  "project_id": "goo-now3",
+  "private_key_id": "d2a36acde51479c4a6186abed410e58ba5b97ad7",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDVOSnFAkAXje1+\n2WP6XhQu3/1tQZmRS4Q0Yd5UN5FAxmw/NTDzGmBeNfJ5KYKMYpAq93GJUfAT7Wu6\nt480PAbnGy7uNzZZc0PfmVZOndoC9P3vfaDZg4t8dnOtZHhsSxh7oLTDPph/Qcuq\nSl+GwpUDuX4uRyYt8Ji9erlHgM0XEf+/HOICLJa5SHWpaj1VTI2EfXFaR/rQ/coY\nQ20nU2c7inZbECA5emstUXZecT+yAPqA/v9A9zu1IC708EpXtXEeMcZS2QpDlzxq\nx5/LBhoQazqNJHvPSTFTchpwVQtLo9OPOFYA3tPkWEafvri94AzSiDXHXGS0+hYN\nq10fCWL7AgMBAAECggEAPdPXCFDoO8xEVxl7U6CPEq6Romo4uPhgS/4rBVmdjV5c\nChIG8R8vXXIgLsD6IXH9IvBgZDS1vFmGePx8EmXrjH0F5T5uTI7PWhlw/Nfp3Ryk\nO5s+loP94OfKEDfHcYNvBH4rnEfc2V2/TFBHleB7bDqP26R27jBLYfohmpm/HpZq\nUvN7plGb+fXY0mu+wTJ6UjlwueMVm4Qxe2qz0uw6ju3xKCYlTbpwzhnhxb8Quyf3\nPeTZMPpiTvZqVyhq7TPn3zgPovDrJfBPcaMYbldi9va3jnN7DQlJbsoM0f1mw7UG\npgXwXRYWj23WHYWOFSuHUDqYUp1Pg6QN5g/nNABC9QKBgQD20cEMDBJe0SW+kEo+\nw5RZdE+5dMqTO1waQYj7cq44lTJhhqKUw9tBEEIi4e74AQuiPHXpIaL98QLJ5sLG\nyITH65aCLVDhdw6jL4zL/1SbdgS6ngv0D1GcVN84K3GkuU67evjwgz40fG5uFF19\nTk3MPuHW0B/oceaVOs89ry8+tQKBgQDdJ4DHecljHxgAdycvh/Te5UF87bdyBD8O\ntwjpIgYifWlso/6vI79JQGtUU5sUsWnrUj3BGemiD62zb8Q1WAqOfv7xCvBgzPjS\nbkj9ywI+WPYpwaS7Vm3dxz9tpEEyfZAIUuhjMYypwh/wW1GqL7B5oWzoqmNT78at\nKZ34RwV47wKBgQDYduts6mVuHNWShK9ozlScA6MsDl7fs466REGj7VcYrtjpqY+L\nEx6GuICYYTgY76nJVmc+2E4/kpEUi7rFZfT19QsiDiZCJw2CVuCPxNXqJh5NoPDw\n0kKL7e97LrbTdeW0DUyoeyIiHAMprdi0XeljOL8Oi6eAT+yfcl1xRuQThQKBgQDQ\nHYGRtijvD2692WNV1mJ4c1OaZfXw5NAWX+aRxYPyZwSTyQw98qzrGSUnmPnikkYz\nvhQBKQp0iL6UkoQZEv30NMxjN0EYRyuMk146/xTgaUVV7DXCWcZQI1WsLxtvkTu+\nqY6o8hMGGXmG7di/B9vRyjg8B0Qr1AOqJvTSlLswnwKBgQDjRiMN/vpsl3CyYGRg\nRCBbXG/aKVjUc+YxiWz2e/lwDhRAgI8oZfseD5DLbO5WxeHIiq0fu/MVq/agLBGz\nryIll9zhcD/zx5ij7YK8DoHgiKTT1tix6W/9+98eIhErhH3dY3ENLBBLGsC3UBr2\n6IajCMW2vSmZJMQt0+0d0wMlGg==\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@goo-now3.iam.gserviceaccount.com",
+  "client_id": "116489207066839985076",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40goo-now3.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
 };
 
 // Helper: Convert base64 url safe
