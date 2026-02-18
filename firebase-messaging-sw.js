@@ -22,6 +22,14 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage(function (payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
+  // Check if this is a Silent Sync Message (Method 2)
+  if (payload.data && payload.data.sync_data === "true") {
+    console.log('[firebase-messaging-sw.js] Silent Sync Triggered. Waking up background threads.');
+    // We don't necessarily show a notification for silent syncs
+    // This wakes up the SW and allows it to perform background tasks if needed.
+    if (payload.data.wake_up !== "true") return;
+  }
+
   const notificationTitle = payload.notification?.title || payload.data?.title || 'GOO NOW';
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.body || 'لديك تحديث جديد',

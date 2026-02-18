@@ -39,7 +39,7 @@ const AdminBottomNav: React.FC<AdminBottomNavProps> = ({ activeView, onNavigate,
 
     const navItemsToShow = availableViews
         ? allNavItems.filter(item => availableViews.includes(item.id))
-        : allNavItems.filter(item => ['orders', 'users', 'stores', 'special', 'shopping', 'wallet', 'settings', 'games'].includes(item.id));
+        : allNavItems.filter(item => ['orders', 'users', 'special', 'shopping', 'wallet', 'settings'].includes(item.id));
 
     const isLight = mode === 'light';
 

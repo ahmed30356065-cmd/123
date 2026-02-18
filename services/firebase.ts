@@ -254,6 +254,17 @@ export const initFirebase = (config: any) => {
                         console.warn("Persistence not supported by browser");
                     }
                 });
+
+                // Proactive Connection Keep-Alive
+                firebase.database().ref('.info/connected').on('value', (snap) => {
+                    if (snap.val() === true) {
+                        console.log("[Firebase] Proactive connection established.");
+                    } else {
+                        console.log("[Firebase] Proactive connection lost. Reconnecting...");
+                        firebase.database().goOnline();
+                    }
+                });
+
                 isSettingsApplied = true;
             }
             return true;
@@ -714,34 +725,39 @@ export const sendExternalNotification = async (targetType: string, data: { title
                 data: {
                     // Critical fields for Android processing
                     type: "order_update",
-                    url: data.url || '/', // URL is still passed in data for the app to read
+                    url: data.url || '/',
                     title: data.title,
                     body: data.body,
                     target_id: data.targetId || '',
                     timestamp: new Date().toISOString(),
-                    sound: "default"
+                    sound: "default",
+                    // New fields for Silent Background Sync (Method 2)
+                    sync_data: "true",
+                    wake_up: "true"
                 },
                 android: {
                     priority: "HIGH", // Forces wake-up
-                    ttl: "2419200s", // 28 Days (Keeps trying if device is off)
+                    ttl: "2419200s",
                     notification: {
-                        channel_id: "high_importance_channel_v2", // Must match Android Native
+                        channel_id: "high_importance_channel_v2",
                         sound: "default",
                         default_sound: true,
                         default_vibrate_timings: true,
-                        notification_priority: "PRIORITY_HIGH", // Correct field name for V1
-                        visibility: "PUBLIC"
+                        notification_priority: "PRIORITY_HIGH",
+                        visibility: "PUBLIC",
+                        click_action: "OPEN_APP_TO_ORDERS" // Ensures OS knows how to handle
                     }
                 },
                 apns: {
                     headers: {
-                        "apns-priority": "10", // High priority for iOS
+                        "apns-priority": "10",
+                        "apns-push-type": "alert" // Or "background" if we want purely silent
                     },
                     payload: {
                         aps: {
                             sound: "default",
                             badge: 1,
-                            "content-available": 1 // Background fetch
+                            "content-available": 1 // Critical for Background Fetch
                         }
                     }
                 }

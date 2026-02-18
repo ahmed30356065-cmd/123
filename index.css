@@ -8,6 +8,14 @@
   }
 
   @font-face {
+    font-family: 'ArabicAdd';
+    src: url('/ArabicAdd.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
     font-family: 'ArabicUI';
     src: url('/fonts/ArabicUI.ttf') format('truetype');
     font-weight: normal;
@@ -24,8 +32,8 @@
   body {
     background-color: #111827;
     color: #ffffff;
-    /* Prioritize Cairo for guaranteed Arabic support */
-    font-family: 'NumFont', 'Cairo', 'ArabicUI', system-ui, sans-serif !important;
+    /* Prioritize ArabicAdd as requested */
+    font-family: 'NumFont', 'ArabicAdd', 'Cairo', 'ArabicUI', system-ui, sans-serif !important;
     -webkit-tap-highlight-color: transparent;
     /* Remove blue tap box */
     -webkit-touch-callout: none;
