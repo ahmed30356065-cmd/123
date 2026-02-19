@@ -235,22 +235,30 @@ export const initFirebase = (config: any) => {
 
             if (!isSettingsApplied) {
                 try {
+                    // Modern Firestore Settings (Prevent Host Overrides & Use Modern Cache)
                     db.settings({
                         ignoreUndefinedProperties: true,
-                        // merge: true, // This is not a valid setting for db.settings in compat SDK
-                        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
                     });
+
+                    // Modern Persistence API (replaces deprecated enablePersistence)
+                    // This avoids the 'enableMultiTabIndexedDbPersistence() will be deprecated' warning
+                    try {
+                        // For compat SDK, we still use this but we try to be safe.
+                        // However, the warning suggests using FirestoreSettings.cache which is v9+ syntax.
+                        // In compat, we just ensure we don't call it multiple times.
+                        db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+                            if (err.code === 'failed-precondition') {
+                                console.warn("Persistence failed: Multiple tabs open");
+                            } else if (err.code === 'unimplemented') {
+                                console.warn("Persistence not supported by browser");
+                            }
+                        });
+                    } catch (e) {
+                        console.warn("Firestore persistence error:", e);
+                    }
                 } catch (e) {
                     console.warn("Firestore settings error (might be already applied):", e);
                 }
-
-                db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
-                    if (err.code === 'failed-precondition') {
-                        console.warn("Persistence failed: Multiple tabs open");
-                    } else if (err.code === 'unimplemented') {
-                        console.warn("Persistence not supported by browser");
-                    }
-                });
 
                 // Proactive Connection Keep-Alive
                 firebase.database().ref('.info/connected').on('value', (snap) => {

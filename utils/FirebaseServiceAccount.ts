@@ -5,24 +5,23 @@
 // We are implementing this CLIENT-SIDE only per specific user request to avoid external scripts.
 
 export const SERVICE_ACCOUNT = {
-  "type": "service_account",
-  "project_id": "goo-now3",
-  "private_key_id": "d2a36acde51479c4a6186abed410e58ba5b97ad7",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDVOSnFAkAXje1+\n2WP6XhQu3/1tQZmRS4Q0Yd5UN5FAxmw/NTDzGmBeNfJ5KYKMYpAq93GJUfAT7Wu6\nt480PAbnGy7uNzZZc0PfmVZOndoC9P3vfaDZg4t8dnOtZHhsSxh7oLTDPph/Qcuq\nSl+GwpUDuX4uRyYt8Ji9erlHgM0XEf+/HOICLJa5SHWpaj1VTI2EfXFaR/rQ/coY\nQ20nU2c7inZbECA5emstUXZecT+yAPqA/v9A9zu1IC708EpXtXEeMcZS2QpDlzxq\nx5/LBhoQazqNJHvPSTFTchpwVQtLo9OPOFYA3tPkWEafvri94AzSiDXHXGS0+hYN\nq10fCWL7AgMBAAECggEAPdPXCFDoO8xEVxl7U6CPEq6Romo4uPhgS/4rBVmdjV5c\nChIG8R8vXXIgLsD6IXH9IvBgZDS1vFmGePx8EmXrjH0F5T5uTI7PWhlw/Nfp3Ryk\nO5s+loP94OfKEDfHcYNvBH4rnEfc2V2/TFBHleB7bDqP26R27jBLYfohmpm/HpZq\nUvN7plGb+fXY0mu+wTJ6UjlwueMVm4Qxe2qz0uw6ju3xKCYlTbpwzhnhxb8Quyf3\nPeTZMPpiTvZqVyhq7TPn3zgPovDrJfBPcaMYbldi9va3jnN7DQlJbsoM0f1mw7UG\npgXwXRYWj23WHYWOFSuHUDqYUp1Pg6QN5g/nNABC9QKBgQD20cEMDBJe0SW+kEo+\nw5RZdE+5dMqTO1waQYj7cq44lTJhhqKUw9tBEEIi4e74AQuiPHXpIaL98QLJ5sLG\nyITH65aCLVDhdw6jL4zL/1SbdgS6ngv0D1GcVN84K3GkuU67evjwgz40fG5uFF19\nTk3MPuHW0B/oceaVOs89ry8+tQKBgQDdJ4DHecljHxgAdycvh/Te5UF87bdyBD8O\ntwjpIgYifWlso/6vI79JQGtUU5sUsWnrUj3BGemiD62zb8Q1WAqOfv7xCvBgzPjS\nbkj9ywI+WPYpwaS7Vm3dxz9tpEEyfZAIUuhjMYypwh/wW1GqL7B5oWzoqmNT78at\nKZ34RwV47wKBgQDYduts6mVuHNWShK9ozlScA6MsDl7fs466REGj7VcYrtjpqY+L\nEx6GuICYYTgY76nJVmc+2E4/kpEUi7rFZfT19QsiDiZCJw2CVuCPxNXqJh5NoPDw\n0kKL7e97LrbTdeW0DUyoeyIiHAMprdi0XeljOL8Oi6eAT+yfcl1xRuQThQKBgQDQ\nHYGRtijvD2692WNV1mJ4c1OaZfXw5NAWX+aRxYPyZwSTyQw98qzrGSUnmPnikkYz\nvhQBKQp0iL6UkoQZEv30NMxjN0EYRyuMk146/xTgaUVV7DXCWcZQI1WsLxtvkTu+\nqY6o8hMGGXmG7di/B9vRyjg8B0Qr1AOqJvTSlLswnwKBgQDjRiMN/vpsl3CyYGRg\nRCBbXG/aKVjUc+YxiWz2e/lwDhRAgI8oZfseD5DLbO5WxeHIiq0fu/MVq/agLBGz\nryIll9zhcD/zx5ij7YK8DoHgiKTT1tix6W/9+98eIhErhH3dY3ENLBBLGsC3UBr2\n6IajCMW2vSmZJMQt0+0d0wMlGg==\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk-fbsvc@goo-now3.iam.gserviceaccount.com",
-  "client_id": "116489207066839985076",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40goo-now3.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
+    "type": "service_account",
+    "project_id": "goo-now3",
+    "private_key_id": "d2a36acde51479c4a6186abed410e58ba5b97ad7",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDVOSnFAkAXje1+\n2WP6XhQu3/1tQZmRS4Q0Yd5UN5FAxmw/NTDzGmBeNfJ5KYKMYpAq93GJUfAT7Wu6\nt480PAbnGy7uNzZZc0PfmVZOndoC9P3vfaDZg4t8dnOtZHhsSxh7oLTDPph/Qcuq\nSl+GwpUDuX4uRyYt8Ji9erlHgM0XEf+/HOICLJa5SHWpaj1VTI2EfXFaR/rQ/coY\nQ20nU2c7inZbECA5emstUXZecT+yAPqA/v9A9zu1IC708EpXtXEeMcZS2QpDlzxq\nx5/LBhoQazqNJHvPSTFTchpwVQtLo9OPOFYA3tPkWEafvri94AzSiDXHXGS0+hYN\nq10fCWL7AgMBAAECggEAPdPXCFDoO8xEVxl7U6CPEq6Romo4uPhgS/4rBVmdjV5c\nChIG8R8vXXIgLsD6IXH9IvBgZDS1vFmGePx8EmXrjH0F5T5uTI7PWhlw/Nfp3Ryk\nO5s+loP94OfKEDfHcYNvBH4rnEfc2V2/TFBHleB7bDqP26R27jBLYfohmpm/HpZq\nUvN7plGb+fXY0mu+wTJ6UjlwueMVm4Qxe2qz0uw6ju3xKCYlTbpwzhnhxb8Quyf3\nPeTZMPpiTvZqVyhq7TPn3zgPovDrJfBPcaMYbldi9va3jnN7DQlJbsoM0f1mw7UG\npgXwXRYWj23WHYWOFSuHUDqYUp1Pg6QN5g/nNABC9QKBgQD20cEMDBJe0SW+kEo+\nw5RZdE+5dMqTO1waQYj7cq44lTJhhqKUw9tBEEIi4e74AQuiPHXpIaL98QLJ5sLG\nyITH65aCLVDhdw6jL4zL/1SbdgS6ngv0D1GcVN84K3GkuU67evjwgz40fG5uFF19\nTk3MPuHW0B/oceaVOs89ry8+tQKBgQDdJ4DHecljHxgAdycvh/Te5UF87bdyBD8O\ntwjpIgYifWlso/6vI79JQGtUU5sUsWnrUj3BGemiD62zb8Q1WAqOfv7xCvBgzPjS\nbkj9ywI+WPYpwaS7Vm3dxz9tpEEyfZAIUuhjMYypwh/wW1GqL7B5oWzoqmNT78at\nKZ34RwV47wKBgQDYduts6mVuHNWShK9ozlScA6MsDl7fs466REGj7VcYrtjpqY+L\nEx6GuICYYTgY76nJVmc+2E4/kpEUi7rFZfT19QsiDiZCJw2CVuCPxNXqJh5NoPDw\n0kKL7e97LrbTdeW0DUyoeyIiHAMprdi0XeljOL8Oi6eAT+yfcl1xRuQThQKBgQDQ\nHYGRtijvD2692WNV1mJ4c1OaZfXw5NAWX+aRxYPyZwSTyQw98qzrGSUnmPnikkYz\nvhQBKQp0iL6UkoQZEv30NMxjN0EYRyuMk146/xTgaUVV7DXCWcZQI1WsLxtvkTu+\nqY6o8hMGGXmG7di/B9vRyjg8B0Qr1AOqJvTSlLswnwKBgQDjRiMN/vpsl3CyYGRg\nRCBbXG/aKVjUc+YxiWz2e/lwDhRAgI8oZfseD5DLbO5WxeHIiq0fu/MVq/agLBGz\nryIll9zhcD/zx5ij7YK8DoHgiKTT1tix6W/9+98eIhErhH3dY3ENLBBLGsC3UBr2\n6IajCMW2vSmZJMQt0+0d0wMlGg==\n-----END PRIVATE KEY-----\n",
+    "client_email": "firebase-adminsdk-fbsvc@goo-now3.iam.gserviceaccount.com",
+    "client_id": "116489207066839985076",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40goo-now3.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
 };
 
 // Helper: Convert base64 url safe
 function base64Url(str: string) {
     return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-
 // Helper: Convert array buffer to base64 url
 function arrayBufferToBase64Url(buffer: ArrayBuffer) {
     const bytes = new Uint8Array(buffer);

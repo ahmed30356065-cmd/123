@@ -34,7 +34,7 @@ if (!rootElement) {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     if (window.location.protocol === 'blob:' || window.location.protocol === 'file:') return;
-    navigator.serviceWorker.register('/service-worker.js')
+    navigator.serviceWorker.register('/firebase-messaging-sw.js')
       .then(reg => {
         // Retrieve custom config if available to ensure SW uses the correct project
         const getActiveConfig = () => {
