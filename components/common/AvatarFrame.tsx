@@ -3,11 +3,11 @@ import React from 'react';
 // Frame Definitions
 interface BaseFrameConfig {
     name: string;
-    type: 'ruby' | 'rose' | 'sapphire' | 'css';
+    type: 'ruby' | 'rose' | 'sapphire' | 'css' | 'ramadan';
 }
 
 interface SvgFrameConfig extends BaseFrameConfig {
-    type: 'ruby' | 'rose' | 'sapphire';
+    type: 'ruby' | 'rose' | 'sapphire' | 'ramadan';
     color: string;
 }
 
@@ -53,6 +53,21 @@ export const FRAMES: Record<string, FrameConfig> = {
         name: 'ناري',
         class: 'p-[2px] bg-gradient-to-t from-yellow-500 via-red-500 to-yellow-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.4)]',
         type: 'css'
+    },
+    'ramadan-crescent': {
+        name: 'هلال رمضان 🌙',
+        type: 'ramadan',
+        color: '#fbbf24'
+    },
+    'ramadan-lantern': {
+        name: 'فانوس رمضان 🏮',
+        type: 'ramadan',
+        color: '#a855f7'
+    },
+    'ramadan-stars': {
+        name: 'نجوم رمضان ✨',
+        type: 'ramadan',
+        color: '#60a5fa'
     }
 };
 
@@ -74,12 +89,13 @@ const AvatarFrame: React.FC<AvatarFrameProps> = ({ frameId, children, size = 'md
 
     const frameConfig = FRAMES[frameId as keyof typeof FRAMES];
 
+    // Adjust size for SVG/Custom to encompass avatar
+    const svgSizePercent = 145; // reduced slightly for better containment
+    const ringSizePercent = 125;
+
     // Case 1: Complex SVG Frames
-    if (frameConfig?.type === 'ruby' || frameConfig?.type === 'rose' || frameConfig?.type === 'sapphire') {
-        const color = frameConfig.color;
-        // Adjust scale for SVG to encompass avatar
-        const svgSizePercent = 160; // 160% of container
-        const ringSizePercent = 140;
+    if (frameConfig?.type === 'ruby' || frameConfig?.type === 'rose' || frameConfig?.type === 'sapphire' || frameConfig?.type === 'ramadan') {
+        const color = frameConfig.color as string;
 
         return (
             <div className={`relative flex items-center justify-center ${dims.w} ${dims.h} ${className}`}>
@@ -93,7 +109,7 @@ const AvatarFrame: React.FC<AvatarFrameProps> = ({ frameId, children, size = 'md
                             <path d="M 100,185 L 103,193 L 111,195 L 105,200 L 106,208 L 100,203 L 94,208 L 95,200 L 89,195 L 97,193 Z" fill={color} style={{ animationDelay: '1.5s' }} />
                         </svg>
                         <div className="absolute border-2 border-red-500/40 rounded-full animate-rotate" style={{ width: `${ringSizePercent}%`, height: `${ringSizePercent}%` }}></div>
-                        <div className="absolute inset-0 rounded-full border border-red-500/60 z-20 pointer-events-none"></div>
+                        <div className="absolute inset-[-10%] rounded-full border border-red-500/60 z-20 pointer-events-none"></div>
                     </>
                 )}
 
@@ -105,7 +121,7 @@ const AvatarFrame: React.FC<AvatarFrameProps> = ({ frameId, children, size = 'md
                             <path d="M 150,40 L 153,46 L 159,48 L 154,52 L 155,58 L 150,54 L 145,58 L 146,52 L 141,48 L 147,46 Z" fill="#fce7f3" />
                         </svg>
                         <div className="absolute border-2 border-pink-500/30 rounded-full" style={{ width: `${ringSizePercent}%`, height: `${ringSizePercent}%` }}></div>
-                        <div className="absolute inset-0 rounded-full border border-pink-400/50 z-20 pointer-events-none"></div>
+                        <div className="absolute inset-[-8%] rounded-full border border-pink-400/50 z-20 pointer-events-none"></div>
                     </>
                 )}
 
@@ -113,21 +129,63 @@ const AvatarFrame: React.FC<AvatarFrameProps> = ({ frameId, children, size = 'md
                 {frameConfig.type === 'sapphire' && (
                     <>
                         <div className="absolute border-[3px] border-blue-500/40 rounded-full animate-rotate" style={{ width: `${ringSizePercent - 10}%`, height: `${ringSizePercent - 10}%` }}></div>
-                        <svg className="absolute z-10 animate-swing" style={{ width: '25%', height: '40%', top: '-10%', left: '-5%', color: color }} viewBox="0 0 35 55">
+                        <svg className="absolute z-10 animate-swing origin-bottom" style={{ width: '40%', height: '40%', top: '-25%', left: '30%', color: color }} viewBox="0 0 35 55">
                             <path d="M 17.5,0 L 17.5,8 M 10,8 L 25,8 L 27,15 L 17.5,22 L 8,15 Z" fill="#1e3a8a" stroke="currentColor" strokeWidth="1" />
                             <rect x="12" y="15" width="11" height="12" fill="rgba(59, 130, 246, 0.3)" stroke="currentColor" strokeWidth="0.5" />
                             <circle cx="17.5" cy="20" r="3" fill="#bfdbfe" />
                         </svg>
-                        <svg className="absolute z-10 animate-swing" style={{ width: '25%', height: '40%', top: '-10%', right: '-5%', color: color, animationDelay: '0.5s' }} viewBox="0 0 35 55">
-                            <path d="M 17.5,0 L 17.5,8 M 10,8 L 25,8 L 27,15 L 17.5,22 L 8,15 Z" fill="#1e3a8a" stroke="currentColor" strokeWidth="1" />
-                            <rect x="12" y="15" width="11" height="12" fill="rgba(59, 130, 246, 0.3)" stroke="currentColor" strokeWidth="0.5" />
-                            <circle cx="17.5" cy="20" r="3" fill="#bfdbfe" />
-                        </svg>
-                        <div className="absolute inset-0 rounded-full border border-blue-500/60 z-20 pointer-events-none"></div>
+                        <div className="absolute inset-[-8%] rounded-full border border-blue-500/60 z-20 pointer-events-none"></div>
                     </>
                 )}
 
-                <div className={`relative z-0 overflow-hidden rounded-full w-full h-full bg-gray-800 flex items-center justify-center`}>
+                {/* 4. Ramadan Frames */}
+                {frameConfig.type === 'ramadan' && (
+                    <>
+                        {/* Ramadan Crescent Luna */}
+                        {frameId === 'ramadan-crescent' && (
+                            <>
+                                <svg className="absolute z-10 animate-float animate-glow-gold" style={{ width: '60%', height: '60%', top: '-30%', right: '-10%', color: '#fbbf24' }} viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                                </svg>
+                                <div className="absolute border-2 border-yellow-500/40 rounded-full animate-rotate" style={{ width: `${ringSizePercent}%`, height: `${ringSizePercent}%` }}></div>
+                                <div className="absolute inset-0 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.3)] pointer-events-none"></div>
+                            </>
+                        )}
+
+                        {/* Ramadan Lantern */}
+                        {frameId === 'ramadan-lantern' && (
+                            <>
+                                <svg className="absolute z-10 animate-float-lantern animate-glow-purple" style={{ width: '50%', height: '50%', top: '-35%', left: '25%', color: '#a855f7' }} viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M12 2l-2 3h4l-2-3zm-4 4h8v2H8V6zm1 3h6v10H9V9zm-2 0h1v10H7V9zm9 0h1v10h-1V9zm-5 11h2v2h-2v-2z" />
+                                </svg>
+                                <div className="absolute border-2 border-purple-500/30 rounded-full" style={{ width: `${ringSizePercent}%`, height: `${ringSizePercent}%` }}></div>
+                                <div className="absolute inset-0 rounded-full border border-purple-500/20 z-20 pointer-events-none"></div>
+                            </>
+                        )}
+
+                        {/* Ramadan Stars */}
+                        {frameId === 'ramadan-stars' && (
+                            <>
+                                {[...Array(6)].map((_, i) => (
+                                    <svg key={i} className="absolute z-10 animate-twinkle"
+                                        style={{
+                                            width: '15%', height: '15%',
+                                            top: `${50 + 45 * Math.sin(i * 60 * Math.PI / 180)}%`,
+                                            left: `${50 + 45 * Math.cos(i * 60 * Math.PI / 180)}%`,
+                                            color: '#60a5fa',
+                                            animationDelay: `${i * 0.3}s`
+                                        }} viewBox="0 0 24 24">
+                                        <path fill="currentColor" d="M12 1L14.39 8.26L22 9.27L16.5 14.14L18.18 21.02L12 17.77L5.82 21.02L7.5 14.14L2 9.27L9.61 8.26L12 1Z" />
+                                    </svg>
+                                ))}
+                                <div className="absolute border-[1px] border-blue-400/20 rounded-full animate-rotate" style={{ width: `${ringSizePercent}%`, height: `${ringSizePercent}%` }}></div>
+                                <div className="absolute inset-0 rounded-full bg-blue-500/5 z-0"></div>
+                            </>
+                        )}
+                    </>
+                )}
+
+                <div className={`relative z-0 overflow-hidden rounded-full w-full h-full bg-gray-800 flex items-center justify-center shadow-inner`}>
                     {children}
                 </div>
             </div>
@@ -138,8 +196,8 @@ const AvatarFrame: React.FC<AvatarFrameProps> = ({ frameId, children, size = 'md
     if (frameId?.startsWith('data:') || frameId?.startsWith('http')) {
         return (
             <div className={`relative ${dims.w} ${dims.h} flex items-center justify-center rounded-full ${className}`}>
-                <img src={frameId} className="absolute inset-0 w-full h-full z-10 object-contain scale-[1.6] pointer-events-none" alt="frame" />
-                <div className="w-[85%] h-[85%] rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800 relative z-0">
+                <img src={frameId} className="absolute inset-0 w-full h-full z-10 object-contain scale-[1.35] pointer-events-none" alt="frame" />
+                <div className="w-[90%] h-[90%] rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800 relative z-0">
                     {children}
                 </div>
             </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Order, User, OrderStatus, Payment } from '../../types';
-import { UserIcon, WalletIcon, ReceiptIcon, ClockIcon, CheckCircleIcon, XIcon, CashIcon, ExclamationIcon, TrashIcon } from '../icons';
+import { Order, User, OrderStatus, Payment, SupervisorPermission } from '../../types';
+import { UserIcon, WalletIcon, ReceiptIcon, ClockIcon, CheckCircleIcon, XIcon, CashIcon, ExclamationIcon, TrashIcon, PencilIcon, ShieldCheckIcon } from '../icons';
 import DriverPaymentHistoryPage from './DriverPaymentHistoryPage';
 import ManualDailyModal from './ManualDailyModal';
 import ConfirmationModal from './ConfirmationModal';
@@ -80,15 +80,20 @@ interface AdminWalletScreenProps {
     currentUser: User;
     manualDailies?: ManualDaily[];
     logAction: (actionType: 'create' | 'update' | 'delete' | 'financial', target: string, details: string) => void;
+    permissions?: SupervisorPermission[];
 }
 
-const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, payments, updateUser, handleDriverPayment, onDeletePayment, currentUser, manualDailies = [], logAction }) => {
+const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, payments, updateUser, handleDriverPayment, onDeletePayment, currentUser, manualDailies = [], logAction, permissions }) => {
+    const canManageFinancials = !permissions || permissions.includes('manage_advanced_financials');
+    const canViewWallet = !permissions || permissions.includes('view_wallet');
     const [historyDriver, setHistoryDriver] = useState<User | null>(null);
     const [payingDriverInfo, setPayingDriverInfo] = useState<{ driver: User; amount: number } | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showHistoryPage, setShowHistoryPage] = useState(false); // New state for full page history
     const [showManualDailyModal, setShowManualDailyModal] = useState(false);
     const [selectedDriverForDaily, setSelectedDriverForDaily] = useState<User | null>(null);
+    const [editingDaily, setEditingDaily] = useState<ManualDaily | null>(null);
+    const [dailyToDelete, setDailyToDelete] = useState<{ id: string; driverName: string } | null>(null);
 
     const drivers = users.filter(u => u.role === 'driver');
 
@@ -153,44 +158,50 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
 
     };
 
-    const handleSaveDaily = async (data: { driverId: string; date: string; count: number; note?: string; amount: number; totalDeliveryFees?: number }) => {
+    const handleSaveDaily = async (data: { id?: string; driverId: string; date: string; count: number; note?: string; amount: number; totalDeliveryFees?: number }) => {
         try {
-            const newId = `DAILY-${Date.now()}`;
+            const isEdit = !!data.id;
+            const existingDaily = isEdit ? manualDailies.find(d => d.id === data.id) : null;
+
+            const dailyId = data.id || `DAILY-${Date.now()}`;
             const newDaily: ManualDaily = {
-                id: newId,
+                id: dailyId,
                 driverId: data.driverId,
                 dayDate: data.date,
                 ordersCount: data.count,
                 amount: data.amount,
                 note: data.note,
                 totalDeliveryFees: data.totalDeliveryFees,
-                createdBy: currentUser.id,
-                createdAt: new Date(),
-                reconciled: false
+                createdBy: isEdit ? (existingDaily?.createdBy || currentUser.id) : currentUser.id,
+                createdAt: isEdit ? (existingDaily?.createdAt || new Date()) : new Date(),
+                reconciled: isEdit ? (existingDaily?.reconciled || false) : false
             };
 
-            await firebaseService.updateData('manual_dailies', newId, newDaily);
+            await firebaseService.updateRTDB('manual_dailies', dailyId, newDaily);
 
             // Log the action
             const driverName = users.find(u => u.id === data.driverId)?.name || 'Unknown Driver';
-            logAction('financial', 'إضافة يومية', `تم إضافة يومية للمندوب ${driverName} بقيمة ${data.amount} ج.م (${data.count} طلبات)`);
+            const actionMsg = isEdit ? `تعديل يومية للمندوب ${driverName}` : `إضافة يومية للمندوب ${driverName}`;
+            logAction(isEdit ? 'update' : 'financial', isEdit ? 'تعديل يومية' : 'إضافة يومية', `${actionMsg} بقيمة ${data.amount} ج.م (${data.count} طلبات)`);
 
             setShowManualDailyModal(false);
             setSelectedDriverForDaily(null);
+            setEditingDaily(null);
         } catch (e) {
             console.error(e);
         }
     };
 
-    const handleDeleteDaily = async (id: string, driverName: string) => {
-        if (window.confirm(`هل أنت متأكد من حذف اليومية اليدوية للمندوب ${driverName}؟`)) {
-            try {
-                await firebaseService.deleteData('manual_dailies', id);
-                logAction('delete', 'حذف يومية', `تم حذف يومية يدوية للمندوب ${driverName}`);
-            } catch (e) {
-                console.error("Error deleting daily:", e);
-                alert("حدث خطأ أثناء الحذف");
-            }
+
+    const handleDeleteDaily = async () => {
+        if (!dailyToDelete) return;
+
+        try {
+            await firebaseService.deleteRTDB('manual_dailies', dailyToDelete.id);
+            logAction('delete', 'حذف يومية', `تم حذف يومية يدوية للمندوب ${dailyToDelete.driverName}`);
+            setDailyToDelete(null);
+        } catch (e) {
+            console.error("Error deleting daily:", e);
         }
     };
 
@@ -204,7 +215,7 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
         }
 
         // 2. Close Payment Confirmation Modal
-        if (payingDriverInfo) {
+        if (payingDriverInfo || dailyToDelete) {
             closeModal(); // This clears state and handles history.back()
             return true;
         }
@@ -221,7 +232,7 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
     return (
         <>
             {showHistoryPage && historyDriver && (
-                <div className="fixed inset-0 z-[100] bg-gray-900">
+                <div className="fixed inset-0 z-[100] bg-gray-900 overflow-hidden">
                     <DriverPaymentHistoryPage
                         driver={historyDriver}
                         payments={payments}
@@ -232,17 +243,20 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                         }}
                         onDeletePayment={onDeletePayment}
                         currentUser={currentUser}
-                        manualDailies={manualDailies} // Pass it down
+                        manualDailies={manualDailies}
+                        onEditDaily={(daily) => { setEditingDaily(daily); setShowManualDailyModal(true); }}
+                        onDeleteDaily={(id, name) => setDailyToDelete({ id, driverName: name })}
                     />
                 </div>
             )}
 
             <ManualDailyModal
                 isOpen={showManualDailyModal}
-                onClose={() => { setShowManualDailyModal(false); setSelectedDriverForDaily(null); }}
+                onClose={() => { setShowManualDailyModal(false); setSelectedDriverForDaily(null); setEditingDaily(null); }}
                 drivers={drivers}
                 onSave={handleSaveDaily}
                 preSelectedDriver={selectedDriverForDaily}
+                initialData={editingDaily}
             />
 
             {/* Added pb-32 to ensure bottom cards are fully visible above the fixed nav */}
@@ -328,13 +342,15 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                             {/* Body */}
                             <div className="p-5 space-y-4">
                                 {/* Shift Control */}
-                                <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-                                    <ShiftStatusControl
-                                        status={driver.dailyLogStatus || 'closed'}
-                                        mode={driver.dailyLogMode || '12_hour'}
-                                        onChange={handleLogStatusToggle}
-                                    />
-                                </div>
+                                {canManageFinancials && (
+                                    <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                                        <ShiftStatusControl
+                                            status={driver.dailyLogStatus || 'closed'}
+                                            mode={driver.dailyLogMode || '12_hour'}
+                                            onChange={handleLogStatusToggle}
+                                        />
+                                    </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center mb-1">
@@ -361,13 +377,26 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                                                             <span className="text-[10px] text-gray-300 font-bold">{daily.ordersCount} طلبات - {daily.amount} ج.م</span>
                                                             <span className="text-[9px] text-gray-500 font-mono tracking-wide">{new Date(daily.dayDate).toLocaleDateString('ar-EG')}</span>
                                                         </div>
-                                                        <button
-                                                            onClick={() => handleDeleteDaily(daily.id, driver.name)}
-                                                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1.5 rounded-lg transition-all"
-                                                            title="حذف اليومية (تراجع)"
-                                                        >
-                                                            <TrashIcon className="w-3.5 h-3.5" />
-                                                        </button>
+                                                        <div className="flex items-center gap-1">
+                                                            {canManageFinancials && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => { setEditingDaily(daily); setShowManualDailyModal(true); }}
+                                                                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-1.5 rounded-lg transition-all"
+                                                                        title="تعديل اليومية"
+                                                                    >
+                                                                        <PencilIcon className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setDailyToDelete({ id: daily.id, driverName: driver.name })}
+                                                                        className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all"
+                                                                        title="حذف اليومية"
+                                                                    >
+                                                                        <TrashIcon className="w-3 h-3" />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -429,6 +458,17 @@ const AdminWalletScreen: React.FC<AdminWalletScreenProps> = ({ orders, users, pa
                     onConfirm={confirmPayment}
                     confirmButtonText="تأكيد التسوية"
                     confirmVariant='success'
+                />
+            )}
+
+            {dailyToDelete && (
+                <ConfirmationModal
+                    title={`حذف اليومية اليدوية`}
+                    message={`هل أنت متأكد من حذف اليومية اليدوية للمندوب ${dailyToDelete.driverName}؟ لا يمكن التراجع عن هذا الإجراء.`}
+                    onClose={() => setDailyToDelete(null)}
+                    onConfirm={handleDeleteDaily}
+                    confirmButtonText="تأكيد الحذف"
+                    confirmVariant='danger'
                 />
             )}
 

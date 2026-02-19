@@ -1,15 +1,16 @@
 
 import React, { useState, useMemo } from 'react';
 import { AuditLog } from '../../types';
-import { ShieldCheckIcon, SearchIcon, ClockIcon, UserIcon, CalendarIcon, TrashIcon } from '../icons';
+import { ShieldCheckIcon, SearchIcon, ClockIcon, UserIcon, CalendarIcon, TrashIcon, RefreshCwIcon } from '../icons';
 import ConfirmationModal from './ConfirmationModal';
 
 interface AuditLogsScreenProps {
     logs: AuditLog[];
     onClearLogs: () => void;
+    onUndo?: (log: AuditLog) => Promise<boolean>;
 }
 
-const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) => {
+const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs, onUndo }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -155,7 +156,24 @@ const AuditLogsScreen: React.FC<AuditLogsScreenProps> = ({ logs, onClearLogs }) 
                                                 {log.target}
                                             </span>
                                         </div>
+                                        <p className="text-[10px] text-gray-500 font-medium">#{log.id.split('-').pop()}</p>
+                                        {log.isUndone && (
+                                            <span className="bg-orange-500/10 text-orange-400 text-[10px] px-2 py-0.5 rounded-full border border-orange-500/20 font-bold">
+                                                تم التراجع
+                                            </span>
+                                        )}
                                         <p className="text-gray-300 text-sm leading-relaxed">{log.details}</p>
+
+                                        {/* Undo Button - Only show if not already undone */}
+                                        {onUndo && !log.isUndone && log.actionType !== 'login' && log.targetId && log.collection && (
+                                            <button
+                                                onClick={() => onUndo(log)}
+                                                className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-orange-400 hover:text-orange-300 bg-orange-500/10 hover:bg-orange-500/20 px-2 py-1 rounded-lg border border-orange-500/20 transition-all active:scale-95"
+                                            >
+                                                <RefreshCwIcon className="w-3 h-3" />
+                                                تراجع عن العملية
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 

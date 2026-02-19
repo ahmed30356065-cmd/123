@@ -138,33 +138,22 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onApprove, 
                 {/* Header */}
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                        {/* Avatar with Frame */}
-                        {isSystemFrame ? (
-                            <div className="relative w-14 h-14 flex items-center justify-center">
-                                <AvatarFrame frameId={user.specialFrame!} size="md" className="scale-110">
-                                    <div className={`w-full h-full rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800 ${isBlocked ? 'grayscale' : ''}`}>
-                                        {user.storeImage ? (
-                                            <img src={user.storeImage} alt={user.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <UserIcon className="w-7 h-7 text-gray-400" />
-                                        )}
-                                    </div>
-                                </AvatarFrame>
-                            </div>
-                        ) : (
-                            <div className={`relative w-14 h-14 flex items-center justify-center rounded-full ${!isCustomFrame(user.specialFrame) ? frameClass : ''} ${isBlocked ? 'grayscale' : ''}`}>
-                                {isCustomFrame(user.specialFrame) && (
-                                    <img src={user.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-[1.6] pointer-events-none" alt="frame" />
-                                )}
-                                <div className={`${isCustomFrame(user.specialFrame) ? 'w-[85%] h-[85%]' : 'w-full h-full'} rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800 relative z-0`}>
+                        {/* Unified Avatar with Frame Logic */}
+                        <div className="relative w-14 h-14 flex items-center justify-center">
+                            <AvatarFrame
+                                frameId={user.specialFrame}
+                                size="md"
+                                className={`${isBlocked ? 'grayscale' : ''}`}
+                            >
+                                <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-800">
                                     {user.storeImage ? (
                                         <img src={user.storeImage} alt={user.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <UserIcon className="w-7 h-7 text-gray-400" />
                                     )}
                                 </div>
-                            </div>
-                        )}
+                            </AvatarFrame>
+                        </div>
 
                         <div>
                             <div className="flex items-center gap-1.5">

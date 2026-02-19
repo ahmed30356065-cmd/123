@@ -26,6 +26,7 @@ import PaymentModal from './PaymentModal';
 import useAndroidBack from '../../hooks/useAndroidBack';
 import * as firebaseService from '../../services/firebase';
 import PullToRefresh from '../common/PullToRefresh';
+import AvatarFrame from '../common/AvatarFrame';
 
 interface AdminPanelProps {
     user: User;
@@ -73,6 +74,7 @@ interface AdminPanelProps {
     onBulkUpdate: (updates: any[]) => Promise<void>;
     auditLogs: AuditLog[];
     onClearLogs: () => void;
+    onUndo: (log: AuditLog) => Promise<boolean>;
     promoCodes: PromoCode[];
     pointsConfig: { pointsPerCurrency: number; currencyPerPoint: number; isPointsEnabled?: boolean };
     onAddPromo: (promo: PromoCode) => void;
@@ -82,6 +84,7 @@ interface AdminPanelProps {
     onUpdateAppConfig: (conf: Partial<AppConfig>) => void;
     onFactoryReset?: () => void;
     logAction: (actionType: 'create' | 'update' | 'delete' | 'financial', target: string, details: string) => void;
+    onDeletePayment: (paymentId: string) => void;
     getNewId?: () => Promise<string>; // Added prop
 }
 
@@ -397,6 +400,8 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     };
 
     const renderView = () => {
+        const permissions = realAdminData.permissions;
+
         switch (view) {
             case 'orders': return (
                 <AdminOrdersScreen
@@ -411,18 +416,19 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                     onBulkDelete={handleBulkDelete}
                     appName={fullAppName}
                     currentUser={props.user}
+                    permissions={permissions}
                 />
             );
-            case 'reports': return <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} manualDailies={props.manualDailies} />;
+            case 'reports': return <AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} manualDailies={props.manualDailies} permissions={permissions} />;
             case 'add_order': return <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={(order) => props.adminAddOrder(order as any)} getNewId={props.getNewId} />;
-            case 'users': return <AdminUsersScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} onAdminAddUser={props.adminAddUser} setEditingUser={setEditingUser} onViewUser={setViewingUser} appName={fullAppName} currentUser={props.user} />;
-            case 'stores': return <AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} />;
+            case 'users': return <AdminUsersScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} onAdminAddUser={props.adminAddUser} setEditingUser={setEditingUser} onViewUser={setViewingUser} appName={fullAppName} currentUser={props.user} permissions={permissions} />;
+            case 'stores': return <AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} permissions={permissions} />;
             case 'notifications': return <NotificationsScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} passwordResetRequests={props.passwordResetRequests} resolvePasswordResetRequest={props.resolvePasswordResetRequest} setEditingUser={setEditingUser} pendingOrders={props.orders.filter(o => o.status === OrderStatus.Pending && !o.driverId)} onNavigateToOrders={() => setView('orders')} unreadChats={unreadSupportChats} onNavigateToSupport={() => setView('support')} />;
-            case 'wallet': return <AdminWalletScreen orders={props.orders} users={props.users} payments={props.payments} updateUser={props.updateUser} handleDriverPayment={props.handleDriverPayment} onDeletePayment={(id) => firebaseService.deleteData('payments', id)} currentUser={props.user} manualDailies={props.manualDailies} logAction={props.logAction} />;
+            case 'wallet': return <AdminWalletScreen orders={props.orders} users={props.users} payments={props.payments} updateUser={props.updateUser} handleDriverPayment={props.handleDriverPayment} onDeletePayment={props.onDeletePayment} currentUser={props.user} manualDailies={props.manualDailies} logAction={props.logAction} permissions={permissions} />;
             case 'messages': return <AdminMessagesScreen users={props.users} onSendMessage={props.sendMessage} messages={props.messages} deleteMessage={props.deleteMessage} />;
             case 'slider': return <SliderSettings images={props.sliderImages} isEnabled={props.sliderConfig.isEnabled} onAddImage={props.onAddSliderImage} onDeleteImage={props.onDeleteSliderImage} onUpdateImage={props.onUpdateSliderImage} onToggleSlider={props.onToggleSlider} merchants={merchants} adminUser={props.user} />;
             case 'customizer': return <AppIconCustomizer currentTheme={props.currentTheme} onUpdateTheme={props.onUpdateTheme} onClose={() => setView('orders')} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} users={props.users} onUpdateUser={props.updateUser} sendNotification={firebaseService.sendExternalNotification} currentUser={props.user} />;
-            case 'logs': return <AuditLogsScreen logs={props.auditLogs} onClearLogs={props.onClearLogs} />;
+            case 'logs': return <AuditLogsScreen logs={props.auditLogs} onClearLogs={props.onClearLogs} onUndo={props.onUndo} />;
             case 'loyalty': return <LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} />;
             case 'support': return <AdminSupportScreen users={props.users} currentUser={props.user} onBack={() => setView('orders')} />;
             case 'settings': return <SystemSettings orders={props.orders} users={props.users} editOrder={props.editOrder} onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} currentUser={props.user} onFactoryReset={props.onFactoryReset} />;
@@ -497,19 +503,21 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                             {/* Avatar with Frame - Clickable to Edit */}
                             <button
                                 onClick={() => { setEditingUser(realAdminData); setIsSideMenuOpen(false); }}
-                                className={`relative w-24 h-24 flex items-center justify-center rounded-full shadow-2xl mb-4 group/avatar cursor-pointer transition-transform active:scale-95 ${!isCustomFrame(realAdminData.specialFrame) ? getFrameContainerClass(realAdminData.specialFrame) : ''}`}
+                                className="relative w-24 h-24 flex items-center justify-center rounded-full shadow-2xl mb-4 group/avatar cursor-pointer transition-transform active:scale-95"
                             >
-                                {isCustomFrame(realAdminData.specialFrame) && (
-                                    <img src={realAdminData.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-[1.65] pointer-events-none" alt="frame" />
-                                )}
-                                <div className={`${isCustomFrame(realAdminData.specialFrame) ? 'w-[85%] h-[85%]' : 'w-full h-full'} rounded-full bg-gray-900 overflow-hidden border-2 border-white/10 flex items-center justify-center relative z-0`}>
-                                    {realAdminData.storeImage ? <img src={realAdminData.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-10 h-10 text-gray-500" />}
+                                <AvatarFrame
+                                    frameId={realAdminData.specialFrame}
+                                    size="lg"
+                                >
+                                    <div className="w-full h-full rounded-full bg-gray-900 overflow-hidden border-2 border-white/10 flex items-center justify-center relative z-0">
+                                        {realAdminData.storeImage ? <img src={realAdminData.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-10 h-10 text-gray-500" />}
 
-                                    {/* Edit Overlay */}
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
-                                        <SettingsIcon className="w-6 h-6 text-white" />
+                                        {/* Edit Overlay */}
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                                            <SettingsIcon className="w-6 h-6 text-white" />
+                                        </div>
                                     </div>
-                                </div>
+                                </AvatarFrame>
                             </button>
 
                             <div className="flex items-center gap-2">
@@ -549,13 +557,20 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 <header className={`${currentAdminMode === 'light' ? 'bg-white/95' : 'bg-gray-800/95'} backdrop-blur-md border-b border-red-500/20 sticky top-0 z-30 shadow-xl pt-safe rounded-b-[35px] mx-2 mt-1 transition-all duration-300`}>
                     <div className="max-w-7xl mx-auto py-3 px-4 flex justify-between items-center relative h-14">
                         <button onClick={() => setIsSideMenuOpen(true)} className="flex items-center gap-3 active:scale-95 transition-transform group focus:outline-none">
-                            <div className={`relative w-11 h-11 flex items-center justify-center rounded-full shadow-lg transition-all duration-300 group-hover:shadow-red-500/20 group-hover:ring-2 group-hover:ring-red-500/50 ${!isCustomFrame(realAdminData.specialFrame) ? getFrameContainerClass(realAdminData.specialFrame) : ''}`}>
-                                {isCustomFrame(realAdminData.specialFrame) && (
-                                    <img src={realAdminData.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-[1.5] pointer-events-none" alt="frame" />
-                                )}
-                                <div className={`${isCustomFrame(realAdminData.specialFrame) ? 'w-[85%] h-[85%]' : 'w-full h-full'} rounded-full bg-white flex items-center justify-center overflow-hidden relative z-0`}>
-                                    {realAdminData.storeImage ? <img src={realAdminData.storeImage} className="w-full h-full object-cover" /> : <div className="text-gray-900 font-bold">{realAdminData.name.charAt(0)}</div>}
-                                </div>
+                            <div className="relative">
+                                <AvatarFrame
+                                    frameId={realAdminData.specialFrame}
+                                    size="sm"
+                                    className="scale-110"
+                                >
+                                    <div className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden relative z-0 border border-white/10 ${currentAdminMode === 'light' ? 'bg-gray-100' : 'bg-gray-700'}`}>
+                                        {realAdminData.storeImage ? (
+                                            <img src={realAdminData.storeImage} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="text-red-500 font-black text-sm">{realAdminData.name.charAt(0)}</div>
+                                        )}
+                                    </div>
+                                </AvatarFrame>
                             </div>
                         </button>
                         <h1 className="text-xl font-black absolute left-1/2 -translate-x-1/2 select-none">
@@ -576,89 +591,95 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
             <main
                 className={view === 'add_order' ? "flex-1 bg-[#111] h-full" : isFullScreenMode ? "flex-1 h-full relative" : "flex-1 overflow-hidden relative p-4 sm:p-6 pb-24"}
             >
-                {/* 🔥 Performance Optimization: Keep Orders Screen Mounted! */}
-                {/* Each View gets its OWN PullToRefresh instance to ensure independent scrolling state */}
+                {/* 
+                    Smooth View Transitions 
+                    Using 'key' allows the component to re-mount and trigger entry animations 
+                */}
+                <div key={view} className="h-full animate-fade-in-up hardware-accelerated">
+                    {/* 🔥 Performance Optimization: Keep Orders Screen Mounted! */}
+                    {/* Each View gets its OWN PullToRefresh instance to ensure independent scrolling state */}
 
-                <div className={`h-full ${view === 'orders' ? 'block' : 'hidden'}`}>
-                    <PullToRefresh onRefresh={handleRefresh}>
-                        <AdminOrdersScreen
-                            orders={props.orders} users={props.users}
-                            deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
-                            editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
-                            adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
-                            onOpenPaymentModal={handleOpenPaymentModal}
-                            onNavigateToAdd={handleNavigateToAdd}
-                            onBulkAssign={handleBulkAssign}
-                            onBulkStatusUpdate={handleBulkStatusUpdate}
-                            onBulkDelete={handleBulkDelete}
-                            appName={fullAppName}
-                            currentUser={props.user}
-                            viewMode="default"
-                        />
-                    </PullToRefresh>
-                </div>
-
-                <div className={`h-full ${view === 'shopping' ? 'block' : 'hidden'}`}>
-                    <PullToRefresh onRefresh={handleRefresh}>
-                        <AdminOrdersScreen
-                            orders={props.orders} users={props.users}
-                            deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
-                            editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
-                            adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
-                            onOpenPaymentModal={handleOpenPaymentModal}
-                            onNavigateToAdd={handleNavigateToAdd}
-                            onBulkAssign={handleBulkAssign}
-                            onBulkStatusUpdate={handleBulkStatusUpdate}
-                            onBulkDelete={handleBulkDelete}
-                            appName={fullAppName}
-                            currentUser={props.user}
-                            viewMode="shopping"
-                        />
-                    </PullToRefresh>
-                </div>
-
-                <div className={`h-full ${view === 'special' ? 'block' : 'hidden'}`}>
-                    <PullToRefresh onRefresh={handleRefresh}>
-                        <AdminOrdersScreen
-                            orders={props.orders} users={props.users}
-                            deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
-                            editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
-                            adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
-                            onOpenPaymentModal={handleOpenPaymentModal}
-                            onNavigateToAdd={handleNavigateToAdd}
-                            onBulkAssign={handleBulkAssign}
-                            onBulkStatusUpdate={handleBulkStatusUpdate}
-                            onBulkDelete={handleBulkDelete}
-                            appName={fullAppName}
-                            currentUser={props.user}
-                            viewMode="special"
-                        />
-                    </PullToRefresh>
-                </div>
-
-                {/* Other views wrapped in individual PullToRefresh instances */}
-                {view === 'users' && (
-                    <div className="h-full animate-fadeIn">
+                    <div className={`h-full ${view === 'orders' ? 'block' : 'hidden'}`}>
                         <PullToRefresh onRefresh={handleRefresh}>
-                            <AdminUsersScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} onAdminAddUser={props.adminAddUser} setEditingUser={setEditingUser} onViewUser={setViewingUser} appName={fullAppName} currentUser={props.user} />
+                            <AdminOrdersScreen
+                                orders={props.orders} users={props.users}
+                                deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
+                                editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
+                                adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                                onOpenPaymentModal={handleOpenPaymentModal}
+                                onNavigateToAdd={handleNavigateToAdd}
+                                onBulkAssign={handleBulkAssign}
+                                onBulkStatusUpdate={handleBulkStatusUpdate}
+                                onBulkDelete={handleBulkDelete}
+                                appName={fullAppName}
+                                currentUser={props.user}
+                                viewMode="default"
+                            />
                         </PullToRefresh>
                     </div>
-                )}
 
-                {/* Wrappers for other views to ensure independent scrolling */}
-                {view === 'reports' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} manualDailies={props.manualDailies} /></PullToRefresh></div>}
-                {view === 'add_order' && <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={props.adminAddOrder} getNewId={props.getNewId} />}
-                {view === 'stores' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} /></PullToRefresh></div>}
-                {view === 'notifications' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><NotificationsScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} passwordResetRequests={props.passwordResetRequests} resolvePasswordResetRequest={props.resolvePasswordResetRequest} setEditingUser={setEditingUser} pendingOrders={props.orders.filter(o => o.status === OrderStatus.Pending && !o.driverId)} onNavigateToOrders={() => setView('orders')} unreadChats={unreadSupportChats} onNavigateToSupport={() => setView('support')} /></PullToRefresh></div>}
-                {view === 'wallet' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminWalletScreen orders={props.orders} users={props.users} payments={props.payments} updateUser={props.updateUser} handleDriverPayment={props.handleDriverPayment} onDeletePayment={(id) => firebaseService.deleteData('payments', id)} currentUser={props.user} manualDailies={props.manualDailies} logAction={props.logAction} /></PullToRefresh></div>}
-                {view === 'messages' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminMessagesScreen users={props.users} onSendMessage={props.sendMessage} messages={props.messages} deleteMessage={props.deleteMessage} /></PullToRefresh></div>}
-                {view === 'slider' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><SliderSettings images={props.sliderImages} isEnabled={props.sliderConfig.isEnabled} onAddImage={props.onAddSliderImage} onDeleteImage={props.onDeleteSliderImage} onUpdateImage={props.onUpdateSliderImage} onToggleSlider={props.onToggleSlider} merchants={merchants} adminUser={props.user} /></PullToRefresh></div>}
-                {view === 'customizer' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AppIconCustomizer currentTheme={props.currentTheme} onUpdateTheme={props.onUpdateTheme} onClose={() => setView('orders')} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} users={props.users} onUpdateUser={props.updateUser} sendNotification={firebaseService.sendExternalNotification} currentUser={props.user} /></PullToRefresh></div>}
-                {view === 'logs' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AuditLogsScreen logs={props.auditLogs} onClearLogs={props.onClearLogs} /></PullToRefresh></div>}
-                {view === 'loyalty' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} /></PullToRefresh></div>}
-                {view === 'support' && <AdminSupportScreen users={props.users} currentUser={props.user} onBack={() => setView('orders')} />}
-                {view === 'settings' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><SystemSettings orders={props.orders} users={props.users} editOrder={props.editOrder} onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} currentUser={props.user} /></PullToRefresh></div>}
-                {view === 'games' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><GamesManager appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig!} /></PullToRefresh></div>}
+                    <div className={`h-full ${view === 'shopping' ? 'block' : 'hidden'}`}>
+                        <PullToRefresh onRefresh={handleRefresh}>
+                            <AdminOrdersScreen
+                                orders={props.orders} users={props.users}
+                                deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
+                                editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
+                                adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                                onOpenPaymentModal={handleOpenPaymentModal}
+                                onNavigateToAdd={handleNavigateToAdd}
+                                onBulkAssign={handleBulkAssign}
+                                onBulkStatusUpdate={handleBulkStatusUpdate}
+                                onBulkDelete={handleBulkDelete}
+                                appName={fullAppName}
+                                currentUser={props.user}
+                                viewMode="shopping"
+                            />
+                        </PullToRefresh>
+                    </div>
+
+                    <div className={`h-full ${view === 'special' ? 'block' : 'hidden'}`}>
+                        <PullToRefresh onRefresh={handleRefresh}>
+                            <AdminOrdersScreen
+                                orders={props.orders} users={props.users}
+                                deleteOrder={props.deleteOrder} updateOrderStatus={props.updateOrderStatus}
+                                editOrder={props.editOrder} assignDriverAndSetStatus={props.assignDriverAndSetStatus}
+                                adminAddOrder={props.adminAddOrder} onOpenStatusModal={handleOpenStatusModal}
+                                onOpenPaymentModal={handleOpenPaymentModal}
+                                onNavigateToAdd={handleNavigateToAdd}
+                                onBulkAssign={handleBulkAssign}
+                                onBulkStatusUpdate={handleBulkStatusUpdate}
+                                onBulkDelete={handleBulkDelete}
+                                appName={fullAppName}
+                                currentUser={props.user}
+                                viewMode="special"
+                            />
+                        </PullToRefresh>
+                    </div>
+
+                    {/* Other views wrapped in individual PullToRefresh instances */}
+                    {view === 'users' && (
+                        <div className="h-full">
+                            <PullToRefresh onRefresh={handleRefresh}>
+                                <AdminUsersScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} onAdminAddUser={props.adminAddUser} setEditingUser={setEditingUser} onViewUser={setViewingUser} appName={fullAppName} currentUser={props.user} />
+                            </PullToRefresh>
+                        </div>
+                    )}
+
+                    {/* Wrappers for other views to ensure independent scrolling */}
+                    {view === 'reports' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminReportsScreen orders={props.orders} users={props.users} payments={props.payments} currentUser={props.user} manualDailies={props.manualDailies} /></PullToRefresh></div>}
+                    {view === 'add_order' && <AddOrderModal merchants={merchants} onClose={() => setView('orders')} onSave={props.adminAddOrder} getNewId={props.getNewId} />}
+                    {view === 'stores' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminStoresScreen users={props.users} orders={props.orders} updateUser={props.updateUser} /></PullToRefresh></div>}
+                    {view === 'notifications' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><NotificationsScreen users={props.users} updateUser={props.updateUser} onDeleteUser={props.deleteUser} passwordResetRequests={props.passwordResetRequests} resolvePasswordResetRequest={props.resolvePasswordResetRequest} setEditingUser={setEditingUser} pendingOrders={props.orders.filter(o => o.status === OrderStatus.Pending && !o.driverId)} onNavigateToOrders={() => setView('orders')} unreadChats={unreadSupportChats} onNavigateToSupport={() => setView('support')} /></PullToRefresh></div>}
+                    {view === 'wallet' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminWalletScreen orders={props.orders} users={props.users} payments={props.payments} updateUser={props.updateUser} handleDriverPayment={props.handleDriverPayment} onDeletePayment={props.onDeletePayment} currentUser={props.user} manualDailies={props.manualDailies} logAction={props.logAction} /></PullToRefresh></div>}
+                    {view === 'messages' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AdminMessagesScreen users={props.users} onSendMessage={props.sendMessage} messages={props.messages} deleteMessage={props.deleteMessage} /></PullToRefresh></div>}
+                    {view === 'slider' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><SliderSettings images={props.sliderImages} isEnabled={props.sliderConfig.isEnabled} onAddImage={props.onAddSliderImage} onDeleteImage={props.onDeleteSliderImage} onUpdateImage={props.onUpdateSliderImage} onToggleSlider={props.onToggleSlider} merchants={merchants} adminUser={props.user} /></PullToRefresh></div>}
+                    {view === 'customizer' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AppIconCustomizer currentTheme={props.currentTheme} onUpdateTheme={props.onUpdateTheme} onClose={() => setView('orders')} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} users={props.users} onUpdateUser={props.updateUser} sendNotification={firebaseService.sendExternalNotification} currentUser={props.user} /></PullToRefresh></div>}
+                    {view === 'logs' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><AuditLogsScreen logs={props.auditLogs} onClearLogs={props.onClearLogs} onUndo={props.onUndo} /></PullToRefresh></div>}
+                    {view === 'loyalty' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><LoyaltyScreen promoCodes={props.promoCodes} pointsConfig={props.pointsConfig} onAddPromo={props.onAddPromo} onDeletePromo={props.onDeletePromo} onUpdatePointsConfig={props.onUpdatePointsConfig} /></PullToRefresh></div>}
+                    {view === 'support' && <AdminSupportScreen users={props.users} currentUser={props.user} onBack={() => setView('orders')} />}
+                    {view === 'settings' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><SystemSettings orders={props.orders} users={props.users} editOrder={props.editOrder} onSuccess={() => window.location.reload()} onDisconnect={() => window.location.reload()} appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig} currentUser={props.user} /></PullToRefresh></div>}
+                    {view === 'games' && <div className="h-full"><PullToRefresh onRefresh={handleRefresh}><GamesManager appConfig={props.appConfig} onUpdateAppConfig={props.onUpdateAppConfig!} /></PullToRefresh></div>}
+                </div>
             </main>
 
             {/* Hide Bottom Nav in Full Screen Mode */}

@@ -16,6 +16,7 @@ import useAndroidBack from '../../hooks/useAndroidBack';
 import ConfirmationModal from '../admin/ConfirmationModal';
 import ImageCropperModal from '../common/ImageCropperModal';
 import * as firebaseService from '../../services/firebase';
+import AvatarFrame from '../common/AvatarFrame';
 
 interface CustomerAppProps {
     user: User; merchants: User[]; orders: Order[]; onPlaceOrder: (order: any) => void; onLogout: () => void; onDeleteOrder: (orderId: string) => void; sliderImages?: SliderImage[]; sliderConfig?: SliderConfig; messages: Message[]; markMessageAsSeen: (id: string) => void; hideMessage: (id: string) => void; seenMessageIds: string[]; deletedMessageIds: string[]; onUpdateUser: (userId: string, data: Partial<User>) => void; adminUser?: User; appTheme: AppTheme; onUpdateTheme?: (config: any) => void; promoCodes: PromoCode[]; pointsConfig: { pointsPerCurrency: number; currencyPerPoint: number; isPointsEnabled?: boolean }; initialRoute?: { target: string; id?: string } | null; appConfig?: AppConfig;
@@ -660,22 +661,22 @@ const CustomerApp: React.FC<any> = ({ user, merchants, orders, onPlaceOrder, onL
                                 <div className="absolute inset-0 bg-pattern opacity-10"></div>
                                 <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
                                     <div className="relative">
-                                        <div className={`relative w-24 h-24 flex items-center justify-center rounded-full ${!isCustomFrame(user.specialFrame) ? getFrameContainerClass(user.specialFrame) : ''}`}>
-                                            {isCustomFrame(user.specialFrame) && (
-                                                <img src={user.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-[1.7] pointer-events-none" alt="frame" />
-                                            )}
-                                            <div className={`${isCustomFrame(user.specialFrame) ? 'w-[85%] h-[85%]' : 'w-full h-full'} rounded-full overflow-hidden bg-[#252525] border-4 border-[#121212] flex items-center justify-center shadow-2xl relative z-0`}>
+                                        <AvatarFrame
+                                            frameId={user.specialFrame}
+                                            size="lg"
+                                        >
+                                            <div className="w-full h-full rounded-full overflow-hidden bg-[#252525] border-4 border-[#121212] flex items-center justify-center shadow-2xl relative z-0">
                                                 {user.storeImage ? (
                                                     <img src={user.storeImage} alt={user.name} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <UserIcon className="w-8 h-8 text-gray-500" />
                                                 )}
-                                                <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 bg-[#252525] p-1 rounded-full border-2 border-[#121212] text-gray-400 active:scale-90 hover:text-white transition-all">
-                                                    <CameraIcon className="w-3 h-3" />
+                                                <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-1 right-1 bg-[#252525] p-1.5 rounded-full border-2 border-[#121212] text-gray-400 active:scale-90 hover:text-white transition-all shadow-lg z-30">
+                                                    <CameraIcon className="w-4 h-4" />
                                                 </button>
                                                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                                             </div>
-                                        </div>
+                                        </AvatarFrame>
                                     </div>
                                 </div>
                             </div>

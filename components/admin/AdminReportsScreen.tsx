@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Order, User, Payment, OrderStatus } from '../../types';
+import { Order, User, Payment, OrderStatus, SupervisorPermission } from '../../types';
 import { ChartBarIcon, DollarSignIcon, TruckIconV2, CheckCircleIcon, ClockIcon, UsersIcon, StoreIcon, TrendingUpIcon, TrendingDownIcon, XIcon, CalendarIcon, ClipboardListIcon, SearchIcon, UserIcon, MapPinIcon, CoinsIcon, TrashIcon, ExclamationIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
@@ -22,6 +22,7 @@ interface AdminReportsScreenProps {
     payments: Payment[];
     currentUser: User;
     manualDailies?: ManualDaily[];
+    permissions?: SupervisorPermission[];
 }
 
 // ... (Existing Components)

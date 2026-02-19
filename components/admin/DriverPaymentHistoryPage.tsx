@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Payment, Order, User, OrderStatus } from '../../types';
-import { ArrowRightIcon, ReceiptIcon, CheckCircleIcon, ExclamationIcon, XIcon, DollarSignIcon, TruckIconV2, CalendarIcon } from '../icons';
+import { ArrowRightIcon, ReceiptIcon, CheckCircleIcon, ExclamationIcon, XIcon, DollarSignIcon, TruckIconV2, CalendarIcon, TrashIcon, PencilIcon, ClockIcon } from '../icons';
 
 interface DriverPaymentHistoryPageProps {
     driver: User;
@@ -10,6 +10,8 @@ interface DriverPaymentHistoryPageProps {
     onDeletePayment?: (paymentId: string) => void;
     currentUser?: User | null;
     manualDailies?: any[]; // added manualDailies
+    onEditDaily?: (daily: any) => void;
+    onDeleteDaily?: (id: string, driverName: string) => void;
 }
 
 const SummaryCard: React.FC<{
@@ -34,11 +36,11 @@ const SummaryCard: React.FC<{
     </div>
 );
 
-const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ driver, payments, orders, onBack, onDeletePayment, currentUser, manualDailies = [] }) => {
+const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ driver, payments, orders, onBack, onDeletePayment, currentUser, manualDailies = [], onEditDaily, onDeleteDaily }) => {
 
     // Helper to calculate payment details based on CURRENTLY EXISTING orders
     const calculateCorrectedPayment = (payment: Payment) => {
-        const validOrders = payment.reconciledOrderIds
+        const validOrders = (payment.reconciledOrderIds || [])
             .map(id => orders.find(o => o.id === id))
             .filter((o): o is Order => !!o && o.status !== OrderStatus.Cancelled);
 
@@ -200,6 +202,51 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
 
                     {/* Transaction History List */}
                     <div className="space-y-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+
+                        {/* Active/Unreconciled Dailies Section */}
+                        {manualDailies.filter(d => d.driverId === driver.id && !d.reconciled).length > 0 && (
+                            <div className="space-y-3">
+                                <h3 className="text-sm font-bold text-yellow-500 px-1 border-r-4 border-yellow-500 mr-1 flex items-center gap-2">
+                                    <ClockIcon className="w-4 h-4" />
+                                    يوميات نشطة (غير مسواة)
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {manualDailies.filter(d => d.driverId === driver.id && !d.reconciled).map(daily => (
+                                        <div key={daily.id} className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4 flex justify-between items-center group hover:bg-yellow-500/10 transition-all">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 border border-yellow-500/20">
+                                                    <CalendarIcon className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-white font-bold text-sm">{daily.ordersCount} طلبات</span>
+                                                        <span className="text-[10px] text-yellow-500 font-bold bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">{daily.amount} ج.م</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-400 mt-0.5">{new Date(daily.dayDate).toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    onClick={() => onEditDaily?.(daily)}
+                                                    className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all border border-blue-500/20"
+                                                    title="تعديل اليومية"
+                                                >
+                                                    <PencilIcon className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => onDeleteDaily?.(daily.id, driver.name)}
+                                                    className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all border border-red-500/20"
+                                                    title="حذف اليومية"
+                                                >
+                                                    <TrashIcon className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <h3 className="text-sm font-bold text-gray-400 px-1 border-r-4 border-blue-500 mr-1">تفاصيل العمليات السابقة</h3>
 
                         {historyData.length > 0 ? (
@@ -278,7 +325,7 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
                                                             className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition-all border border-red-500/20"
                                                             title="حذف السجل"
                                                         >
-                                                            <XIcon className="w-5 h-5" />
+                                                            <TrashIcon className="w-5 h-5" />
                                                         </button>
                                                     )}
                                                 </div>
@@ -300,7 +347,7 @@ const DriverPaymentHistoryPage: React.FC<DriverPaymentHistoryPageProps> = ({ dri
 
             {/* Delete Confirmation Modal */}
             {deleteId && (
-                <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setDeleteId(null)}>
+                <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setDeleteId(null)}>
                     <div className="bg-[#1e293b] w-full max-w-sm rounded-2xl border border-red-500/30 shadow-2xl p-6 transform scale-100 animate-pop-in" onClick={e => e.stopPropagation()}>
                         <div className="flex flex-col items-center text-center">
                             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 ring-1 ring-red-500/30">

@@ -4,7 +4,9 @@ import 'firebase/compat/firestore';
 import 'firebase/compat/messaging';
 import 'firebase/compat/auth';
 import 'firebase/compat/storage';
+import 'firebase/compat/database';
 import { getFcmV1AccessToken, SERVICE_ACCOUNT } from '../utils/FirebaseServiceAccount';
+import { AuditLog } from '../types';
 
 let db: firebase.firestore.Firestore | undefined;
 let auth: firebase.auth.Auth | undefined;
@@ -21,19 +23,14 @@ export const setupRecaptcha = (containerId: string) => {
 };
 
 
-// Native Bridge Types
-interface NativeBridge {
-    verifyPhoneNumber: (phone: string) => void;
-    submitOtp: (verificationId: string, code: string) => void;
-}
-
+// NativeBridge is handled in NativeBridge.ts & firebase.ts
 declare global {
     interface Window {
-        Android?: NativeBridge;
         onPhoneAuthCodeSent?: (verificationId: string) => void;
         onPhoneAuthAutoRetrieval?: (code: string) => void;
         onPhoneAuthSuccess?: (userJson: string) => void;
         onPhoneAuthError?: (error: string) => void;
+        onPhoneAuthCodeSentInjected?: (verificationId: string) => void;
     }
 }
 
@@ -100,7 +97,7 @@ export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: fi
                                 window.onPhoneAuthError = (err: string) => {
                                     rej(new Error(err));
                                 };
-                                window.Android!.submitOtp(verificationId, code);
+                                window.Android?.submitOtp?.(verificationId, code);
                             });
                         }
                     }
@@ -113,7 +110,7 @@ export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: fi
             };
 
             // Trigger Native Call
-            window.Android.verifyPhoneNumber(formattedPhone);
+            window.Android?.verifyPhoneNumber?.(formattedPhone);
         });
     }
 
@@ -512,6 +509,150 @@ export const addData = async (collectionName: string, data: any) => {
     });
 };
 
+// ==========================================
+// 🚀 GENERIC REALTIME DATABASE HELPERS
+// ==========================================
+
+export const subscribeToRTDB = (path: string, callback: (data: any[]) => void, options?: { sortByDate?: boolean, limit?: number }) => {
+    let ref: any = firebase.database().ref(path);
+
+    const listener = ref.on('value', (snapshot: any) => {
+        const val = snapshot.val();
+        if (!val) {
+            callback([]);
+            return;
+        }
+        let data = Object.values(val);
+
+        if (options?.sortByDate) {
+            data.sort((a: any, b: any) => {
+                const dateA = new Date(a.createdAt || a.dayDate || 0).getTime();
+                const dateB = new Date(b.createdAt || b.dayDate || 0).getTime();
+                return dateB - dateA;
+            });
+        }
+
+        if (options?.limit) {
+            data = data.slice(0, options.limit);
+        }
+
+        callback(data);
+    });
+    return () => ref.off('value', listener);
+};
+
+export const updateRTDB = async (path: string, id: string, data: any) => {
+    const cleanData = deepClean(data);
+    return await firebase.database().ref(`${path}/${id}`).set({
+        ...cleanData,
+        serverUpdatedAt: new Date().toISOString()
+    });
+};
+
+export const deleteRTDB = async (path: string, id: string) => {
+    return await firebase.database().ref(`${path}/${id}`).remove();
+};
+
+export const batchSaveRTDB = async (path: string, items: any[]) => {
+    if (!items || items.length === 0) return;
+    const updates: any = {};
+    const now = new Date().toISOString();
+
+    items.forEach(item => {
+        if (item.id) {
+            updates[`${item.id}`] = {
+                ...deepClean(item),
+                serverUpdatedAt: now
+            };
+        }
+    });
+
+    return await firebase.database().ref(path).update(updates);
+};
+
+// --- REALTIME DATABASE AUDIT LOGS & UNDO ---
+
+export const logActionToRTDB = async (log: any) => {
+    try {
+        const cleanLog = deepClean(log);
+        // We write to 'audit_logs' path in RTDB
+        await firebase.database().ref(`audit_logs/${cleanLog.id}`).set({
+            ...cleanLog,
+            createdAt: cleanLog.createdAt || new Date().toISOString()
+        });
+        return true;
+    } catch (e) {
+        console.error("[RTDB Log] Failed:", e);
+        return false;
+    }
+};
+
+export const updateAuditLogRTDB = async (logId: string, data: Partial<AuditLog>) => {
+    try {
+        await firebase.database().ref(`audit_logs/${logId}`).update(data);
+        return true;
+    } catch (e) {
+        console.error("[RTDB Log Update] Failed:", e);
+        return false;
+    }
+};
+
+export const subscribeToAuditLogsRTDB = (callback: (data: any[]) => void) => {
+    const ref = firebase.database().ref('audit_logs');
+    const listener = ref.on('value', (snapshot) => {
+        const val = snapshot.val();
+        if (!val) {
+            callback([]);
+            return;
+        }
+        // Convert object to array and sort by date desc
+        const logs = Object.values(val).sort((a: any, b: any) => {
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        callback(logs);
+    });
+    return () => ref.off('value', listener);
+};
+
+export const deleteAuditLogsRTDB = async () => {
+    try {
+        await firebase.database().ref('audit_logs').remove();
+        return true;
+    } catch (e) {
+        console.error("[RTDB Log Clear] Failed:", e);
+        return false;
+    }
+};
+
+export const undoActionFromLog = async (log: any) => {
+    if (!db || !log.targetId || !log.collection) throw new Error("بيانات السجل غير مكتملة للتراجع");
+
+    const docRef = db.collection(log.collection).doc(log.targetId);
+
+    try {
+        if (log.actionType === 'delete') {
+            // Restore deleted document
+            if (!log.previousData) throw new Error("لا توجد بيانات سابقة لاستعادتها");
+            await docRef.set(log.previousData);
+            return true;
+        } else if (log.actionType === 'update' || log.actionType === 'financial') {
+            // Revert to previous version
+            if (!log.previousData) throw new Error("لا توجد بيانات سابقة للتراجع إليها");
+            // If it's a partial update, we still set the full previous data to ensure exact match
+            await docRef.set(log.previousData);
+            return true;
+        } else if (log.actionType === 'create') {
+            // Undo create = delete
+            await docRef.delete();
+            return true;
+        }
+        throw new Error("نوع العملية لا يدعم التراجع التلقائي");
+    } catch (e: any) {
+        console.error("[Undo] Action Failed:", e);
+        throw e;
+    }
+};
+
 export const getUser = async (id: string): Promise<{ success: boolean, data?: any, error?: string }> => {
     if (!db) return { success: false, error: "Firebase DB not not initialized" };
     try {
@@ -842,7 +983,7 @@ export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> =
             if (!doc.exists) {
                 // FIRST RUN: Scan to initialize the counter correctly
                 // This prevents resetting to 1 if we switch strategies mid-production
-                const snapshot = await db.collection('orders')
+                const snapshot = await db!.collection('orders')
                     .orderBy('createdAt', 'desc')
                     .limit(50)
                     .get();
@@ -870,7 +1011,7 @@ export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> =
                 // For now, let's assume simple increment.
                 if (!current) {
                     // Fallback scan if key missing in existing doc
-                    const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
+                    const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
                     let max = 0;
                     snapshot.forEach(d => {
                         const num = parseInt(d.id.replace(prefix, '') || '0');

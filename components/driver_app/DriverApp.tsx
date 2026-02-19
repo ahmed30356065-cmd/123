@@ -8,6 +8,7 @@ import OrderDetailsScreen from './OrderDetailsScreen';
 import { UserIcon, BellIcon, VerifiedIcon, CrownIcon, StarIcon, RocketIcon, ClockIcon, TrashIcon, CheckCircleIcon } from '../icons';
 import DriverProfileModal from './DriverProfileModal';
 import OrderLimitModal from './OrderLimitModal';
+import AvatarFrame from '../common/AvatarFrame';
 import { setAndroidRole, NativeBridge } from '../../utils/NativeBridge';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
@@ -280,13 +281,16 @@ const DriverApp: React.FC<DriverAppProps> = (props) => {
                 <>
                     <header className="flex-none bg-[#1A1A1A] z-30 border-b border-gray-800 h-14 flex justify-between items-center px-4 pt-safe box-content relative">
                         <button onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-2 bg-white/5 py-1 px-3 rounded-full hover:bg-white/10 transition-colors">
-                            <div className={`relative flex items-center justify-center rounded-full ${!isCustomFrame(props.driver.specialFrame) ? getFrameContainerClass(props.driver.specialFrame) : ''}`}>
-                                {isCustomFrame(props.driver.specialFrame) && (
-                                    <img src={props.driver.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-125 pointer-events-none" alt="frame" />
-                                )}
-                                <div className={`${isCustomFrame(props.driver.specialFrame) ? 'w-8 h-8' : 'w-8 h-8'} rounded-full overflow-hidden border border-white/20 relative z-0 flex items-center justify-center`}>
-                                    {props.driver.storeImage ? <img src={props.driver.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 m-1.5" />}
-                                </div>
+                            <div className="relative">
+                                <AvatarFrame
+                                    frameId={props.driver.specialFrame}
+                                    size="sm"
+                                    className="scale-90"
+                                >
+                                    <div className="w-full h-full rounded-full overflow-hidden border border-white/20 flex items-center justify-center bg-gray-700">
+                                        {props.driver.storeImage ? <img src={props.driver.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 mx-1" />}
+                                    </div>
+                                </AvatarFrame>
                             </div>
                             <span className="text-sm font-bold truncate max-w-[80px]">{props.driver.name}</span>
                             {getBadgeIcon(props.driver.specialBadge)}

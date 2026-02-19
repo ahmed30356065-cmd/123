@@ -13,6 +13,8 @@ declare global {
             setActiveNotificationChannel?: (channelId: string) => void;
             onLogout?: (userId?: string, role?: string) => void;
             downloadAndInstallApk?: (url: string, fileName: string) => void;
+            verifyPhoneNumber?: (phone: string) => void;
+            submitOtp?: (verificationId: string, code: string) => void;
         };
         // JS Interface injected by WebView.addJavascriptInterface
         AndroidSplash?: {

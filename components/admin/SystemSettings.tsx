@@ -168,6 +168,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
     // General Config
     const [appName, setAppName] = useState('GOO NOW');
     const [appVersion, setAppVersion] = useState(APP_VERSION);
+    const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+    const [maintenanceMessage, setMaintenanceMessage] = useState('التطبيق في وضع الصيانة حالياً. سنعود قريباً!');
 
     // Updates
     const [newVersion, setNewVersion] = useState('');
@@ -186,7 +188,12 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
     useEffect(() => {
         const unsubConfig = subscribeToCollection('system_metadata', (data) => {
             const conf = data.find(d => d.id === 'config');
-            if (conf) { setAppName(conf.appName || ''); setAppVersion(conf.appVersion || ''); }
+            if (conf) {
+                setAppName(conf.appName || '');
+                setAppVersion(conf.appVersion || '');
+                setIsMaintenanceMode(!!conf.isMaintenanceMode);
+                setMaintenanceMessage(conf.maintenanceMessage || 'التطبيق في وضع الصيانة حالياً. سنعود قريباً!');
+            }
         });
         const unsubUpdates = subscribeToCollection('app_updates', (data) => {
             setHistory(data.sort((a, b) => new Date(b.releaseDate || 0).getTime() - new Date(a.releaseDate || 0).getTime()));
@@ -204,7 +211,13 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
     const handleSaveConfig = async () => {
         if (!appName || !appVersion) return showToast('يرجى ملء جميع الحقول', 'error');
         try {
-            await updateData('system_metadata', 'config', { appName, appVersion, updatedAt: new Date().toISOString() });
+            await updateData('system_metadata', 'config', {
+                appName,
+                appVersion,
+                isMaintenanceMode,
+                maintenanceMessage,
+                updatedAt: new Date().toISOString()
+            });
             showToast('تم حفظ الإعدادات', 'success');
         } catch (e) { showToast('فشل الحفظ', 'error'); }
     };
@@ -602,6 +615,35 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ currentUser, onSuccess,
                                         <label className="text-[10px] text-gray-500 font-bold">رقم الإصدار</label>
                                         <input value={appVersion} onChange={(e) => setAppVersion(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:border-red-500 outline-none transition-colors text-white font-mono" />
                                     </div>
+
+                                    {/* Maintenance Mode Section */}
+                                    <div className="pt-4 border-t border-gray-700 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-gray-200">وضع الصيانة</span>
+                                                <span className="text-[10px] text-gray-500">إغلاق التطبيق مؤقتاً للمستخدمين</span>
+                                            </div>
+                                            <button
+                                                onClick={() => setIsMaintenanceMode(!isMaintenanceMode)}
+                                                className={`w-12 h-6 rounded-full transition-all duration-300 relative ${isMaintenanceMode ? 'bg-red-600' : 'bg-gray-700'}`}
+                                            >
+                                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${isMaintenanceMode ? 'left-7' : 'left-1'}`} />
+                                            </button>
+                                        </div>
+
+                                        {isMaintenanceMode && (
+                                            <div className="space-y-1.5 animate-fadeIn">
+                                                <label className="text-[10px] text-gray-500 font-bold">رسالة الصيانة</label>
+                                                <textarea
+                                                    value={maintenanceMessage}
+                                                    onChange={(e) => setMaintenanceMessage(e.target.value)}
+                                                    className="w-full h-20 bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-xs focus:border-red-500 outline-none transition-colors text-white resize-none"
+                                                    placeholder="مثال: نعتذر، التطبيق في صيانة دورية..."
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <ActionButton label="حفظ التغييرات" icon={SaveIcon} onClick={handleSaveConfig} className="w-full mt-2" />
                                 </div>
                             </div>

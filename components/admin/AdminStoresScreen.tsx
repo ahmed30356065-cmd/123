@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { User, OrderStatus, Order } from '../../types';
-import { StoreIcon, ClockIcon, TruckIconV2, SearchIcon, PencilIcon, UtensilsIcon, EyeIcon, XIcon, GridIcon } from '../icons';
+import { User, OrderStatus, Order, SupervisorPermission } from '../../types';
+import { StoreIcon, ClockIcon, TruckIconV2, SearchIcon, PencilIcon, UtensilsIcon, EyeIcon, XIcon, GridIcon, ShieldCheckIcon } from '../icons';
 import EditUserModal from './EditUserModal';
 import UserDetailsModal from './UserDetailsModal';
 import MenuManager from '../merchant_app/MenuManager';
@@ -11,9 +11,11 @@ interface AdminStoresScreenProps {
     users: User[];
     orders: Order[];
     updateUser: (userId: string, updatedData: Partial<User>) => void;
+    permissions?: SupervisorPermission[];
 }
 
-const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, updateUser }) => {
+const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, updateUser, permissions }) => {
+    const canManage = !permissions || permissions.includes('manage_stores');
     const [searchQuery, setSearchQuery] = useState('');
     const [editingMerchant, setEditingMerchant] = useState<User | null>(null);
     const [viewingMerchant, setViewingMerchant] = useState<User | null>(null);
@@ -42,8 +44,8 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
 
     const merchants = users.filter(u => u.role === 'merchant');
 
-    const filteredMerchants = merchants.filter(m => 
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const filteredMerchants = merchants.filter(m =>
+        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (m.phone && m.phone.includes(searchQuery))
     );
 
@@ -53,7 +55,7 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
 
     return (
         <div className="space-y-6 pb-32 animate-fadeIn relative">
-            
+
             {/* Header & Search */}
             <div className="bg-gray-800 p-4 rounded-2xl shadow-lg border border-gray-700/50 flex flex-col md:flex-row gap-4 items-center">
                 <div className="flex items-center gap-3 w-full md:w-auto">
@@ -65,11 +67,11 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
                         <p className="text-xs text-gray-400">{merchants.length} متجر مسجل</p>
                     </div>
                 </div>
-                
+
                 <div className="relative flex-1 w-full">
                     <SearchIcon className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         placeholder="بحث باسم المتجر..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -83,7 +85,7 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
                 {filteredMerchants.length > 0 ? (
                     filteredMerchants.map((merchant, idx) => {
                         const completedOrders = orders.filter(o => o.merchantId === merchant.id && o.status === OrderStatus.Delivered).length;
-                        
+
                         return (
                             <div key={merchant.id} className="bg-[#1e293b] rounded-2xl overflow-hidden border border-gray-700 shadow-md group hover:border-gray-500 transition-all flex flex-col">
                                 {/* Card Header / Image */}
@@ -100,28 +102,30 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
                                         <h3 className="text-lg font-bold text-white shadow-sm">{merchant.name}</h3>
                                         <p className="text-xs text-gray-400 font-mono">{merchant.phone}</p>
                                     </div>
-                                    
+
                                     <div className="absolute top-2 left-2 flex gap-2">
-                                        <button 
+                                        <button
                                             onClick={() => setViewingMerchant(merchant)}
                                             className="bg-black/40 hover:bg-black/60 p-2 rounded-full text-white backdrop-blur-sm transition-colors border border-white/5"
                                             title="التفاصيل"
                                         >
                                             <EyeIcon className="w-4 h-4" />
                                         </button>
-                                        <button 
-                                            onClick={() => setEditingMerchant(merchant)}
-                                            className="bg-black/40 hover:bg-black/60 p-2 rounded-full text-white backdrop-blur-sm transition-colors border border-white/5"
-                                            title="الإعدادات"
-                                        >
-                                            <PencilIcon className="w-4 h-4" />
-                                        </button>
+                                        {canManage && (
+                                            <button
+                                                onClick={() => setEditingMerchant(merchant)}
+                                                className="bg-black/40 hover:bg-black/60 p-2 rounded-full text-white backdrop-blur-sm transition-colors border border-white/5"
+                                                title="الإعدادات"
+                                            >
+                                                <PencilIcon className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
                                 {/* Controls Body */}
                                 <div className="p-4 space-y-4 flex-1 flex flex-col">
-                                    
+
                                     {/* Stats Row */}
                                     <div className="flex gap-2">
                                         <div className="flex-1 bg-gray-900/50 p-2 rounded-lg text-center border border-gray-700">
@@ -136,7 +140,7 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
 
                                     {/* Toggles */}
                                     <div className="space-y-3 pt-2 border-t border-gray-700/50">
-                                        
+
                                         {/* Free Delivery Toggle */}
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
@@ -145,9 +149,9 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
                                                 </div>
                                                 <span className="text-sm font-medium text-gray-300">توصيل مجاني</span>
                                             </div>
-                                            <button 
-                                                onClick={() => toggleFreeDelivery(merchant)}
-                                                className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${merchant.hasFreeDelivery ? 'bg-green-500' : 'bg-gray-600'}`}
+                                            <button
+                                                onClick={canManage ? () => toggleFreeDelivery(merchant) : undefined}
+                                                className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${!canManage ? 'opacity-50 cursor-not-allowed' : ''} ${merchant.hasFreeDelivery ? 'bg-green-500' : 'bg-gray-600'}`}
                                             >
                                                 <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all duration-300 ${merchant.hasFreeDelivery ? 'left-1' : 'left-6'}`}></div>
                                             </button>
@@ -166,17 +170,19 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
                                             </span>
                                         </div>
                                     </div>
-                                    
+
                                     {/* Action Footer */}
-                                    <div className="pt-3 mt-auto">
-                                        <button 
-                                            onClick={() => setViewingMenuMerchant(merchant)}
-                                            className="w-full bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 font-bold py-2.5 rounded-xl border border-purple-500/20 transition-all flex items-center justify-center gap-2 active:scale-95"
-                                        >
-                                            <UtensilsIcon className="w-4 h-4" />
-                                            <span>إدارة قائمة الطعام (المنيو)</span>
-                                        </button>
-                                    </div>
+                                    {canManage && (
+                                        <div className="pt-3 mt-auto">
+                                            <button
+                                                onClick={() => setViewingMenuMerchant(merchant)}
+                                                className="w-full bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 font-bold py-2.5 rounded-xl border border-purple-500/20 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                            >
+                                                <UtensilsIcon className="w-4 h-4" />
+                                                <span>إدارة قائمة الطعام (المنيو)</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -191,27 +197,27 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
 
             {/* Modals */}
             {editingMerchant && (
-                <EditUserModal 
-                    user={editingMerchant} 
-                    onClose={() => setEditingMerchant(null)} 
-                    onSave={(id, data) => { updateUser(id, data); setEditingMerchant(null); }} 
+                <EditUserModal
+                    user={editingMerchant}
+                    onClose={() => setEditingMerchant(null)}
+                    onSave={(id, data) => { updateUser(id, data); setEditingMerchant(null); }}
                     isLastAdmin={false}
                 />
             )}
 
             {viewingMerchant && (
-                <UserDetailsModal 
-                    user={viewingMerchant} 
-                    onClose={() => setViewingMerchant(null)} 
-                    onApprove={() => {}} 
-                    onDelete={() => {}} 
+                <UserDetailsModal
+                    user={viewingMerchant}
+                    onClose={() => setViewingMerchant(null)}
+                    onApprove={() => { }}
+                    onDelete={() => { }}
                 />
             )}
 
             {viewingMenuMerchant && (
                 <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex justify-center items-end sm:items-center animate-fadeIn p-0 sm:p-4" onClick={() => setViewingMenuMerchant(null)}>
                     <div className="bg-[#1a1a1a] w-full max-w-4xl h-[95vh] sm:h-[85vh] rounded-t-3xl sm:rounded-3xl border border-gray-700 shadow-2xl flex flex-col relative overflow-hidden" onClick={e => e.stopPropagation()}>
-                        
+
                         {/* Modal Header */}
                         <div className="flex-none p-4 border-b border-gray-700 bg-gray-900 flex justify-between items-center">
                             <div className="flex items-center gap-3">
@@ -230,7 +236,7 @@ const AdminStoresScreen: React.FC<AdminStoresScreenProps> = ({ users, orders, up
 
                         {/* Menu Content */}
                         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-[#111]">
-                            <MenuManager 
+                            <MenuManager
                                 merchant={viewingMenuMerchant}
                                 onUpdateMerchant={(id, data) => updateUser(id, data)}
                             />

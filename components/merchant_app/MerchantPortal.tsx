@@ -12,6 +12,7 @@ import MessageModal from '../MessageModal';
 import { setAndroidRole, NativeBridge } from '../../utils/NativeBridge';
 import { MessageSquareIcon, UserIcon, BellIcon, VerifiedIcon, CrownIcon, StarIcon, RocketIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
+import AvatarFrame from '../common/AvatarFrame';
 
 interface MerchantPortalProps {
   merchant: User;
@@ -148,13 +149,15 @@ const MerchantPortal: React.FC<MerchantPortalProps> = ({
       {/* Header updated with pt-safe and box-content */}
       <header className="flex-none border-b border-gray-700 flex justify-between items-center bg-gray-900 z-30 shadow-md pt-safe px-4 h-16 box-content">
         <div className="flex items-center">
-          <button onClick={() => setPage('profile')} className={`relative w-10 h-10 flex items-center justify-center rounded-full transition-transform active:scale-95 ${!isCustomFrame(merchant.specialFrame) ? getFrameContainerClass(merchant.specialFrame) : ''}`}>
-            {isCustomFrame(merchant.specialFrame) && (
-              <img src={merchant.specialFrame} className="absolute inset-0 w-full h-full z-10 object-contain scale-125 pointer-events-none" alt="frame" />
-            )}
-            <div className={`${isCustomFrame(merchant.specialFrame) ? 'w-[85%] h-[85%]' : 'w-full h-full'} rounded-full overflow-hidden border border-gray-600 relative z-0 flex items-center justify-center ${page === 'profile' ? 'ring-2 ring-red-500' : ''}`}>
-              {merchant.storeImage ? <img src={merchant.storeImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-800 flex items-center justify-center"><UserIcon className="w-5 h-5 text-gray-400" /></div>}
-            </div>
+          <button onClick={() => setPage('profile')} className={`relative w-10 h-10 flex items-center justify-center rounded-full transition-transform active:scale-95`}>
+            <AvatarFrame
+              frameId={merchant.specialFrame}
+              size="sm"
+            >
+              <div className={`w-full h-full rounded-full overflow-hidden border border-gray-600 flex items-center justify-center bg-gray-800 ${page === 'profile' ? 'ring-2 ring-red-500' : ''}`}>
+                {merchant.storeImage ? <img src={merchant.storeImage} className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 text-gray-400" />}
+              </div>
+            </AvatarFrame>
           </button>
           {/* Badge removed from header as per request */}
         </div>

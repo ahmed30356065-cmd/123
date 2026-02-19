@@ -4,7 +4,12 @@
 import React, { useState } from 'react';
 import { ServerStackIcon, WifiIcon, RefreshCwIcon, CloudIcon } from './icons';
 
-const ServerMaintenanceScreen: React.FC = () => {
+interface ServerMaintenanceScreenProps {
+  message?: string;
+  onLogout?: () => void;
+}
+
+const ServerMaintenanceScreen: React.FC<ServerMaintenanceScreenProps> = ({ message, onLogout }) => {
   return (
     <div dir="rtl" className="fixed inset-0 z-[100] bg-[#0f172a] flex flex-col items-center justify-center p-6 pt-safe text-white overflow-hidden font-sans">
       <style>{`
@@ -44,60 +49,69 @@ const ServerMaintenanceScreen: React.FC = () => {
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-50"></div>
 
       <div className="relative z-10 flex flex-col items-center text-center max-w-lg w-full">
-        
+
         {/* Animated Icon Container */}
         <div className="relative mb-10 ring-container flex justify-center items-center">
-            <div className="loader-ring absolute"></div>
-            <div className="w-24 h-24 bg-[#1e293b] rounded-full flex items-center justify-center border border-gray-700 shadow-2xl">
-                <ServerStackIcon className="w-12 h-12 text-red-500" />
-            </div>
-            
-            {/* Status Indicators */}
-            <div className="absolute -bottom-4 bg-[#0f172a] border border-red-500/30 px-4 py-1 rounded-full flex items-center space-x-2 space-x-reverse shadow-lg">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-                </span>
-                <span className="text-xs font-mono text-red-200 font-bold tracking-wider">OFFLINE</span>
-            </div>
+          <div className="loader-ring absolute"></div>
+          <div className="w-24 h-24 bg-[#1e293b] rounded-full flex items-center justify-center border border-gray-700 shadow-2xl">
+            <ServerStackIcon className="w-12 h-12 text-red-500" />
+          </div>
+
+          {/* Status Indicators */}
+          <div className="absolute -bottom-4 bg-[#0f172a] border border-red-500/30 px-4 py-1 rounded-full flex items-center space-x-2 space-x-reverse shadow-lg">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+            <span className="text-xs font-mono text-red-200 font-bold tracking-wider">OFFLINE</span>
+          </div>
         </div>
 
         {/* Branding */}
         <h1 className="text-4xl font-black mb-4 tracking-tight">
-            <span className="text-red-500">GOO</span>
-            <span className="text-white"> NOW</span>
+          <span className="text-red-500">GOO</span>
+          <span className="text-white"> NOW</span>
         </h1>
 
         {/* Main Message */}
         <div className="bg-[#1e293b]/80 backdrop-blur-md border border-gray-700/50 p-8 rounded-2xl shadow-2xl w-full transform transition-all hover:border-red-500/20">
-            <h2 className="text-2xl font-bold text-white mb-3">النظام في وضع الصيانة</h2>
-            <p className="text-gray-400 text-base leading-relaxed mb-6">
-                نقوم حالياً بإجراء تحديثات هامة على الخوادم وقواعد البيانات لضمان سرعة وكفاءة الخدمة.
-                <br />
-                <span className="text-red-400 font-medium block mt-2">سيتم استعادة الاتصال تلقائياً فور الانتهاء.</span>
-            </p>
+          <h2 className="text-2xl font-bold text-white mb-3">النظام في وضع الصيانة</h2>
+          <p className="text-gray-400 text-base leading-relaxed mb-6">
+            {message || 'نقوم حالياً بإجراء تحديثات هامة على الخوادم وقواعد البيانات لضمان سرعة وكفاءة الخدمة.'}
+            <br />
+            <span className="text-red-400 font-medium block mt-2">سيتم استعادة الاتصال تلقائياً فور الانتهاء.</span>
+          </p>
 
-            {/* Technical Details Mockup */}
-            <div className="bg-black/40 rounded-lg p-4 text-right font-mono text-xs text-gray-500 space-y-2 border border-white/5">
-                <div className="flex justify-between">
-                    <span>CONNECTION:</span>
-                    <span className="text-red-500">PAUSED</span>
-                </div>
-                <div className="flex justify-between">
-                    <span>DATABASE:</span>
-                    <span className="text-yellow-500">SYNC_PENDING...</span>
-                </div>
-                <div className="flex justify-between">
-                    <span>RETRY:</span>
-                    <span className="text-blue-400 animate-pulse">AUTO (LISTENING)</span>
-                </div>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="w-full py-3 mb-6 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold transition-all border border-gray-700 active:scale-95 text-sm"
+            >
+              تسجيل الخروج
+            </button>
+          )}
+
+          {/* Technical Details Mockup */}
+          <div className="bg-black/40 rounded-lg p-4 text-right font-mono text-xs text-gray-500 space-y-2 border border-white/5">
+            <div className="flex justify-between">
+              <span>CONNECTION:</span>
+              <span className="text-red-500">PAUSED</span>
             </div>
+            <div className="flex justify-between">
+              <span>DATABASE:</span>
+              <span className="text-yellow-500">SYNC_PENDING...</span>
+            </div>
+            <div className="flex justify-between">
+              <span>RETRY:</span>
+              <span className="text-blue-400 animate-pulse">AUTO (LISTENING)</span>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
         <div className="mt-8 flex items-center text-gray-500 text-sm">
-            <WifiIcon className="w-4 h-4 ml-2 animate-pulse" />
-            <span>يرجى عدم إغلاق التطبيق</span>
+          <WifiIcon className="w-4 h-4 ml-2 animate-pulse" />
+          <span>يرجى عدم إغلاق التطبيق</span>
         </div>
       </div>
     </div>

@@ -365,7 +365,7 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
             }, { orderBy: { field: 'createdAt', direction: 'desc' }, limit: 100 });
         }
 
-        const unsubPayments = firebaseService.subscribeToCollection('payments', (data) => setPayments(data as Payment[]));
+        const unsubPayments = firebaseService.subscribeToRTDB('payments', (data) => setPayments(data as Payment[]));
         const unsubReset = firebaseService.subscribeToCollection('reset_requests', (data) => setPasswordResetRequests(data as any));
 
         const unsubSlider = firebaseService.subscribeToCollection('slider_images', (data) => {
@@ -374,8 +374,9 @@ export const useAppData = (showNotify: (msg: string, type: 'success' | 'error' |
         });
 
         // Limit Audit Logs and Manual Dailies to last 100 entries to save bandwidth
-        const unsubAudit = firebaseService.subscribeToQuery('audit_logs', [], (data) => setAuditLogs(data as AuditLog[]), { orderBy: { field: 'createdAt', direction: 'desc' }, limit: 100 });
-        const unsubManualDailies = firebaseService.subscribeToQuery('manual_dailies', [], (data) => setManualDailies(data as ManualDaily[]), { orderBy: { field: 'createdAt', direction: 'desc' }, limit: 100 });
+        // Limit Audit Logs from RTDB
+        const unsubAudit = firebaseService.subscribeToAuditLogsRTDB((data) => setAuditLogs(data as AuditLog[]));
+        const unsubManualDailies = firebaseService.subscribeToRTDB('manual_dailies', (data) => setManualDailies(data as ManualDaily[]), { sortByDate: true, limit: 100 });
 
         const unsubSettings = firebaseService.subscribeToCollection('settings', (data) => {
             const sConf = data.find(s => s.id === 'slider_config');

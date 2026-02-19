@@ -8,6 +8,7 @@ import { UsersIcon, UserPlusIcon, SearchIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
 import GiftFrameModal from './GiftFrameModal';
+import { FRAMES } from '../common/AvatarFrame';
 
 interface AdminUsersScreenProps {
   users: User[];
@@ -171,9 +172,22 @@ const AdminUsersScreen: React.FC<AdminUsersScreenProps> = ({ users, updateUser, 
     closeModal();
   };
 
-  const handleSaveFrame = (userId: string, frameId: string | undefined) => {
-    updateUser(userId, { specialFrame: frameId || 'none' }); // Use 'none' or undefined logic based on backend
+  const handleSaveFrame = async (userId: string, frameId: string | undefined) => {
+    updateUser(userId, { specialFrame: frameId || 'none' });
     setGiftingUser(null);
+
+    // Send Notification to user
+    const targetUser = users.find(u => u.id === userId);
+    if (targetUser && frameId) {
+      const frameName = FRAMES[frameId]?.name || 'إطار جديد';
+      const firebaseService = await import('../../services/firebase');
+      firebaseService.sendExternalNotification(targetUser.role, {
+        title: "تهانينا! 🎉",
+        body: `لقد حصلت على إطار "${frameName}" كهدية من الإدارة!`,
+        targetId: userId,
+        url: '/?target=profile'
+      });
+    }
   };
 
   const handleSaveUser = async (data: any) => {

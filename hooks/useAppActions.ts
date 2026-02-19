@@ -30,7 +30,14 @@ export const useAppActions = ({ users, orders, messages, payments = [], manualDa
         return newId;
     };
 
-    const logAction = (actionType: 'create' | 'update' | 'delete' | 'financial', target: string, details: string) => {
+    const logAction = (
+        actionType: 'create' | 'update' | 'delete' | 'financial',
+        target: string,
+        details: string,
+        collection?: string,
+        targetId?: string,
+        previousData?: any
+    ) => {
         if (!currentUser) return;
         const newLog: AuditLog = {
             id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -38,10 +45,26 @@ export const useAppActions = ({ users, orders, messages, payments = [], manualDa
             actorName: currentUser.name,
             actionType,
             target,
+            targetId,
+            collection,
             details,
+            previousData,
             createdAt: new Date()
         };
-        firebaseService.updateData('audit_logs', newLog.id, newLog);
+        firebaseService.logActionToRTDB(newLog);
+    };
+
+    const handleUndo = async (log: AuditLog) => {
+        try {
+            await firebaseService.undoActionFromLog(log);
+            // Instead of new log entry, update the current one
+            await firebaseService.updateAuditLogRTDB(log.id, { isUndone: true });
+            showNotify('تم التراجع عن العملية بنجاح', 'success');
+            return true;
+        } catch (e: any) {
+            showNotify(`فشل التراجع: ${e.message}`, 'error');
+            return false;
+        }
     };
 
     const handleDriverPayment = async (driverId: string) => {
@@ -141,12 +164,12 @@ export const useAppActions = ({ users, orders, messages, payments = [], manualDa
             const dailyUpdates = eligibleDailies.map(d => ({ ...d, reconciled: true }));
 
             if (orderUpdates.length > 0) await firebaseService.batchSaveData('orders', orderUpdates);
-            if (dailyUpdates.length > 0) await firebaseService.batchSaveData('manual_dailies', dailyUpdates);
+            if (dailyUpdates.length > 0) await firebaseService.batchSaveRTDB('manual_dailies', dailyUpdates);
 
-            await firebaseService.updateData('payments', paymentId, paymentRecord);
+            await firebaseService.updateRTDB('payments', paymentId, paymentRecord);
 
             logAction('financial', 'تسوية مالية', `تمت تسوية حساب المندوب ${driver.name}. المبلغ: ${finalCompanyShare} ج.م (طلبات: ${eligibleOrders.length}, يوميات: ${eligibleDailies.length}).`);
-            showNotify(`تم تسوية ${eligibleOrders.length} طلب و ${eligibleDailies.length} يومية بنجاح`, 'success');
+            showNotify(`تم تسوية ${eligibleOrders.length} طلب و ${eligibleDailies.length} يومية بنجاح وتصفير مديونية المندوب`, 'success');
 
             firebaseService.sendExternalNotification('driver', {
                 title: "تمت تسوية الحساب",
@@ -228,11 +251,10 @@ export const useAppActions = ({ users, orders, messages, payments = [], manualDa
         showNotify('تم حذف الرسالة', 'success', true);
     };
 
-    const handleClearAuditLogs = async (auditLogs: AuditLog[]) => {
+    const handleClearAuditLogs = async () => {
         try {
-            const deletePromises = auditLogs.map(log => firebaseService.deleteData('audit_logs', log.id));
-            await Promise.all(deletePromises);
-            logAction('delete', 'النظام', 'تم تنظيف سجل المراقبة بالكامل بواسطة المدير');
+            await firebaseService.deleteAuditLogsRTDB();
+            logAction('delete', 'النظام', 'تم تنظيف سجل المراقبة بالكامل من RTDB بواسطة المدير');
             showNotify('تم مسح سجل المراقبة بنجاح', 'success');
         } catch (error) {
             console.error("Failed to clear logs:", error);
@@ -270,21 +292,22 @@ export const useAppActions = ({ users, orders, messages, payments = [], manualDa
             }));
 
             try {
-                await firebaseService.batchSaveData('manual_dailies', dailyUpdates);
+                await firebaseService.batchSaveRTDB('manual_dailies', dailyUpdates);
                 console.log(`Un-reconciled ${dailyUpdates.length} dailies for payment ${paymentId}`);
             } catch (e) {
                 console.error("Failed to un-reconcile dailies:", e);
             }
         }
 
-        // 3. Delete the payment record
-        firebaseService.deleteData('payments', paymentId);
+        // 4. Delete the payment record from RTDB
+        firebaseService.deleteRTDB('payments', paymentId);
         logAction('financial', 'المدفوعات', `تم حذف عملية الدفع رقم ${paymentId}`);
-        showNotify('تم حذف عملية الدفع واستعادة مديونية الطلبات', 'success');
+        showNotify('تم حذف عملية الدفع واستعادة مديونية الطلبات واليوميات', 'success');
     };
 
     return {
         logAction,
+        handleUndo,
         handleDriverPayment,
         handleSignUp,
         handleHideMessage,

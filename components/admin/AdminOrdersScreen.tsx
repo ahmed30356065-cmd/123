@@ -75,6 +75,11 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
     // Updated Filter Type: 'all' | 'merchant' (GOO NOW) | 'special' (Special Requests)
     const [filterType, setFilterType] = useState<'all' | 'merchant' | 'special'>('all');
 
+    // --- Permission Checks ---
+    const canManage = !permissions || permissions.includes('manage_orders');
+    const canDelete = !permissions || permissions.includes('delete_orders');
+    const isSupervisor = currentUser?.role === 'supervisor';
+
     // Sync filterType with viewMode
     React.useEffect(() => {
         if (viewMode === 'shopping') setFilterType('merchant');
@@ -101,9 +106,6 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
 
     const [bulkDriverId, setBulkDriverId] = useState('');
     const [bulkFee, setBulkFee] = useState('');
-
-    const canManage = !permissions || permissions.includes('manage_orders');
-    const canDelete = !permissions || permissions.includes('delete_orders');
 
     useAndroidBack(() => {
         // High Priority Modals
@@ -385,10 +387,16 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
                     <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                     <input type="text" placeholder="بحث برقم الطلب، هاتف العميل، العنوان..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-1 focus:ring-red-500 outline-none" />
                 </div>
-                {canManage && onNavigateToAdd && (
-                    <button onClick={onNavigateToAdd} className="w-full md:w-auto flex justify-center items-center bg-red-600 text-white font-black px-6 py-2.5 rounded-lg shadow-lg hover:bg-red-700 transition-all active:scale-95">
-                        <PlusIcon className="w-5 h-5 ml-2" />
-                        <span>إضافة طلب</span>
+                {/* Add Order Button */}
+                {canManage && (
+                    <button
+                        onClick={onNavigateToAdd}
+                        className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-6 py-2.5 rounded-xl shadow-lg shadow-red-900/30 transition-all active:scale-95 group"
+                    >
+                        <div className="bg-white/20 p-1 rounded-full group-hover:rotate-90 transition-transform duration-300">
+                            <PlusIcon className="w-4 h-4" />
+                        </div>
+                        <span className="font-bold text-sm">طلب جديد</span>
                     </button>
                 )}
             </div>
@@ -410,11 +418,11 @@ const AdminOrdersScreen: React.FC<AdminOrdersScreenProps> = React.memo(({ orders
                         <OrderCard
                             key={order.id}
                             order={order}
-                            users={users}
                             onEdit={canManage ? setEditingOrder : undefined}
-                            onDelete={canDelete ? setDeletingOrder : undefined}
-                            onOpenStatusModal={onOpenStatusModal}
-                            onOpenPaymentModal={onOpenPaymentModal}
+                            onDelete={canDelete ? (o) => setDeletingOrder(o) : undefined}
+                            onOpenStatusModal={canManage ? onOpenStatusModal : undefined}
+                            onOpenPaymentModal={canManage ? onOpenPaymentModal : undefined}
+                            users={users}
                         />
                     ))
                 ) : (

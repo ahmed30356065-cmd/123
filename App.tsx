@@ -12,6 +12,7 @@ import AppNotification from './components/Notification';
 import PermissionRequest from './components/PermissionRequest';
 import OfflineScreen from './components/OfflineScreen';
 import UpdateScreen from './components/UpdateScreen';
+import ServerMaintenanceScreen from './components/ServerMaintenanceScreen';
 import { NativeBridge, logoutAndroid, safeStringify, setAndroidRole } from './utils/NativeBridge';
 import * as firebaseService from './services/firebase';
 import { SafeLocalStorage } from './utils/storage';
@@ -61,13 +62,14 @@ const App: React.FC = () => {
     // 2. Logic Hook
     const {
         logAction,
+        handleUndo,
         handleDriverPayment,
         handleSignUp,
         handleHideMessage,
         handleClearAuditLogs,
         generateNextUserId,
         deletePayment
-    } = useAppActions({ users, orders, messages, payments, manualDailies, currentUser, showNotify }); // Added payments and manualDailies
+    } = useAppActions({ users, orders, messages, payments, manualDailies, currentUser, showNotify });
 
     // Handle Android Deep Links without Reload
     useEffect(() => {
@@ -302,6 +304,22 @@ const App: React.FC = () => {
         );
     }
 
+    const isMaintenance = appConfig?.isMaintenanceMode;
+    const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+
+    if (isMaintenance && !isStaff && currentUser) {
+        return (
+            <ServerMaintenanceScreen
+                message={appConfig?.maintenanceMessage}
+                onLogout={() => {
+                    logoutAndroid(currentUser.id, currentUser.role);
+                    setCurrentUser(null);
+                    localStorage.removeItem('currentUser');
+                }}
+            />
+        );
+    }
+
     return (
         <div className="h-full w-full hardware-accelerated relative">
             {isLoading && currentUser && (
@@ -337,20 +355,23 @@ const App: React.FC = () => {
                         logAction('update', 'طلبات الاستعادة', `تمت معالجة طلب استعادة كلمة المرور للرقم ${phone}`);
                     }}
                     updateUser={(id, d) => {
+                        const oldUser = users.find(u => u.id === id);
                         firebaseService.updateData('users', id, d);
-                        const targetName = users.find(u => u.id === id)?.name || id;
-                        if (d.status === 'blocked') logAction('update', 'المستخدمين', `قام المدير بحظر المستخدم: ${targetName}`);
-                        else if (d.status === 'active' && users.find(u => u.id === id)?.status === 'blocked') logAction('update', 'المستخدمين', `قام المدير بفك حظر المستخدم: ${targetName}`);
-                        else logAction('update', 'المستخدمين', `تم تحديث بيانات المستخدم: ${targetName}`);
+                        const targetName = oldUser?.name || id;
+                        if (d.status === 'blocked') logAction('update', 'المستخدمين', `قام المدير بحظر المستخدم: ${targetName}`, 'users', id, oldUser);
+                        else if (d.status === 'active' && oldUser?.status === 'blocked') logAction('update', 'المستخدمين', `قام المدير بفك حظر المستخدم: ${targetName}`, 'users', id, oldUser);
+                        else logAction('update', 'المستخدمين', `تم تحديث بيانات المستخدم: ${targetName}`, 'users', id, oldUser);
                     }}
                     deleteUser={(id) => {
-                        const targetName = users.find(u => u.id === id)?.name || id;
+                        const oldUser = users.find(u => u.id === id);
+                        const targetName = oldUser?.name || id;
                         firebaseService.deleteData('users', id);
-                        logAction('delete', 'المستخدمين', `تم حذف المستخدم: ${targetName}`);
+                        logAction('delete', 'المستخدمين', `تم حذف المستخدم: ${targetName}`, 'users', id, oldUser);
                     }}
                     deleteOrder={(id) => {
+                        const oldOrder = orders.find(o => o.id === id);
                         firebaseService.deleteData('orders', id);
-                        logAction('delete', 'الطلبات', `تم حذف الطلب رقم ${id}`);
+                        logAction('delete', 'الطلبات', `تم حذف الطلب رقم ${id}`, 'orders', id, oldOrder);
                     }}
                     updateOrderStatus={(id, s) => {
                         // 1. Optimistic Update (Instant Feedback)
@@ -431,7 +452,7 @@ const App: React.FC = () => {
                             // We should technically revert optimistic update here, but for now notification is enough
                         });
 
-                        logAction('update', 'الطلبات', `تم تعديل تفاصيل الطلب رقم ${id}`);
+                        logAction('update', 'الطلبات', `تم تعديل تفاصيل الطلب رقم ${id}`, 'orders', id, oldOrder);
 
                         // 3. Notification Logic
                         // If driver was assigned (and wasn't before, or changed)
@@ -463,7 +484,7 @@ const App: React.FC = () => {
                         firebaseService.updateData('orders', id, updates)
                             .catch(err => showNotify('فشل تعيين المندوب', 'error'));
 
-                        logAction('update', 'الطلبات', `تم تعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`);
+                        logAction('update', 'الطلبات', `تم تعيين المندوب ${driverName} للطلب ${id} بتكلفة ${fe}`, 'orders', id, orders.find(o => o.id === id));
                         firebaseService.sendExternalNotification('driver', { title: "طلب جديد مسند إليك", body: `تم إسناد الطلب ${id} إليك بتكلفة ${fe} ج.م`, targetId: dr, url: `/?target=order&id=${id}` });
                     }}
                     adminAddOrder={async (d) => {
@@ -509,13 +530,13 @@ const App: React.FC = () => {
                             setOrders(prev => [...prev, ...newOrders]);
                             // 5. Batch Save to DB
                             await firebaseService.batchSaveData('orders', newOrders);
-                            logAction('create', 'الطلبات', `تم إضافة ${newOrders.length} طلبات جديدة (دفعة واحدة)`);
+                            logAction('create', 'الطلبات', `تم إضافة ${newOrders.length} طلبات جديدة (دفعة واحدة)`, 'orders', newOrders[0]?.id);
                         }
                     }}
                     adminAddUser={async (u) => {
                         const id = generateNextUserId(users);
                         await firebaseService.updateData('users', id, { ...u, id, status: 'active', createdAt: new Date() });
-                        logAction('create', 'المستخدمين', `تم إضافة مستخدم جديد: ${u.name} (${u.role}) ID: ${id}`);
+                        logAction('create', 'المستخدمين', `تم إضافة مستخدم جديد: ${u.name} (${u.role}) ID: ${id}`, 'users', id);
                     }}
                     onLogout={() => { logoutAndroid(currentUser.id, currentUser.role); setCurrentUser(null); localStorage.removeItem('currentUser'); }}
                     sendMessage={(d) => {
@@ -548,7 +569,9 @@ const App: React.FC = () => {
                     onToggleSlider={(isEnabled) => firebaseService.updateData('settings', 'slider_config', { id: 'slider_config', isEnabled })}
                     onBulkUpdate={async (u) => firebaseService.batchSaveData('orders', u)}
                     auditLogs={auditLogs}
-                    onClearLogs={() => handleClearAuditLogs(auditLogs)}
+                    onClearLogs={handleClearAuditLogs}
+                    onUndo={handleUndo}
+                    onDeletePayment={deletePayment}
                     promoCodes={[]}
                     pointsConfig={pointsConfig}
                     onUpdatePointsConfig={(config) => {

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useMemo } from 'react';
 import { Role, SupervisorPermission } from '../../types';
-import { ChevronLeftIcon, CameraIcon, UploadIcon, MapPinIcon, SettingsIcon, StoreIcon, GridIcon, ClockIcon, UtensilsIcon } from '../icons';
+import { ChevronLeftIcon, CameraIcon, UploadIcon, MapPinIcon, SettingsIcon, StoreIcon, GridIcon, ClockIcon, UtensilsIcon, ShieldCheckIcon, CheckCircleIcon } from '../icons';
 import useAndroidBack from '../../hooks/useAndroidBack';
 
 interface AddUserModalProps {
@@ -64,15 +64,46 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, onSave, initialRol
 
     const commonInputStyle = "w-full px-4 py-3 bg-[#252525] border border-[#333] text-white rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors";
 
-    const permissionOptions: { id: SupervisorPermission, label: string }[] = [
-        { id: 'view_orders', label: 'عرض الطلبات' },
-        { id: 'manage_orders', label: 'إدارة الطلبات' },
-        { id: 'view_reports', label: 'عرض التقارير' },
-        { id: 'view_users', label: 'عرض المستخدمين' },
-        { id: 'manage_users', label: 'إدارة المستخدمين' },
-        { id: 'view_wallet', label: 'عرض المحفظة' },
-        { id: 'manage_supervisors', label: 'إدارة المشرفين' },
-    ];
+    const permissionGroups: {
+        title: string;
+        permissions: { id: SupervisorPermission, label: string }[]
+    }[] = [
+            {
+                title: 'إدارة الطلبات',
+                permissions: [
+                    { id: 'view_orders', label: 'عرض الطلبات' },
+                    { id: 'manage_orders', label: 'إدارة الطلبات' },
+                    { id: 'delete_orders', label: 'حذف الطلبات' },
+                ]
+            },
+            {
+                title: 'المستخدمين والمتاجر',
+                permissions: [
+                    { id: 'view_users', label: 'عرض المستخدمين' },
+                    { id: 'manage_users', label: 'إدارة المستخدمين' },
+                    { id: 'manage_stores', label: 'إدارة المتاجر' },
+                    { id: 'manage_supervisors', label: 'إدارة المشرفين' },
+                ]
+            },
+            {
+                title: 'المالية والتقارير',
+                permissions: [
+                    { id: 'view_reports', label: 'التقارير والإحصائيات' },
+                    { id: 'view_wallet', label: 'المحفظة والتسويات' },
+                    { id: 'view_logs', label: 'سجل المراقبة' },
+                    { id: 'manage_advanced_financials', label: 'إدارة المالية المتقدمة' },
+                ]
+            },
+            {
+                title: 'التسويق والدعم',
+                permissions: [
+                    { id: 'manage_promo', label: 'الخصومات والولاء' },
+                    { id: 'manage_slider', label: 'إدارة العروض' },
+                    { id: 'send_messages', label: 'إرسال إشعارات' },
+                    { id: 'manage_support', label: 'الدعم الفني' },
+                ]
+            }
+        ];
 
     const handlePermissionChange = (permission: SupervisorPermission) => {
         setPermissions(prev =>
@@ -465,18 +496,33 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, onSave, initialRol
 
                     {role === 'supervisor' && (
                         <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-[#333] space-y-4 shadow-sm md:col-span-2">
-                            <h3 className="text-lg font-bold text-white border-b border-[#333] pb-3 mb-2">صلاحيات المشرف</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {permissionOptions.map(opt => (
-                                    <label key={opt.id} className="flex items-center space-x-3 space-x-reverse p-4 bg-[#252525] rounded-xl cursor-pointer hover:bg-[#303030] transition-colors border border-transparent hover:border-gray-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={permissions.includes(opt.id)}
-                                            onChange={() => handlePermissionChange(opt.id)}
-                                            className="h-5 w-5 rounded bg-gray-700 border-gray-600 text-red-600 focus:ring-red-500 accent-red-600"
-                                        />
-                                        <span className="text-sm font-bold text-gray-200">{opt.label}</span>
-                                    </label>
+                            <h3 className="text-lg font-bold text-white border-b border-[#333] pb-3 mb-4 flex items-center gap-2">
+                                <ShieldCheckIcon className="w-5 h-5 text-yellow-500" />
+                                صلاحيات المشرف
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {permissionGroups.map((group, idx) => (
+                                    <div key={idx} className="bg-[#222] p-4 rounded-xl border border-[#333]">
+                                        <h4 className="text-sm font-bold text-gray-300 mb-3 border-b border-[#333] pb-2">
+                                            {group.title}
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {group.permissions.map(opt => (
+                                                <label key={opt.id} className="flex items-center gap-3 p-2 hover:bg-[#2a2a2a] rounded-lg transition-colors cursor-pointer group">
+                                                    <div className="relative flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={permissions.includes(opt.id)}
+                                                            onChange={() => handlePermissionChange(opt.id)}
+                                                            className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border-2 border-gray-600 bg-gray-800 transition-all checked:border-red-500 checked:bg-red-500"
+                                                        />
+                                                        <CheckCircleIcon className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" />
+                                                    </div>
+                                                    <span className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors">{opt.label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         </div>

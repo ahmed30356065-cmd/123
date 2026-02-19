@@ -207,7 +207,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                 {/* Merchant Section & Order Details */}
                 <div className="flex flex-col bg-orange-900/10 p-3 rounded-xl border border-orange-500/10">
                     <div className="flex items-start gap-3 mb-2">
-                        <div className="mt-1 p-1.5 rounded-full bg-orange-500/10 text-orange-400 flex-shrink-0 overflow-hidden w-8 h-8 flex items-center justify-center border border-orange-500/20">
+                        <div className="mt-1 rounded-full bg-orange-500/10 text-orange-400 flex-shrink-0 overflow-hidden w-8 h-8 flex items-center justify-center border border-orange-500/20">
                             {merchant.isDelinow ? (
                                 customerUser?.storeImage ? (
                                     <img src={customerUser.storeImage} alt="Customer" className="w-full h-full object-cover" />
@@ -307,18 +307,18 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                 </div>
 
                 {/* Driver & Price Section - Updated Driver View */}
-                <div className="grid grid-cols-2 gap-5 bg-gray-900/40 p-2 rounded-lg border border-gray-700/30">
+                <div className="grid grid-cols-2 bg-gray-900/40 p-2 rounded-lg border border-gray-700/30">
                     {/* Left Column: Driver Info */}
-                    <div className="flex flex-col justify-center pl-2">
+                    <div className="flex flex-col justify-center pl-3">
                         {driver.exists ? (
-                            <div className="flex flex-col gap-1">
+                            <div className="flex flex-col gap-2">
                                 {/* Avatar & Name */}
                                 <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                    <div className="w-8 h-8 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                                         {driver.storeImage ? (
                                             <img src={driver.storeImage} alt={driver.name || 'Driver'} className="w-full h-full object-cover rounded-full" />
                                         ) : (
-                                            <UserIcon className="w-3.5 h-3.5 text-gray-400" />
+                                            <UserIcon className="w-4 h-4 text-gray-400" />
                                         )}
                                     </div>
                                     <div className="min-w-0">
@@ -327,16 +327,16 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({ order, users, onEdit, 
                                     </div>
                                 </div>
 
-                                {/* Phone Container (Compact - No flex-1) */}
+                                {/* Phone Container (Stacked - No overlap with divider) */}
                                 {driver.phone && (
-                                    <div className="flex items-center gap-1.5 pt-1.5 mt-1 border-t border-gray-700/30 w-fit" dir="ltr">
+                                    <div className="flex items-center gap-1 w-full" dir="ltr">
                                         <a href={`https://wa.me/2${driver.phone}`} target="_blank" rel="noopener noreferrer" className="p-1.5 flex-shrink-0 bg-green-500/10 text-green-400 rounded-lg hover:bg-green-500/20 transition-all border border-green-500/10 clickable" title="واتساب">
                                             <WhatsAppIcon className="w-3.5 h-3.5" />
                                         </a>
                                         <a href={`tel:${driver.phone}`} className="p-1.5 flex-shrink-0 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all border border-blue-500/10 clickable" title="اتصال">
                                             <PhoneIcon className="w-3.5 h-3.5" />
                                         </a>
-                                        <span className="text-[10px] text-gray-300 font-mono bg-black/20 px-2 py-1 rounded border border-gray-700 selectable font-bold tracking-wide">
+                                        <span className="text-[9px] text-gray-300 font-mono bg-black/20 px-1.5 py-1 rounded border border-gray-700 selectable font-bold truncate overflow-hidden flex-1 text-center">
                                             {driver.phone}
                                         </span>
                                     </div>

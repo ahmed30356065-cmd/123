@@ -84,8 +84,8 @@ export interface User {
   isFixedDeliveryFeeEnabled?: boolean;
   fixedDeliveryFee?: number;
   // Decoration (Updated to allow strings for extended collection)
-  specialBadge?: 'verified' | 'premium' | 'vip' | 'new';
-  specialFrame?: 'gold' | 'silver' | 'blue' | 'none';
+  specialBadge?: string;
+  specialFrame?: string;
   // Expiry dates for decorations
   specialBadgeExpiry?: string | null;
   specialFrameExpiry?: string | null;
@@ -255,19 +255,26 @@ export interface AuditLog {
   actorName: string;
   actionType: 'create' | 'update' | 'delete' | 'login' | 'financial';
   target: string;
+  targetId?: string; // ID of the affected document
+  collection?: string; // Name of the firestore collection
   details: string;
+  previousData?: any; // Data before the change for undo
+  isUndone?: boolean; // NEW: Marks if this action was reversed
   createdAt: Date;
 }
 
 export interface PromoCode {
-  id: string;
-  code: string;
+  id: string; // Unique ID
+  code: string; // Display code (e.g., 'SAVE20')
   type: 'percentage' | 'fixed';
   value: number;
-  isActive: boolean;
-  expiryDate?: Date;
+  minOrderAmount?: number;
+  maxDiscount?: number;
+  expiryDate?: string; // ISO string
+  maxUsage?: number; // Total limit
   usageCount: number;
-  maxUsage?: number;
+  isActive: boolean;
+  createdAt: string; // ISO string
 }
 
 // --- Support Chat Types ---
@@ -311,6 +318,8 @@ export interface AppConfig {
   customFont?: string; // Base64 encoded TTF
   isGamesEnabled?: boolean; // Global Toggle for Games Feature
   games?: Game[]; // List of active games
+  isMaintenanceMode?: boolean; // NEW: Global maintenance toggle
+  maintenanceMessage?: string; // NEW: Custom message for users
 }
 
 // --- Update Configuration ---

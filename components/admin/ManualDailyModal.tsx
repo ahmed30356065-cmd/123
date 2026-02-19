@@ -1,37 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { User } from '../../types';
-import { XIcon, CheckCircleIcon, CalculatorIcon, CalendarIcon, TruckIconV2 } from '../icons';
+import { createPortal } from 'react-dom';
+import { User, ManualDaily } from '../../types';
+import { XIcon, CheckCircleIcon, CalculatorIcon, CalendarIcon } from '../icons';
 
 interface ManualDailyModalProps {
     isOpen: boolean;
     onClose: () => void;
     drivers: User[];
-    onSave: (data: { driverId: string; date: string; count: number; note?: string; amount: number; totalDeliveryFees?: number }) => Promise<void>;
+    onSave: (data: { id?: string; driverId: string; date: string; count: number; note?: string; amount: number; totalDeliveryFees?: number }) => Promise<void>;
     preSelectedDriver?: User | null;
+    initialData?: any | null;
 }
 
-const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, drivers, onSave, preSelectedDriver }) => {
+const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, drivers, onSave, preSelectedDriver, initialData }) => {
     const [driverId, setDriverId] = useState(preSelectedDriver?.id || '');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [count, setCount] = useState<number | ''>('');
-    const [deliveryFeePerOrder, setDeliveryFeePerOrder] = useState<number | ''>(''); // Changed from total to per-order
+    const [deliveryFeePerOrder, setDeliveryFeePerOrder] = useState<number | ''>('');
     const [note, setNote] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        if (preSelectedDriver) setDriverId(preSelectedDriver.id);
-    }, [preSelectedDriver]);
+        if (initialData) {
+            setDriverId(initialData.driverId);
+            setDate(initialData.dayDate);
+            setCount(initialData.ordersCount);
+            setNote(initialData.note || '');
+            if (initialData.totalDeliveryFees && initialData.ordersCount) {
+                setDeliveryFeePerOrder(initialData.totalDeliveryFees / initialData.ordersCount);
+            }
+        } else if (preSelectedDriver) {
+            setDriverId(preSelectedDriver.id);
+            setDate(new Date().toISOString().split('T')[0]);
+            setCount('');
+            setDeliveryFeePerOrder('');
+            setNote('');
+        }
+    }, [initialData, preSelectedDriver, isOpen]);
 
     const selectedDriver = drivers.find(d => d.id === driverId);
 
-    // Calculate Amount
     const calculateAmount = () => {
         if (!selectedDriver || !count) return 0;
         const commission = selectedDriver.commissionRate || 0;
         if (selectedDriver.commissionType === 'fixed') {
             return Number(count) * commission;
         } else {
-            // Percentage calculation: (Count * FeePerOrder * Percentage) / 100
             if (!deliveryFeePerOrder) return 0;
             const totalFees = Number(count) * Number(deliveryFeePerOrder);
             return totalFees * (commission / 100);
@@ -47,6 +61,7 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
         setIsLoading(true);
         try {
             await onSave({
+                id: initialData?.id,
                 driverId,
                 date,
                 count: Number(count),
@@ -64,13 +79,13 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+    return createPortal(
+        <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
             <div className="bg-[#1e293b] w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl overflow-hidden animate-pop-in" onClick={e => e.stopPropagation()}>
                 <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-[#151e2d]">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         <CalculatorIcon className="w-5 h-5 text-green-400" />
-                        إضافة يومية يدوية
+                        {initialData ? 'تعديل اليومية' : 'إضافة يومية يدوية'}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800">
                         <XIcon className="w-5 h-5" />
@@ -78,7 +93,6 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    {/* Driver Selection */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-400 block">المندوب</label>
                         <select
@@ -95,7 +109,6 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
                         </select>
                     </div>
 
-                    {/* Date */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-400 block">التاريخ</label>
                         <div className="relative">
@@ -110,7 +123,6 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
                         </div>
                     </div>
 
-                    {/* Orders Count */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-400 block">عدد الطلبات</label>
                         <input
@@ -124,7 +136,6 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
                         />
                     </div>
 
-                    {/* Total Delivery Fees Input (Only for Percentage Drivers) */}
                     {selectedDriver && selectedDriver.commissionType === 'percentage' && (
                         <div className="space-y-2 animate-fadeIn">
                             <label className="text-xs font-bold text-yellow-500 block">سعر توصيل الطلب الواحد (للنسبة المئوية)</label>
@@ -149,7 +160,6 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
                         </div>
                     )}
 
-                    {/* Note */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-400 block">ملاحظات (اختياري)</label>
                         <textarea
@@ -160,7 +170,6 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
                         />
                     </div>
 
-                    {/* Calculated Amount Display */}
                     <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 flex justify-between items-center">
                         <span className="text-xs font-bold text-gray-400">المبلغ المستحق (تلقائي)</span>
                         <span className="text-xl font-black text-green-400">
@@ -168,19 +177,18 @@ const ManualDailyModal: React.FC<ManualDailyModalProps> = ({ isOpen, onClose, dr
                         </span>
                     </div>
 
-
-
                     <button
                         type="submit"
                         disabled={isLoading || !driverId || !count}
                         className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 mt-2"
                     >
                         {isLoading ? <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span> : <CheckCircleIcon className="w-5 h-5" />}
-                        حفظ اليومية
+                        {initialData ? 'تحديث البيانات' : 'حفظ اليومية'}
                     </button>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
