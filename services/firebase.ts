@@ -12,6 +12,11 @@ let db: firebase.firestore.Firestore | undefined;
 let auth: firebase.auth.Auth | undefined;
 let isSettingsApplied = false;
 
+// Global flag to prevent re-initialization across module reloads
+if (typeof window !== 'undefined' && !(window as any).__FIREBASE_SETTINGS_APPLIED__) {
+    (window as any).__FIREBASE_SETTINGS_APPLIED__ = false;
+}
+
 export const setupRecaptcha = (containerId: string) => {
     if (!auth) auth = firebase.auth();
     return new firebase.auth.RecaptchaVerifier(containerId, {
@@ -31,15 +36,13 @@ declare global {
         onPhoneAuthSuccess?: (userJson: string) => void;
         onPhoneAuthError?: (error: string) => void;
         onPhoneAuthCodeSentInjected?: (verificationId: string) => void;
+        Android?: any;
     }
 }
 
 export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: firebase.auth.RecaptchaVerifier) => {
     console.log(`[PhoneAuth] Initiating for ${phoneNumber}...`);
 
-    // --- SIMULATION MODE (FREE TIER BYPASS) ---
-    // Since Firebase Billing is not enabled, we default to this robust simulation.
-    // This allows the app to have a "Verification" step without paying for SMS.
     const enableSimulation = true;
 
     if (enableSimulation) {
@@ -51,17 +54,15 @@ export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: fi
                     confirmationResult: {
                         verificationId: "simulated-verification-id-" + Date.now(),
                         confirm: async (code: string) => {
-                            // The Unified OTP for Simulation
                             if (code === '123456') {
                                 console.log("[PhoneAuth] Simulation Code Valid. Signing in anonymously...");
-                                // We use Anonymous Auth to get a real Firebase User ID and Token
                                 if (!auth) auth = firebase.auth();
                                 const credential = await auth.signInAnonymously();
                                 return {
                                     user: {
                                         ...credential.user,
-                                        phoneNumber: phoneNumber, // Mock the phone number on var
-                                        uid: credential.user?.uid // Real UID
+                                        phoneNumber: phoneNumber,
+                                        uid: credential.user?.uid
                                     }
                                 };
                             } else {
@@ -70,18 +71,16 @@ export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: fi
                         }
                     }
                 });
-            }, 1500); // Simulate network delay
+            }, 1500);
         });
     }
 
-    // 1. NATIVE BRIDGE PATH (Robust, bypasses Billing/SafetyNet blockers on WebView)
     if (window.Android && window.Android.verifyPhoneNumber) {
         console.log("Using Native Phone Auth Bridge");
 
         return new Promise<any>((resolve, reject) => {
             const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+20${phoneNumber.replace(/^0+/, '')}`;
 
-            // Setup Listeners
             window.onPhoneAuthCodeSent = (verificationId: string) => {
                 console.log("Native Code Sent:", verificationId);
                 resolve({
@@ -92,7 +91,7 @@ export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: fi
                             return new Promise((res, rej) => {
                                 window.onPhoneAuthSuccess = (userJson: string) => {
                                     const user = JSON.parse(userJson);
-                                    res({ user }); // Mimic Firebase UserCredential
+                                    res({ user });
                                 };
                                 window.onPhoneAuthError = (err: string) => {
                                     rej(new Error(err));
@@ -109,12 +108,10 @@ export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: fi
                 reject({ success: false, error: `[Native] ${err}` });
             };
 
-            // Trigger Native Call
             window.Android?.verifyPhoneNumber?.(formattedPhone);
         });
     }
 
-    // 2. WEB FALLBACK (Legacy)
     if (!auth) auth = firebase.auth();
     try {
         const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+20${phoneNumber.replace(/^0+/, '')}`;
@@ -126,7 +123,6 @@ export const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: fi
     }
 };
 
-// --- DEVICE SPOOFING INJECTION ---
 import { DeviceSpoofer } from '../utils/DeviceSpoofer';
 
 export const injectSpoofedDeviceInfo = async (userId: string) => {
@@ -143,24 +139,18 @@ export const injectSpoofedDeviceInfo = async (userId: string) => {
     }
 };
 
-// --- FIX USER IDs UTILITY (8-Digits) ---
 export const fixUserIds = async () => {
     if (!db) return;
     const usersSnap = await db.collection('users').orderBy('createdAt', 'asc').get();
     const batch = db.batch();
 
     const usedIds = new Set<string>();
-    // Pre-populate used IDs to avoid collisions with existing formatted IDs
     usersSnap.docs.forEach(d => usedIds.add(d.id));
 
     let updatedCount = 0;
 
     for (const doc of usersSnap.docs) {
         const oldId = doc.id;
-
-        // If already 8 digits (prefixed with ID:), maybe skip? Or force re-roll?
-        // User asked to "fix" them, so let's re-roll strict 8 digits if not already valid.
-        // A valid 8-digit ID with prefix is /^ID:\d{8}$/
         if (/^ID:\d{8}$/.test(oldId)) {
             continue;
         }
@@ -173,12 +163,9 @@ export const fixUserIds = async () => {
         usedIds.add(newId);
 
         const userData = doc.data();
-
-        // Create new doc with new ID
         const newRef = db.collection('users').doc(newId);
         batch.set(newRef, { ...userData, id: newId });
 
-        // Delete old doc
         const oldRef = db.collection('users').doc(oldId);
         batch.delete(oldRef);
 
@@ -192,10 +179,6 @@ export const fixUserIds = async () => {
         console.log('[FixUserIds] No users needed fixing.');
     }
 };
-
-
-// Direct FCM Integration replacing Google Script
-// This ensures notifications work without external backend dependencies
 
 export const deepClean = (obj: any, seen = new WeakSet()): any => {
     if (obj === undefined || obj === null) return null;
@@ -233,55 +216,42 @@ export const initFirebase = (config: any) => {
             db = app.firestore();
             auth = app.auth();
 
-            if (!isSettingsApplied) {
+            if (!isSettingsApplied && (typeof window !== 'undefined' && !(window as any).__FIREBASE_SETTINGS_APPLIED__)) {
                 try {
-                    // Modern Firestore Settings (Prevent Host Overrides & Use Modern Cache)
+                    // Modern Firestore Settings & Persistence (Robust Feature Detection)
+                    const f: any = firebase;
                     db.settings({
                         ignoreUndefinedProperties: true,
+                        host: "firestore.googleapis.com",
+                        ssl: true
                     });
 
-                    // Modern Persistence API (replaces deprecated enablePersistence)
-                    // This avoids the 'enableMultiTabIndexedDbPersistence() will be deprecated' warning
-                    try {
-                        // For compat SDK, we still use this but we try to be safe.
-                        // However, the warning suggests using FirestoreSettings.cache which is v9+ syntax.
-                        // In compat, we just ensure we don't call it multiple times.
-                        db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
-                            if (err.code === 'failed-precondition') {
-                                console.warn("Persistence failed: Multiple tabs open");
-                            } else if (err.code === 'unimplemented') {
-                                console.warn("Persistence not supported by browser");
-                            }
-                        });
-                    } catch (e) {
-                        console.warn("Firestore persistence error:", e);
-                    }
+                    isSettingsApplied = true;
+                    if (typeof window !== 'undefined') (window as any).__FIREBASE_SETTINGS_APPLIED__ = true;
                 } catch (e) {
-                    console.warn("Firestore settings error (might be already applied):", e);
+                    console.warn("[Firebase] Firestore settings error (possibly already applied):", e);
                 }
-
-                // Proactive Connection Keep-Alive
-                firebase.database().ref('.info/connected').on('value', (snap) => {
-                    if (snap.val() === true) {
-                        console.log("[Firebase] Proactive connection established.");
-                    } else {
-                        console.log("[Firebase] Proactive connection lost. Reconnecting...");
-                        firebase.database().goOnline();
-                    }
-                });
-
-                isSettingsApplied = true;
             }
+
+            firebase.database().ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === true) {
+                    console.log("[Firebase] Proactive connection established.");
+                } else {
+                    console.log("[Firebase] Proactive connection lost. Reconnecting...");
+                    firebase.database().goOnline();
+                }
+            });
+
             return true;
         } catch (error) {
             console.error("Firebase Init Error:", error);
             return false;
         }
+    } else {
+        if (!db) db = firebase.app().firestore();
+        if (!auth) auth = firebase.app().auth();
+        return true;
     }
-    if (!db) {
-        db = firebase.firestore();
-    }
-    return true;
 };
 
 export const testConnection = async (): Promise<{ success: boolean; error?: string }> => {
@@ -303,32 +273,21 @@ export const testConnection = async (): Promise<{ success: boolean; error?: stri
 export const subscribeToCollection = (collectionName: string, callback: (data: any[]) => void) => {
     if (!db) return () => { };
 
-    // Maintain a local Map for O(1) updates and to avoid re-processing all documents
     const cache = new Map<string, any>();
     let initialLoadComplete = false;
 
     return db.collection(collectionName).onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
         let hasChanges = false;
-
-        // Efficiently process only the changes
         snapshot.docChanges().forEach((change) => {
             hasChanges = true;
             if (change.type === 'removed') {
                 cache.delete(change.doc.id);
             } else {
-                // added or modified
                 const rawData = change.doc.data();
-                // Only deepClean the changed document
                 const cleanedData = deepClean(rawData);
                 cache.set(change.doc.id, { id: change.doc.id, ...cleanedData });
             }
         });
-
-        // Always emit on the very first snapshot (even if empty, though usually it has 'added' events)
-        // OR if there were actual changes.
-        // We also check snapshot.metadata.fromCache to ensure we emit when data syncs from server
-        // (though fromCache flip usually triggers a 'modified' event with metadata change if includeMetadataChanges is true).
-
         if (hasChanges || !initialLoadComplete) {
             initialLoadComplete = true;
             const data = Array.from(cache.values());
@@ -337,9 +296,6 @@ export const subscribeToCollection = (collectionName: string, callback: (data: a
     }, (error) => console.error(`Subscription error [${collectionName}]:`, error));
 };
 
-// --- SMART SUBSCRIPTION LOGIC (Phase 1) ---
-
-// --- SMART SUBSCRIPTION LOGIC (Phase 1) ---
 
 export const subscribeToQuery = (
     collectionName: string,
@@ -350,18 +306,12 @@ export const subscribeToQuery = (
     if (!db) return () => { };
 
     let query: firebase.firestore.Query = db.collection(collectionName);
-
-    // Apply filters
     constraints.forEach(c => {
         query = query.where(c.field, c.op, c.value);
     });
-
-    // Apply OrderBy (Must be before limit)
     if (options?.orderBy) {
         query = query.orderBy(options.orderBy.field, options.orderBy.direction || 'desc');
     }
-
-    // Apply Limit
     if (options?.limit) {
         query = query.limit(options.limit);
     }
@@ -371,12 +321,6 @@ export const subscribeToQuery = (
 
     return query.onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
         let hasChanges = false;
-
-        // OPTIMIZATION: Ignore initial empty snapshot if it comes from cache.
-        // This prevents the UI from flashing "No Orders" while waiting for the server.
-        // We only want to emit if:
-        // 1. It's NOT from cache (real server data).
-        // 2. OR it IS from cache but HAS data (offline mode support).
         if (!initialLoadComplete && snapshot.metadata.fromCache && snapshot.empty) {
             console.log(`[QuerySubscription] Ignoring empty cache snapshot for ${collectionName}`);
             return;
@@ -396,12 +340,6 @@ export const subscribeToQuery = (
         if (hasChanges || !initialLoadComplete) {
             initialLoadComplete = true;
             const data = Array.from(cache.values());
-            // Re-sort locally if needed because Map iteration order isn't guaranteed to match Query order perfectly after updates?
-            // Actually Firestore snapshot keeps order, but we are using a Map cache.
-            // If we want to strictly respect the query order, we should rely on the snapshot docs?
-            // But we are building a cache. The cache keys are IDs.
-            // Data array will be loosely ordered by insertion time into Map unless we sort it.
-            // For now, let's just return the data. The UI usually sorts it again.
             callback(data);
         }
     }, (error) => console.error(`Query Subscription error [${collectionName}]:`, error));
@@ -442,9 +380,6 @@ export const updateData = async (collectionName: string, id: string, data: any) 
     const cleanPayload = deepClean(data);
     const docRef = db.collection(collectionName).doc(id);
 
-    // 🛡️ STATUS REGRESSION GUARD 🛡️
-    // Prevent overwriting a terminal state (Delivered/Cancelled) with an active state (Pending/InTransit)
-    // unless explicitly authorized (e.g. by Admin).
     if (collectionName === 'orders' && cleanPayload.status) {
         try {
             await db.runTransaction(async (transaction) => {
@@ -458,23 +393,12 @@ export const updateData = async (collectionName: string, id: string, data: any) 
                 const currentStatus = currentData?.status;
                 const newStatus = cleanPayload.status;
 
-                // Define Terminal States
                 const terminalStates = ['delivered', 'cancelled', 'returned'];
-                // Define Active States
                 const activeStates = ['pending', 'in_transit', 'assigned'];
 
-                // Check for Regression
                 if (terminalStates.includes(currentStatus) && activeStates.includes(newStatus)) {
                     console.error(`[Zombie Prevention] Blocked reversion from ${currentStatus} to ${newStatus} for Order ${id}`);
-                    // We ignore the status update but keep other fields if any? 
-                    // Or we throw? For now, we THROW to alert the caller (the app).
-                    // But if it's a silent sync, maybe we just ignore.
-                    // Let's Log audit and IGNORE the status change.
-
-                    // Remove status from payload
                     delete cleanPayload.status;
-
-                    // Add a warning note to the order so admin sees it blocked something
                     cleanPayload.adminNotes = (currentData?.adminNotes || '') + `\n[System] Blocked reversion from ${currentStatus} to ${newStatus}`;
                 }
 
@@ -486,14 +410,6 @@ export const updateData = async (collectionName: string, id: string, data: any) 
             return;
         } catch (e) {
             console.error("Safe Update Transaction Failed:", e);
-            // Fallback to normal update if transaction fails (e.g. offline?)
-            // BUT offline transactions usually queue. 
-            // If we are offline, we can't read 'currentData'. 
-            // This is the tricky part. Firestore Transactions require online.
-            // If offline, this throws. 
-
-            // If we are offline, we might be the source of the zombie data.
-            // We should NOT allow this update if we can't verify.
         }
     }
 
@@ -517,13 +433,8 @@ export const addData = async (collectionName: string, data: any) => {
     });
 };
 
-// ==========================================
-// 🚀 GENERIC REALTIME DATABASE HELPERS
-// ==========================================
-
 export const subscribeToRTDB = (path: string, callback: (data: any[]) => void, options?: { sortByDate?: boolean, limit?: number }) => {
     let ref: any = firebase.database().ref(path);
-
     const listener = ref.on('value', (snapshot: any) => {
         const val = snapshot.val();
         if (!val) {
@@ -531,7 +442,6 @@ export const subscribeToRTDB = (path: string, callback: (data: any[]) => void, o
             return;
         }
         let data = Object.values(val);
-
         if (options?.sortByDate) {
             data.sort((a: any, b: any) => {
                 const dateA = new Date(a.createdAt || a.dayDate || 0).getTime();
@@ -539,11 +449,9 @@ export const subscribeToRTDB = (path: string, callback: (data: any[]) => void, o
                 return dateB - dateA;
             });
         }
-
         if (options?.limit) {
             data = data.slice(0, options.limit);
         }
-
         callback(data);
     });
     return () => ref.off('value', listener);
@@ -565,7 +473,6 @@ export const batchSaveRTDB = async (path: string, items: any[]) => {
     if (!items || items.length === 0) return;
     const updates: any = {};
     const now = new Date().toISOString();
-
     items.forEach(item => {
         if (item.id) {
             updates[`${item.id}`] = {
@@ -574,16 +481,12 @@ export const batchSaveRTDB = async (path: string, items: any[]) => {
             };
         }
     });
-
     return await firebase.database().ref(path).update(updates);
 };
-
-// --- REALTIME DATABASE AUDIT LOGS & UNDO ---
 
 export const logActionToRTDB = async (log: any) => {
     try {
         const cleanLog = deepClean(log);
-        // We write to 'audit_logs' path in RTDB
         await firebase.database().ref(`audit_logs/${cleanLog.id}`).set({
             ...cleanLog,
             createdAt: cleanLog.createdAt || new Date().toISOString()
@@ -613,7 +516,6 @@ export const subscribeToAuditLogsRTDB = (callback: (data: any[]) => void) => {
             callback([]);
             return;
         }
-        // Convert object to array and sort by date desc
         const logs = Object.values(val).sort((a: any, b: any) => {
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
@@ -634,23 +536,17 @@ export const deleteAuditLogsRTDB = async () => {
 
 export const undoActionFromLog = async (log: any) => {
     if (!db || !log.targetId || !log.collection) throw new Error("بيانات السجل غير مكتملة للتراجع");
-
     const docRef = db.collection(log.collection).doc(log.targetId);
-
     try {
         if (log.actionType === 'delete') {
-            // Restore deleted document
             if (!log.previousData) throw new Error("لا توجد بيانات سابقة لاستعادتها");
             await docRef.set(log.previousData);
             return true;
         } else if (log.actionType === 'update' || log.actionType === 'financial') {
-            // Revert to previous version
             if (!log.previousData) throw new Error("لا توجد بيانات سابقة للتراجع إليها");
-            // If it's a partial update, we still set the full previous data to ensure exact match
             await docRef.set(log.previousData);
             return true;
         } else if (log.actionType === 'create') {
-            // Undo create = delete
             await docRef.delete();
             return true;
         }
@@ -664,13 +560,10 @@ export const undoActionFromLog = async (log: any) => {
 export const getUser = async (id: string): Promise<{ success: boolean, data?: any, error?: string }> => {
     if (!db) return { success: false, error: "Firebase DB not not initialized" };
     try {
-        // Fast ID check
         const doc = await db.collection('users').doc(id).get();
         if (doc.exists) {
             return { success: true, data: { id: doc.id, ...doc.data() } };
         }
-
-        // Fallback Phone check
         const query = await db.collection('users').where('phone', '==', id).limit(1).get();
         if (!query.empty) {
             const d = query.docs[0];
@@ -678,14 +571,11 @@ export const getUser = async (id: string): Promise<{ success: boolean, data?: an
         }
         return { success: false, error: "not_found" };
     } catch (e: any) {
-        console.error("Error fetching user:", e);
-        return { success: false, error: "network_error" }; // Assume exceptions are network/permission related
+        return { success: false, error: "network_error" };
     }
 };
 
-// --- FIRESTORE CHUNK UPLOAD LOGIC (Alternative to Storage) ---
-
-const CHUNK_SIZE = 700 * 1024; // ~700KB (Safe limit for 1MB Firestore doc)
+const CHUNK_SIZE = 700 * 1024;
 
 export const uploadFileToFirestore = async (
     file: File,
@@ -693,16 +583,13 @@ export const uploadFileToFirestore = async (
     onProgress?: (progress: number) => void
 ): Promise<string> => {
     if (!db) throw new Error("Firebase DB not initialized");
-
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                const base64Data = (e.target?.result as string).split(',')[1]; // Remove prefix
+                const base64Data = (e.target?.result as string).split(',')[1];
                 const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
                 const fileId = `FILE-${Date.now()}`;
-
-                // 1. Create Manifest
                 await db!.collection('stored_files').doc(fileId).set({
                     name: file.name,
                     size: file.size,
@@ -711,25 +598,17 @@ export const uploadFileToFirestore = async (
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     isChunked: true
                 });
-
-                // 2. Upload Chunks
                 for (let i = 0; i < totalChunks; i++) {
                     const chunk = base64Data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-                    // Using subcollection for chunks
                     await db!.collection('stored_files').doc(fileId).collection('chunks').doc(i.toString()).set({
                         data: chunk,
                         index: i
                     });
-
                     const progress = Math.round(((i + 1) / totalChunks) * 100);
                     if (onProgress) onProgress(progress);
-                    console.log(`[Firestore Upload] Chunk ${i + 1}/${totalChunks} uploaded.`);
                 }
-
                 resolve(`FIRESTORE_FILE:${fileId}`);
-
             } catch (err) {
-                console.error("Firestore chunk upload failed:", err);
                 reject(err);
             }
         };
@@ -740,24 +619,15 @@ export const uploadFileToFirestore = async (
 
 export const downloadFileFromFirestore = async (fileId: string): Promise<string> => {
     if (!db) throw new Error("Firebase DB not initialized");
-
-    // 1. Get Manifest
     const manifestSnap = await db.collection('stored_files').doc(fileId).get();
     if (!manifestSnap.exists) throw new Error("File not found");
-
     const meta = manifestSnap.data();
     if (!meta) throw new Error("File metadata missing");
-
-    // 2. Get All Chunks
     const chunksSnap = await db.collection('stored_files').doc(fileId).collection('chunks').orderBy('index').get();
-
-    // 3. Reassemble
     let fullBase64 = '';
     chunksSnap.forEach(doc => {
         fullBase64 += doc.data().data;
     });
-
-    // 4. Create Blob URL
     const byteCharacters = atob(fullBase64);
     const byteNumbers = new Array(byteCharacters.length);
     for (let i = 0; i < byteCharacters.length; i++) {
@@ -765,30 +635,23 @@ export const downloadFileFromFirestore = async (fileId: string): Promise<string>
     }
     const byteArray = new Uint8Array(byteNumbers);
     const blob = new Blob([byteArray], { type: meta.type || 'application/vnd.android.package-archive' });
-
     return URL.createObjectURL(blob);
 };
 
-// Modified uploadFile to fallback to Firestore if Storage fails or is missing
 export const uploadFile = async (
     file: File,
     path: string = 'updates',
     onProgress?: (progress: number) => void
 ): Promise<string> => {
     if (!firebase.apps.length) throw new Error("Firebase not initialized");
-
     const app = firebase.app();
-
-    // Check if Storage Bucket is available
     if ((app.options as any).storageBucket) {
         try {
-            console.log(`[Upload] Attempting Storage upload to ${(app.options as any).storageBucket}...`);
             const storage = firebase.storage();
             const storageRef = storage.ref();
             const fileRef = storageRef.child(`${path}/${Date.now()}_${file.name}`);
             const metadata = { contentType: file.type || 'application/vnd.android.package-archive' };
             const uploadTask = fileRef.put(file, metadata);
-
             return await new Promise((resolve, reject) => {
                 uploadTask.on(
                     'state_changed',
@@ -797,8 +660,7 @@ export const uploadFile = async (
                         if (onProgress) onProgress(progress);
                     },
                     (error) => {
-                        console.warn("[Storage Upload Failed] Switching to Firestore fallback...", error);
-                        reject(error); // Trigger catch block to use fallback
+                        reject(error);
                     },
                     () => {
                         uploadTask.snapshot.ref.getDownloadURL().then(resolve).catch(reject);
@@ -806,19 +668,11 @@ export const uploadFile = async (
                 );
             });
         } catch (e) {
-            console.warn("Storage failed. Fallback disabled to save Quota.");
-            // console.log("Storage failed, trying Firestore Chunking...");
-            // return await uploadFileToFirestore(file, path, onProgress);
-            throw new Error("Storage Upload Failed and Database Fallback is disabled to prevent quota usage. Please check Storage Quota.");
+            throw new Error("Storage Upload Failed and Database Fallback is disabled.");
         }
     } else {
-        // console.log("No storage bucket defined. Using Firestore Chunking...");
-        // return await uploadFileToFirestore(file, path, onProgress);
-        throw new Error("Storage Bucket not configured. Database Fallback is disabled.");
+        throw new Error("Storage Bucket not configured.");
     }
-
-    // Fallback: Upload to Firestore (Database)
-    // return await uploadFileToFirestore(file, path, onProgress);
 };
 
 export const sendExternalNotification = async (targetType: string, data: { title: string, body: string, url?: string, targetId?: string }) => {
@@ -874,39 +728,34 @@ export const sendExternalNotification = async (targetType: string, data: { title
                 data: {
                     // Critical fields for Android processing
                     type: "order_update",
-                    url: data.url || '/',
+                    url: data.url || '/', // URL is still passed in data for the app to read
                     title: data.title,
                     body: data.body,
                     target_id: data.targetId || '',
                     timestamp: new Date().toISOString(),
-                    sound: "default",
-                    // New fields for Silent Background Sync (Method 2)
-                    sync_data: "true",
-                    wake_up: "true"
+                    sound: "default"
                 },
                 android: {
                     priority: "HIGH", // Forces wake-up
-                    ttl: "2419200s",
+                    ttl: "2419200s", // 28 Days (Keeps trying if device is off)
                     notification: {
-                        channel_id: "high_importance_channel_v2",
+                        channel_id: "high_importance_channel_v2", // Must match Android Native
                         sound: "default",
                         default_sound: true,
                         default_vibrate_timings: true,
-                        notification_priority: "PRIORITY_HIGH",
-                        visibility: "PUBLIC",
-                        click_action: "OPEN_APP_TO_ORDERS" // Ensures OS knows how to handle
+                        notification_priority: "PRIORITY_HIGH", // Correct field name for V1
+                        visibility: "PUBLIC"
                     }
                 },
                 apns: {
                     headers: {
-                        "apns-priority": "10",
-                        "apns-push-type": "alert" // Or "background" if we want purely silent
+                        "apns-priority": "10", // High priority for iOS
                     },
                     payload: {
                         aps: {
                             sound: "default",
                             badge: 1,
-                            "content-available": 1 // Critical for Background Fetch
+                            "content-available": 1 // Background fetch
                         }
                     }
                 }
@@ -941,21 +790,10 @@ export const subscribeWebToTopic = async (topic: string) => {
     try {
         if (!firebase.messaging.isSupported()) return;
         const msg = firebase.messaging();
-
-        // 1. Get Token
-        const token = await msg.getToken({ vapidKey: "YOUR_VAPID_KEY_IF_NEEDED" }); // Usually implicitly handled if manifest matches
-        if (!token) {
-            console.warn("[WebNotification] No FCM token available.");
-            return;
-        }
-
-        // 2. Get Access Token (Server Side Logic on Client)
+        const token = await msg.getToken();
+        if (!token) return;
         const accessToken = await getFcmV1AccessToken();
         if (!accessToken) return;
-
-        // 3. Subscribe via IID API (Legacy but functional with OAuth)
-        // Note: For strict V1, this should be done via a backend proxy to https://fcm.googleapis.com/v1/...
-        // But using IID with OAuth token works for now.
         const response = await fetch(`https://iid.googleapis.com/iid/v1/${token}/rel/topics/${topic}`, {
             method: 'POST',
             headers: {
@@ -963,39 +801,25 @@ export const subscribeWebToTopic = async (topic: string) => {
                 'Content-Type': 'application/json'
             }
         });
-
         if (response.ok) {
-            console.log(`[WebNotification] Subscribed content-available to ${topic}`);
+            console.log(`[WebNotification] Subscribed to ${topic}`);
         } else {
             console.error(`[WebNotification] Failed to subscribe to ${topic}:`, await response.text());
         }
-
     } catch (e) {
         console.error("[WebNotification] Subscription Error:", e);
     }
 };
 
-// ==========================================
-// 🆔 SEQUENTIAL ID GENERATION (Atomic Transactions - Trusted)
-// ==========================================
 export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> => {
     if (!db) throw new Error("Firebase not initialized");
-
     const counterRef = db.collection('settings').doc('counters');
-
     try {
         return await db.runTransaction(async (transaction) => {
             const doc = await transaction.get(counterRef);
             let nextId = 1;
-
             if (!doc.exists) {
-                // FIRST RUN: Scan to initialize the counter correctly
-                // This prevents resetting to 1 if we switch strategies mid-production
-                const snapshot = await db!.collection('orders')
-                    .orderBy('createdAt', 'desc')
-                    .limit(50)
-                    .get();
-
+                const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(50).get();
                 let maxId = 0;
                 snapshot.forEach(d => {
                     const id = d.id;
@@ -1007,18 +831,8 @@ export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> =
                 nextId = maxId + 1;
             } else {
                 const data = doc.data();
-                // Get current value for this specific prefix (ORD- or S-)
                 const current = (data && data[prefix]) ? data[prefix] : 0;
-
-                // Safety check: If counter is 0 found but we have orders? 
-                // We assume if it exists, it's correct. If it's 0, we start at 1.
-                // To be extra safe on migration, we could double check if current < 1000? 
-                // But let's trust the transaction flow. valid nextId is current + 1.
-
-                // If the key is missing (e.g. we added S- later), we might want to scan?
-                // For now, let's assume simple increment.
                 if (!current) {
-                    // Fallback scan if key missing in existing doc
                     const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
                     let max = 0;
                     snapshot.forEach(d => {
@@ -1030,38 +844,23 @@ export const generateUniqueId = async (prefix: 'ORD-' | 'S-'): Promise<string> =
                     nextId = current + 1;
                 }
             }
-
-            // Update the counter
             transaction.set(counterRef, { [prefix]: nextId }, { merge: true });
-
             return `${prefix}${nextId}`;
         });
     } catch (error) {
-        console.error("Transaction failed:", error);
-        // Fallback to random if transaction totally fails (e.g. permission/network)
-        // But we really want to know if this fails.
         return `${prefix}${Date.now()}`;
     }
 };
 
-// ==========================================
-// 🛡️ SECURE ID GENERATION (Collision Proof)
-// ==========================================
 export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<string> => {
     if (!db) throw new Error("Firebase not initialized");
     const counterRef = db.collection('settings').doc('counters');
-
     try {
         return await db.runTransaction(async (transaction) => {
             const doc = await transaction.get(counterRef);
             let nextId = 1;
-
             if (!doc.exists) {
-                // FIRST RUN - Scan last 10 orders only for speed
-                const snapshot = await db!.collection('orders')
-                    .orderBy('createdAt', 'desc')
-                    .limit(10)
-                    .get();
+                const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(10).get();
                 let maxId = 0;
                 snapshot.forEach(d => {
                     const id = d.id;
@@ -1074,12 +873,9 @@ export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<strin
             } else {
                 const data = doc.data();
                 const current = (data && data[prefix]) ? data[prefix] : 0;
-
-                // OPTIMIZATION: Trust the counter if it exists
                 if (current > 0) {
                     nextId = current + 1;
                 } else {
-                    // Fallback: scan last 10 orders only
                     const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(10).get();
                     let max = 0;
                     snapshot.forEach(d => {
@@ -1089,67 +885,39 @@ export const generateUniqueIdSafe = async (prefix: 'ORD-' | 'S-'): Promise<strin
                     nextId = max + 1;
                 }
             }
-
-            // Update counter immediately
             transaction.set(counterRef, { [prefix]: nextId }, { merge: true });
             return `${prefix}${nextId}`;
         });
     } catch (error) {
-        console.error("Safe ID Gen Transaction failed, trying Safe Fallback (Query):", error);
-        // FALLBACK: Query the latest ID directly
         try {
-            // Query Last 10 Orders only for speed
-            const snapshot = await db!.collection('orders')
-                .orderBy('createdAt', 'desc')
-                .limit(10)
-                .get();
-
+            const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(10).get();
             let maxId = 0;
             snapshot.forEach(d => {
                 const id = d.id;
                 if (id.startsWith(prefix)) {
                     const num = parseInt(id.replace(prefix, '') || '0');
-                    // Filter out large timestamp IDs
                     if (!isNaN(num) && num < 1000000000) maxId = Math.max(maxId, num);
                 }
             });
-
-            // Increment
             const nextId = maxId + 1;
-            const finalId = `${prefix}${nextId}`;
-
-            // Try repair counter (fire and forget)
             db!.collection('settings').doc('counters').set({ [prefix]: nextId }, { merge: true }).catch(() => { });
-
-            return finalId;
+            return `${prefix}${nextId}`;
         } catch (e2) {
-            console.error("Critical: Even Fallback Failed", e2);
-            throw new Error("Could not generate ID. Check connection.");
+            throw new Error("Could not generate ID.");
         }
     }
 };
 
-// ==========================================
-// 📦 BATCH ID GENERATION (For Bulk Adds)
-// ==========================================
 export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Promise<string[]> => {
     if (!db) throw new Error("Firebase not initialized");
     if (count <= 0) return [];
-
     const counterRef = db.collection('settings').doc('counters');
-
     try {
         const transactionPromise = db.runTransaction(async (transaction) => {
             const doc = await transaction.get(counterRef);
             let nextIdStart = 1;
-
             if (!doc.exists) {
-                // Initialize checks (copy logic from single gen)
-                // OPTIMIZED: Limit scan to 15
-                const snapshot = await db!.collection('orders')
-                    .orderBy('createdAt', 'desc')
-                    .limit(15)
-                    .get();
+                const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(15).get();
                 let maxId = 0;
                 snapshot.forEach(d => {
                     const id = d.id;
@@ -1162,9 +930,7 @@ export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Pr
             } else {
                 const data = doc.data();
                 const current = (data && data[prefix]) ? data[prefix] : 0;
-                // Double check if 0
                 if (!current) {
-                    // OPTIMIZED: Limit scan to 15
                     const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(15).get();
                     let max = 0;
                     snapshot.forEach(d => {
@@ -1176,71 +942,38 @@ export const generateIdsBatch = async (prefix: 'ORD-' | 'S-', count: number): Pr
                     nextIdStart = current + 1;
                 }
             }
-
             const nextIdEnd = nextIdStart + count - 1;
-
-            // Reserve the range
             transaction.set(counterRef, { [prefix]: nextIdEnd }, { merge: true });
-
-            // Generate the array
             const ids: string[] = [];
             for (let i = 0; i < count; i++) {
                 ids.push(`${prefix}${nextIdStart + i}`);
             }
-            console.log(`[BatchID] Generated ${count} IDs: ${ids[0]} to ${ids[ids.length - 1]}`);
             return ids;
         });
-
-        // 🚀 SPEED: Race against a timeout (2.5s)
         return await Promise.race([
             transactionPromise,
             new Promise<string[]>((_, reject) => setTimeout(() => reject(new Error("Transaction timeout")), 2500))
         ]);
-
     } catch (error) {
-        console.error("Batch ID Gen failed/timedout, switching to smart fallback:", error);
-
         try {
-            // 🛡️ ACCURACY: Read Max ID directly from Orders
-            // Smart Logic: Ignore "Timestamp" IDs (usually > 10 digits) to preserve the clean sequence.
-            // OPTIMIZED: Limit scan to 20
-            const snapshot = await db!.collection('orders')
-                .orderBy('createdAt', 'desc')
-                .limit(20)
-                .get();
-
+            const snapshot = await db!.collection('orders').orderBy('createdAt', 'desc').limit(20).get();
             let maxId = 0;
             snapshot.forEach(d => {
                 const id = d.id;
                 if (id.startsWith(prefix)) {
-                    const numStr = id.replace(prefix, '') || '0';
-                    const num = parseInt(numStr);
-
-                    // HEURISTIC: Timestamp IDs are usually huge (e.g. 1700000000000).
-                    // Sequential IDs are usually < 1,000,000.
-                    // We only count it if it looks like a sequence ID (less than 1 billion).
-                    if (!isNaN(num) && num < 1000000000) {
-                        maxId = Math.max(maxId, num);
-                    }
+                    const num = parseInt(id.replace(prefix, '') || '0');
+                    if (!isNaN(num) && num < 1000000000) maxId = Math.max(maxId, num);
                 }
             });
-
             const start = maxId + 1;
             const ids: string[] = [];
             for (let i = 0; i < count; i++) {
                 ids.push(`${prefix}${start + i}`);
             }
-            console.log(`[BatchID-Fallback] Generated ${count} IDs from max ${maxId} (Smart Filter)`);
-
-            // Try to repair counter if possible
             db!.collection('settings').doc('counters').set({ [prefix]: start + count - 1 }, { merge: true }).catch(() => { });
-
             return ids;
-
         } catch (fallbackError) {
-            console.error("Critical Fallback failed:", fallbackError);
-            // Worst Case: Timestamp
-            throw new Error("Batch ID Generation Failed completely. Please retry.");
+            throw new Error("Batch ID Generation Failed.");
         }
     }
 };

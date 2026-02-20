@@ -1,16 +1,15 @@
-
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
 // استرجاع الإعدادات الافتراضية كاحتياط، لكن الكود يعتمد بشكل أساسي على التهيئة الديناميكية من التطبيق الرئيسي
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCzclhrtHAI4lNfqHaKJ6wh-Qr-skoPaZQ",
-  authDomain: "goo-now3.firebaseapp.com",
-  databaseURL: "https://goo-now3-default-rtdb.firebaseio.com",
-  projectId: "goo-now3",
-  storageBucket: "goo-now3.firebasestorage.app",
-  messagingSenderId: "966566737002",
-  appId: "1:966566737002:android:7ef09d74e85403d3154613"
+  apiKey: "AIzaSyC4bv_RLpS-jxunMs7nWjux806bYk6XnVY",
+  authDomain: "goo-now-1ce44.firebaseapp.com",
+  databaseURL: "https://goo-now-1ce44-default-rtdb.firebaseio.com",
+  projectId: "goo-now-1ce44",
+  storageBucket: "goo-now-1ce44.firebasestorage.app",
+  messagingSenderId: "742306376566",
+  appId: "1:742306376566:android:9298a84980b239e528a857"
 };
 
 if (!firebase.apps.length) {
@@ -22,19 +21,11 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage(function (payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-  // Check if this is a Silent Sync Message (Method 2)
-  if (payload.data && payload.data.sync_data === "true") {
-    console.log('[firebase-messaging-sw.js] Silent Sync Triggered. Waking up background threads.');
-    // We don't necessarily show a notification for silent syncs
-    // This wakes up the SW and allows it to perform background tasks if needed.
-    if (payload.data.wake_up !== "true") return;
-  }
-
   const notificationTitle = payload.notification?.title || payload.data?.title || 'GOO NOW';
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.body || 'لديك تحديث جديد',
-    icon: '/vite.svg',
-    badge: '/vite.svg',
+    icon: '/app-icon.png',
+    badge: '/app-icon.png',
     data: payload.data, // ضروري للتوجيه عند النقر
     tag: payload.data?.targetId || 'general',
     renotify: true,

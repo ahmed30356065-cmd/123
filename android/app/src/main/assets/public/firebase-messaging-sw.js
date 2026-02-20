@@ -1,60 +1,62 @@
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
-// Fallback removed for security. Config must be passed from main app.
+// استرجاع الإعدادات الافتراضية كاحتياط، لكن الكود يعتمد بشكل أساسي على التهيئة الديناميكية من التطبيق الرئيسي
+const DEFAULT_FIREBASE_CONFIG = {
+    apiKey: "AIzaSyC4bv_RLpS-jxunMs7nWjux806bYk6XnVY",
+    authDomain: "goo-now-1ce44.firebaseapp.com",
+    databaseURL: "https://goo-now-1ce44-default-rtdb.firebaseio.com",
+    projectId: "goo-now-1ce44",
+    storageBucket: "goo-now-1ce44.firebasestorage.app",
+    messagingSenderId: "742306376566",
+    appId: "1:742306376566:android:9298a84980b239e528a857"
+};
 
-// Listen for custom config from main app
-self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'FIREBASE_CONFIG') {
-        const config = event.data.config;
-        if (firebase.apps.length === 0) {
-            firebase.initializeApp(config);
-            const messaging = firebase.messaging();
-            setupMessaging(messaging);
-        }
-    }
-});
-
-function setupMessaging(messaging) {
-    messaging.onBackgroundMessage(function (payload) {
-        console.log('[firebase-messaging-sw.js] Received background message ', payload);
-
-        // Normalize payload data
-        const notificationTitle = payload.notification?.title || payload.data?.title || 'تنبيه جديد';
-        const notificationBody = payload.notification?.body || payload.data?.body || 'لديك إشعار جديد';
-        const icon = '/icon.png';
-
-        const notificationOptions = {
-            body: notificationBody,
-            icon: icon,
-            badge: icon,
-            data: payload.data,
-            // Typical for FCM HTTP v1 'click_action'
-            actions: [],
-            tag: payload.data?.tag || 'default-tag'
-        };
-
-        self.registration.showNotification(notificationTitle, notificationOptions);
-    });
+if (!firebase.apps.length) {
+    firebase.initializeApp(DEFAULT_FIREBASE_CONFIG);
 }
 
-self.addEventListener('notificationclick', function (event) {
-    event.notification.close();
+const messaging = firebase.messaging();
 
-    // Handle click - open window
+messaging.onBackgroundMessage(function (payload) {
+    console.log('[firebase-messaging-sw.js] Received background message ', payload);
+
+    const notificationTitle = payload.notification?.title || payload.data?.title || 'GOO NOW';
+    const notificationOptions = {
+        body: payload.notification?.body || payload.data?.body || 'لديك تحديث جديد',
+        icon: '/app-icon.png',
+        badge: '/app-icon.png',
+        data: payload.data, // ضروري للتوجيه عند النقر
+        tag: payload.data?.targetId || 'general',
+        renotify: true,
+        requireInteraction: true // Important for visibility
+    };
+
+    return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// معالجة النقر على الإشعار (مكررة هنا للضمان)
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    let targetUrl = event.notification.data?.url || '/';
+
+    if (!targetUrl.startsWith('http')) {
+        targetUrl = self.registration.scope.replace(/\/$/, '') + targetUrl;
+    }
+
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-            // Check if there is already a window/tab open with the target URL
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
             for (let i = 0; i < windowClients.length; i++) {
                 const client = windowClients[i];
-                if (client.url && 'focus' in client) {
+                if (client.url.includes(self.registration.scope) && 'focus' in client) {
+                    if (targetUrl !== client.url) {
+                        client.navigate(targetUrl);
+                    }
                     return client.focus();
                 }
             }
-            // If not, open a new window
-            const urlToOpen = event.notification.data?.url || '/';
             if (clients.openWindow) {
-                return clients.openWindow(urlToOpen);
+                return clients.openWindow(targetUrl);
             }
         })
     );

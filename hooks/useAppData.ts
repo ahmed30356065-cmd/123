@@ -7,13 +7,13 @@ import { AppStorage, SafeLocalStorage } from '../utils/storage';
 import { APP_VERSION } from '../src/version';
 
 export const DEFAULT_FIREBASE_CONFIG = {
-    apiKey: "AIzaSyCzclhrtHAI4lNfqHaKJ6wh-Qr-skoPaZQ",
-    authDomain: "goo-now3.firebaseapp.com",
-    databaseURL: "https://goo-now3-default-rtdb.firebaseio.com",
-    projectId: "goo-now3",
-    storageBucket: "goo-now3.firebasestorage.app",
-    messagingSenderId: "966566737002",
-    appId: "1:966566737002:android:7ef09d74e85403d3154613"
+    apiKey: "AIzaSyC4bv_RLpS-jxunMs7nWjux806bYk6XnVY",
+    authDomain: "goo-now-1ce44.firebaseapp.com",
+    databaseURL: "https://goo-now-1ce44-default-rtdb.firebaseio.com",
+    projectId: "goo-now-1ce44",
+    storageBucket: "goo-now-1ce44.firebasestorage.app",
+    messagingSenderId: "742306376566",
+    appId: "1:742306376566:android:9298a84980b239e528a857"
 };
 
 const getActiveFirebaseConfig = () => {

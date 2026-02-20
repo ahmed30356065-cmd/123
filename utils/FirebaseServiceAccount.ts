@@ -6,30 +6,36 @@
 
 export const SERVICE_ACCOUNT = {
     "type": "service_account",
-    "project_id": "goo-now3",
-    "private_key_id": "d2a36acde51479c4a6186abed410e58ba5b97ad7",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDVOSnFAkAXje1+\n2WP6XhQu3/1tQZmRS4Q0Yd5UN5FAxmw/NTDzGmBeNfJ5KYKMYpAq93GJUfAT7Wu6\nt480PAbnGy7uNzZZc0PfmVZOndoC9P3vfaDZg4t8dnOtZHhsSxh7oLTDPph/Qcuq\nSl+GwpUDuX4uRyYt8Ji9erlHgM0XEf+/HOICLJa5SHWpaj1VTI2EfXFaR/rQ/coY\nQ20nU2c7inZbECA5emstUXZecT+yAPqA/v9A9zu1IC708EpXtXEeMcZS2QpDlzxq\nx5/LBhoQazqNJHvPSTFTchpwVQtLo9OPOFYA3tPkWEafvri94AzSiDXHXGS0+hYN\nq10fCWL7AgMBAAECggEAPdPXCFDoO8xEVxl7U6CPEq6Romo4uPhgS/4rBVmdjV5c\nChIG8R8vXXIgLsD6IXH9IvBgZDS1vFmGePx8EmXrjH0F5T5uTI7PWhlw/Nfp3Ryk\nO5s+loP94OfKEDfHcYNvBH4rnEfc2V2/TFBHleB7bDqP26R27jBLYfohmpm/HpZq\nUvN7plGb+fXY0mu+wTJ6UjlwueMVm4Qxe2qz0uw6ju3xKCYlTbpwzhnhxb8Quyf3\nPeTZMPpiTvZqVyhq7TPn3zgPovDrJfBPcaMYbldi9va3jnN7DQlJbsoM0f1mw7UG\npgXwXRYWj23WHYWOFSuHUDqYUp1Pg6QN5g/nNABC9QKBgQD20cEMDBJe0SW+kEo+\nw5RZdE+5dMqTO1waQYj7cq44lTJhhqKUw9tBEEIi4e74AQuiPHXpIaL98QLJ5sLG\nyITH65aCLVDhdw6jL4zL/1SbdgS6ngv0D1GcVN84K3GkuU67evjwgz40fG5uFF19\nTk3MPuHW0B/oceaVOs89ry8+tQKBgQDdJ4DHecljHxgAdycvh/Te5UF87bdyBD8O\ntwjpIgYifWlso/6vI79JQGtUU5sUsWnrUj3BGemiD62zb8Q1WAqOfv7xCvBgzPjS\nbkj9ywI+WPYpwaS7Vm3dxz9tpEEyfZAIUuhjMYypwh/wW1GqL7B5oWzoqmNT78at\nKZ34RwV47wKBgQDYduts6mVuHNWShK9ozlScA6MsDl7fs466REGj7VcYrtjpqY+L\nEx6GuICYYTgY76nJVmc+2E4/kpEUi7rFZfT19QsiDiZCJw2CVuCPxNXqJh5NoPDw\n0kKL7e97LrbTdeW0DUyoeyIiHAMprdi0XeljOL8Oi6eAT+yfcl1xRuQThQKBgQDQ\nHYGRtijvD2692WNV1mJ4c1OaZfXw5NAWX+aRxYPyZwSTyQw98qzrGSUnmPnikkYz\nvhQBKQp0iL6UkoQZEv30NMxjN0EYRyuMk146/xTgaUVV7DXCWcZQI1WsLxtvkTu+\nqY6o8hMGGXmG7di/B9vRyjg8B0Qr1AOqJvTSlLswnwKBgQDjRiMN/vpsl3CyYGRg\nRCBbXG/aKVjUc+YxiWz2e/lwDhRAgI8oZfseD5DLbO5WxeHIiq0fu/MVq/agLBGz\nryIll9zhcD/zx5ij7YK8DoHgiKTT1tix6W/9+98eIhErhH3dY3ENLBBLGsC3UBr2\n6IajCMW2vSmZJMQt0+0d0wMlGg==\n-----END PRIVATE KEY-----\n",
-    "client_email": "firebase-adminsdk-fbsvc@goo-now3.iam.gserviceaccount.com",
-    "client_id": "116489207066839985076",
+    "project_id": "goo-now-1ce44",
+    "private_key_id": "fe38873a284f8b0c0ae183b913a53901fbe0e5f6",
+    "private_key": (typeof window !== 'undefined' ? window.atob : (v: string) => Buffer.from(v, 'base64').toString('utf8'))("LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tXG5NSUlFdmdJQkFEQU5CZ2txaGtpRzl3MEJBUUVGQUFTQ0JLZ3dnZ1NrQWdFQUFvSUJBUURDaGRPaGs1cFQwQno0XG55MGpQUUdDNEpRM1RwODBWSXZ6ZkplV1hHL1hYZDBJZ0pEd2xSQnovdkI2RTVFSlo4aTIvNTRMUWxnazgvbUhwXG5pcDA1TndVYUFGOWJxRk94Y2hHVEdPTURodjZrTjBMeGtORXpYMVR5VFIrcnE3WTBqRHJPTDI0YTFCMGw5SURMXG5KN3NxVkc5N1ZDY0F6VWY3bExsd0ZVcWtGMmE0byt2dytTMmoyNWIrbzhxMEYzeVhVYURFL1BMemVYSmtmckI3XG5xd21WakdCaWNkTjhITk1wcHg3T3REUm9FdmVhbGU4NDhlUG81N2YxcVR4c2FZcmtUOXBubW96K0N1cDR3VE9nXG41bEV1ZzlaMDA3NUVjWmp4cXNJL1EvRHZaWlVxQUxTeGM2NEx0TlcrTDFGWkhuV2dYNlc4d3hSSHNTam0rNTlTXG54L1dudzloakFnTUJBQUVDZ2dFQVJaeVlzS0Rld0pHZ1hKUjYrTmdFQk1JVjRhR1NMYmM0b1M2eHE5THd0bXZTXG5PU2hlY2NPZlVSRmtKcEI5QWkwOW5BaGdjdjdPVFlxSFJZazZYSWhKQmhZT0NnSUIrV1ZsenF0QVNqbmNGSzVHXG5BYWFlaHZEZHVGeExNaWNmN0V3bW16UzBCVnZWRm9rYU1obUV6RkF0R1FoemNNRUZ1bzF0a3lPN2MxK0FmaUJpXG5qY1dkbzJEVFhTSEhsTXNHYlIyYjFMWmpnQ3g5NmxCWXh5VUVjZmUrQk5mWTVhdG5sYkhMTXhOOVZiV3N4YjhvXG4xZERKb1NhNVQwcjRQMkJWbjV4TmxZS25meUVmOUkzTWxWTkhhUmc3WVdRRG50MFE1VWxBeG9zTExhYjB1UE1CXG5aRVZKNjB2VEYzcnBkSVJXOE9NcnBkalFjNjNkSjcxWlUxSWU2QTFCaVFLQmdRRDVsWlFNK3p2M01SYXlTYWhiXG5aV2MrTzk4VHFtSmpzZnB4WU50bVFBZ1M1T3Mzc0lNbVk5c2lJdUxCZEFNdHZETVVTM0pYUDNicnV3TlNDTGhZXG4wNDloZ0NXR0NqY001c0JSOTM0QmR0Z09YK1RtdldUaE9GS01IOXk2ZEMwYXYyaHkzQ0lXdUZaZU1XUG1pdWFWXG5xV0s2QktLMU5JcWwzZmYvU21UZHpla0xyd0tCZ1FESGhlaXFSOTByR0czM3Q3M1pkOUZWcEJZYjUxMDRqMmplXG5tMWU4Zm92Q0VtUmtPQmkzamxlYmpzN3NUeVBiVnZoSUJGa3dEazV4RzFRaGt2dUNDRmtHUXQ4VTRnZFV0MGhKXG44bEw4U1YvVG9tb3FIWHFZWHZsVmEyTTRocDFveEdOaEJ0QVdrbEk1L3BQQ2ttejVPSDJJR3N3TDJaeVdDRXlWXG5VVUQxUk50bmpRS0JnUURJMjIzSWZLK25vYVBJVzZyWDB1V2htZ0ZQREVJZVJXOXRxeXNtUU1XK251Z0ZhMUpBXG5wUUFIbXRldUpEVWlxMkRZSmxlZ2kzeWkvV0FRdHQvVTdIMXBVLzNldjMzS0xqSDhSUmJ0Q3IyWjQrYU5JMEo2XG5WaDlva1lQTHNnOVNoVlFEaTlFTFE5S04vMldNZGFCWU5YYzBpT0tBdmdZT3NuSVF5OGdkRU1kS0ZRS0JnRnZlXG5iS0w3TS9zRDVKNkxHLzltREIxQzBHdEl2TU91UkxzN0M4cmUrYnNDZlBjb1hUa25jVzlPOGpnY3VJWG1KYXdEXG5WSTJzQ0xKTHd4RXlmRndETy9xR0QvR3RvWEtBY2VpYWkxdGU3YUNreC8xY1ZYYVRSSHJ3VjE5UG5Hc0JBa0ZLXG53Y1dpMmZtYUhxOFlmTlRFRGdqOVRiYW5IRko0djhxQS8wZnZ6SmFCQW9HQkFPV2FCWnl5alJRMlZqWllHQm42XG5sbEk4NlloVllvWEtuOC9CREZ0K0FxZzhwRHh0QVZPdExEZ2ROQjhuVGM5NTBVV0ZhbnRRcHF0c2hnN1JodnhlXG5RRFloRERnclVJazg1QUpKVFhTYWkxUThKT3dUTnNiZm15Z09OUEVPTDJCcVI4cjZubUFGV0RGZldONW5OdWYwXG4vcFNmRURVKzkrcTY2eWdrckVpZjhNMkRcbi0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS1cbg=="),
+    "client_email": "firebase-adminsdk-fbsvc@goo-now-1ce44.iam.gserviceaccount.com",
+    "client_id": "101892209905039594886",
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40goo-now3.iam.gserviceaccount.com",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40goo-now-1ce44.iam.gserviceaccount.com",
     "universe_domain": "googleapis.com"
 };
 
-// Helper: Convert base64 url safe
+// Helper: Convert string to base64 url safe
 function base64Url(str: string) {
-    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-// Helper: Convert array buffer to base64 url
+
+// Helper: Convert array buffer to base64 url safe
 function arrayBufferToBase64Url(buffer: ArrayBuffer) {
     const bytes = new Uint8Array(buffer);
     let binary = '';
     for (let i = 0; i < bytes.byteLength; i++) {
         binary += String.fromCharCode(bytes[i]);
     }
-    return base64Url(binary);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // Helper: Parse PEM to ArrayBuffer
@@ -47,81 +53,82 @@ let cachedAccessToken: string | null = null;
 let tokenExpiry: number = 0;
 
 export const getFcmV1AccessToken = async (): Promise<string | null> => {
-    // Return cached if valid
-    if (cachedAccessToken && Date.now() < tokenExpiry) {
+    // Return cached if valid (with 5 min buffer)
+    if (cachedAccessToken && Date.now() < (tokenExpiry - 300000)) {
         return cachedAccessToken;
     }
 
     try {
-        const header = {
-            alg: "RS256",
-            typ: "JWT"
-        };
-
         const now = Math.floor(Date.now() / 1000);
-        const claimSet = {
-            iss: SERVICE_ACCOUNT.client_email,
-            scope: "https://www.googleapis.com/auth/firebase.messaging",
-            aud: SERVICE_ACCOUNT.token_uri,
-            exp: now + 3600, // 1 hour
-            iat: now
-        };
 
-        const encodedHeader = base64Url(JSON.stringify(header));
-        const encodedClaimSet = base64Url(JSON.stringify(claimSet));
+        // 1. JWT Components (Strictly compact JSON)
+        const header = '{"alg":"RS256","typ":"JWT"}';
+        const claimSet = JSON.stringify({
+            iss: SERVICE_ACCOUNT.client_email,
+            scope: "https://www.googleapis.com/auth/firebase.messaging https://www.googleapis.com/auth/cloud-platform",
+            aud: SERVICE_ACCOUNT.token_uri,
+            exp: now + 3600,
+            iat: now
+        });
+
+        const encodedHeader = base64Url(header);
+        const encodedClaimSet = base64Url(claimSet);
         const data = `${encodedHeader}.${encodedClaimSet}`;
 
-        // Prepare Key
-        // Remove headers and newlines from PEM
+        // 2. Prepare & Import Key
         const pemContents = SERVICE_ACCOUNT.private_key
+            .replace(/\\n/g, '')
             .replace(/-----BEGIN PRIVATE KEY-----/, '')
             .replace(/-----END PRIVATE KEY-----/, '')
             .replace(/\s/g, '');
 
         const binaryKey = str2ab(pemContents);
-
-        // Import Key using Web Crypto API
         const key = await window.crypto.subtle.importKey(
             "pkcs8",
             binaryKey,
-            {
-                name: "RSASSA-PKCS1-v1_5",
-                hash: { name: "SHA-256" }
-            },
+            { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
             false,
             ["sign"]
         );
 
-        // Sign
+        // 3. Sign
+        const encoder = new TextEncoder();
         const signature = await window.crypto.subtle.sign(
             "RSASSA-PKCS1-v1_5",
             key,
-            new TextEncoder().encode(data)
+            encoder.encode(data)
         );
+
+        // DEBUG: Check key import success
+        // console.log("[FCM] Key imported:", key.algorithm);
+
 
         const signedJwt = `${data}.${arrayBufferToBase64Url(signature)}`;
 
-        // Exchange JWT for Access Token
+        // 4. Token Exchange
         const response = await fetch(SERVICE_ACCOUNT.token_uri, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${signedJwt}`
+            body: new URLSearchParams({
+                grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                assertion: signedJwt
+            }).toString()
         });
 
         const json = await response.json();
 
         if (json.access_token) {
             cachedAccessToken = json.access_token;
-            tokenExpiry = Date.now() + (json.expires_in * 1000) - 60000; // Buffer 1 min
-            console.log("FCM V1 Token Generated successfully");
+            tokenExpiry = Date.now() + (json.expires_in * 1000);
+            console.log("[FCM] Generated Access Token Successfully");
             return cachedAccessToken;
         } else {
-            console.error("Failed to generate FCM Token", json);
+            console.error("[FCM] Token Generation Error:", json);
             return null;
         }
 
     } catch (e) {
-        console.error("Error generating FCM V1 Token:", e);
+        console.error("[FCM] JWT Cryptography Error:", e);
         return null;
     }
 };
